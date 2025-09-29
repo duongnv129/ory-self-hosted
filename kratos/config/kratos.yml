@@ -10,6 +10,19 @@ serve:
       allowed_origins:
         - http://127.0.0.1:4455
         - http://localhost:4455
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Session-Token
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
   admin:
     base_url: http://127.0.0.1:4434/
 
@@ -73,15 +86,15 @@ selfservice:
             - hook: session
 
 log:
-  level: debug
-  format: text
-  leak_sensitive_values: true
+  level: error
+  format: json
+  leak_sensitive_values: false
 
 secrets:
   cookie:
-    - PLEASE-CHANGE-ME-I-AM-VERY-INSECURE
+    - changeme32characterslongcookies1
   cipher:
-    - 32-LONG-SECRET-NOT-SECURE-AT-ALL
+    - changeme32characterslongcipher12
 
 ciphers:
   algorithm: xchacha20-poly1305
@@ -89,7 +102,7 @@ ciphers:
 hashers:
   algorithm: bcrypt
   bcrypt:
-    cost: 8
+    cost: 12
 
 identity:
   default_schema_id: default
@@ -100,3 +113,5 @@ identity:
 courier:
   smtp:
     connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
+    # For production, use environment variables:
+    # connection_uri: smtps://username:password@smtp.your-provider.com:587/

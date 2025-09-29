@@ -22,31 +22,63 @@ The setup spans multiple directories in the parent `ory-self-hosted` project:
 
 ## Development Commands
 
-### Starting Services
+### Using Makefile (Recommended)
+
+The root directory contains a Makefile with convenient commands:
+
+```bash
+# Start development environment
+make dev                    # Start all services and show URLs
+make up                     # Start all services
+make down                   # Stop all services
+make restart               # Restart all services
+
+# Individual services
+make postgres              # Start only PostgreSQL
+make kratos               # Start only Kratos stack
+
+# Logs and monitoring
+make logs                 # Show all Kratos service logs
+make logs-kratos         # Show Kratos service logs only
+make logs-ui             # Show UI service logs only
+make logs-postgres       # Show PostgreSQL logs only
+make status              # Show service status
+make health              # Check service health
+
+# Development workflows
+make reload-kratos       # Reload Kratos after config changes
+make migrate            # Run database migrations
+make shell-kratos       # Shell access to Kratos container
+make shell-postgres     # Shell access to PostgreSQL
+make urls               # Show all service URLs
+
+# Cleanup
+make clean              # Remove all containers and volumes
+make reset              # Full reset and restart
+make help               # Show all available commands
+```
+
+### Direct Docker Compose Commands
 
 ```bash
 # Start complete stack (from ory-self-hosted root)
 docker-compose -f postgres/docker-compose.yaml -f kratos/docker-compose.yaml up -d
 
 # Start Kratos services only (from kratos/ directory)
-docker-compose up -d
+cd kratos && docker-compose up -d
 
 # Start database only (from postgres/ directory)
-docker-compose up -d
-```
+cd postgres && docker-compose up -d
 
-### Managing Services
-
-```bash
 # View logs
-docker-compose logs -f kratos
-docker-compose logs -f kratos-selfservice-ui-node
+cd kratos && docker-compose logs -f kratos
+cd kratos && docker-compose logs -f kratos-selfservice-ui-node
 
 # Stop services
 docker-compose down
 
 # Rebuild after config changes
-docker-compose up -d --force-recreate kratos
+cd kratos && docker-compose up -d --force-recreate kratos
 ```
 
 ## Key Configuration Files

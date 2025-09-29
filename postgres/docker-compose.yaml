@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:18
@@ -13,11 +11,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - docker
+      - ory
 
 volumes:
   postgres_data:
 
 networks:
-  docker:
-    driver: bridge
+  ory:
+    external: true
+    name: ory-network

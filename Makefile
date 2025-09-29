@@ -1,8 +1,8 @@
 # Makefile for Ory Kratos Self-Hosted Setup
 
 # Define paths relative to ory-self-hosted root
-POSTGRES_PATH = ../postgres
-KRATOS_PATH = .
+POSTGRES_PATH = postgres
+KRATOS_PATH = kratos
 
 .PHONY: help up down restart logs status clean postgres kratos ui mail migrate shell
 
@@ -18,12 +18,12 @@ up: ## Start all services (postgres + kratos stack)
 	@echo "Starting PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose up -d
 	@echo "Starting Kratos stack..."
-	@docker-compose up -d
+	@cd $(KRATOS_PATH) && docker-compose up -d
 	@echo "Services started. Access UI at http://127.0.0.1:4455"
 
 down: ## Stop all services
 	@echo "Stopping Kratos stack..."
-	@docker-compose down
+	@cd $(KRATOS_PATH) && docker-compose down
 	@echo "Stopping PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose down
 
@@ -35,18 +35,18 @@ postgres: ## Start only PostgreSQL
 	@echo "PostgreSQL started on port 5432"
 
 kratos: ## Start only Kratos services (requires postgres)
-	@docker-compose up -d
+	@cd $(KRATOS_PATH) && docker-compose up -d
 	@echo "Kratos services started"
 
 # Logs and Monitoring
 logs: ## Show logs for all Kratos services
-	@docker-compose logs -f
+	@cd $(KRATOS_PATH) && docker-compose logs -f
 
 logs-kratos: ## Show logs for Kratos service only
-	@docker-compose logs -f kratos
+	@cd $(KRATOS_PATH) && docker-compose logs -f kratos
 
 logs-ui: ## Show logs for UI service only
-	@docker-compose logs -f kratos-selfservice-ui-node
+	@cd $(KRATOS_PATH) && docker-compose logs -f kratos-selfservice-ui-node
 
 logs-postgres: ## Show PostgreSQL logs
 	@cd $(POSTGRES_PATH) && docker-compose logs -f postgres
@@ -54,7 +54,7 @@ logs-postgres: ## Show PostgreSQL logs
 # Status and Health
 status: ## Show status of all services
 	@echo "=== Kratos Stack Status ==="
-	@docker-compose ps
+	@cd $(KRATOS_PATH) && docker-compose ps
 	@echo ""
 	@echo "=== PostgreSQL Status ==="
 	@cd $(POSTGRES_PATH) && docker-compose ps
@@ -68,14 +68,14 @@ health: ## Check service health
 # Development
 reload-kratos: ## Reload Kratos after config changes
 	@echo "Reloading Kratos with new configuration..."
-	@docker-compose up -d --force-recreate kratos
+	@cd $(KRATOS_PATH) && docker-compose up -d --force-recreate kratos
 
 migrate: ## Run database migrations manually
 	@echo "Running database migrations..."
-	@docker-compose up kratos-migrate
+	@cd $(KRATOS_PATH) && docker-compose up kratos-migrate
 
 shell-kratos: ## Get shell access to Kratos container
-	@docker-compose exec kratos sh
+	@cd $(KRATOS_PATH) && docker-compose exec kratos sh
 
 shell-postgres: ## Get shell access to PostgreSQL
 	@cd $(POSTGRES_PATH) && docker-compose exec postgres psql -U postgres -d kratos
@@ -83,7 +83,7 @@ shell-postgres: ## Get shell access to PostgreSQL
 # Cleanup
 clean: ## Stop and remove all containers, networks, and volumes
 	@echo "Cleaning up Kratos stack..."
-	@docker-compose down -v --remove-orphans
+	@cd $(KRATOS_PATH) && docker-compose down -v --remove-orphans
 	@echo "Cleaning up PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose down -v --remove-orphans
 	@echo "Cleanup complete"
