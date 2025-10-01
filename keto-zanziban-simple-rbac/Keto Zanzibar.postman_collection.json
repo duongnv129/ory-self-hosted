@@ -1,0 +1,1972 @@
+{
+  "info": {
+    "_postman_id": "fa7a3850-e8dd-4ee1-8df1-650354285d48",
+    "name": "Keto Zanzibar",
+    "description": "Simple RBAC test collection for Zanzibar-style authorization model using Ory Keto.\n\nThis collection tests a hierarchical role-based access control system with three roles:\n- Admin (Alice): Full permissions\n- Moderator (Bob): Create and view permissions\n- Customer (Charlie): View-only permissions\n\n## Key Test Scenarios:\n- Alice (admin) can create, delete, and view all resources\n- Bob (moderator) can create and view products, update and view categories\n- Charlie (customer) can only view products and categories\n\n## Setup Required:\n1. Keto services running on localhost:4466 (read) and localhost:4467 (write)\n2. Run the \"Setup Relations\" folder first to create role hierarchy\n3. Then run authorization test scenarios",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "23389515"
+  },
+  "item": [
+    {
+      "name": "Setup Relations",
+      "item": [
+        {
+          "name": "Role",
+          "item": [
+            {
+              "name": "Create moderator Role Hierarchies",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Employment relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:customer\",\n    \"relation\": \"member\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Admin Role Hierarchies",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Employment relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:moderator\",\n    \"relation\": \"member\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Role Access",
+          "item": [
+            {
+              "name": "Product - View to Customer Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"view\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:customer\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Product - Create to Moderator Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"create\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Product - Delete to Admin Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"delete\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Category - View to Customer Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"view\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:customer\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Category - Update to Moderator Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"update\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Category - Create to Admin Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Product access relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"create\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Grant Role",
+          "item": [
+            {
+              "name": "Create Employment - Charlie Customer",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Employment relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:customer\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:charlie\"\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Employment - Bob Moderator",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Employment relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:moderator\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:bob\"\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Employment - Alice Admin",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Employment relation created\", function () {",
+                      "    pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:admin\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:alice\"\n}"
+                },
+                "url": {
+                  "raw": "{{keto_write_url}}/admin/relation-tuples",
+                  "host": [
+                    "{{keto_write_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "relation-tuples"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Health Check - Keto Read Service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Keto Read Service is healthy\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql(\"ok\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/health/ready",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check - Keto Write Service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Keto Write Service is healthy\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql(\"ok\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_write_url}}/health/ready",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Clean Namespace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Namespace cleaned successfully\", function () {",
+                  "    // 204 for successful delete or 200",
+                  "    pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples?namespace={{namespace}}",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authorization Tests - Alice",
+      "item": [
+        {
+          "name": "✅ Alice CAN create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can create products (admin role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=create&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Alice CAN delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can delete products (admin role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=delete&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "delete"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Alice CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can view eKYC in Tenant B\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=view&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Alice CAN create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can create categories (admin role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=create&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Alice CAN update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can update categories (admin role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=update&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "update"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Alice CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can view categories (admin role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=view&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authorization Tests - Bob Moderator",
+      "item": [
+        {
+          "name": "✅ Bob CAN create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can create products (moderator role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=create&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Bob CANNOT delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob cannot delete products (admin only)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=delete&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "delete"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Bob CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can view products (inherits from customer)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=view&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Bob CANNOT create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob cannot create categories (admin only)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=create&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Bob CAN update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can update categories (moderator role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=update&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "update"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Bob CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can view categories (inherits from customer)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=view&subject_id=user:bob",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:bob"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authorization Tests - Charlie Customer",
+      "item": [
+        {
+          "name": "✅ Charlie CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie can view products (customer role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=view&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Charlie CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie can view categories (customer role)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=view&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Charlie CANNOT create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot create products (customer role limitation)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=create&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Charlie CANNOT delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot delete products (customer role limitation)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=product:items&relation=delete&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "delete"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Charlie CANNOT create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot create categories (customer role limitation)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=create&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "create"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ Charlie CANNOT update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot update categories (customer role limitation)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=category:items&relation=update&subject_id=user:charlie",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "category:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "update"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:charlie"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Debug Queries",
+      "item": [
+        {
+          "name": "Debug - Admin Role hierarchies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Expansion successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=role:admin&relation=member&max-depth=10",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "role:admin"
+                },
+                {
+                  "key": "relation",
+                  "value": "member"
+                },
+                {
+                  "key": "max-depth",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Debug - Moderator Role hierarchies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Expansion successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=role:moderator&relation=member&max-depth=10",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "role:moderator"
+                },
+                {
+                  "key": "relation",
+                  "value": "member"
+                },
+                {
+                  "key": "max-depth",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Debug - Customer Role hierarchies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Expansion successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=role:customer&relation=member&max-depth=10",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "role:customer"
+                },
+                {
+                  "key": "relation",
+                  "value": "member"
+                },
+                {
+                  "key": "max-depth",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Debug - Is Alice Admin?",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice is admin in Tenant A\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=role:admin&relation=member&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "role:admin"
+                },
+                {
+                  "key": "relation",
+                  "value": "member"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Debug - Can Alice View Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice is NOT admin in Tenant B\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=product:items&relation=view&subject_id=user:alice",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "subject_id",
+                  "value": "user:alice"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Debug - Expand Product View Relations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Expansion successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=product:items&relation=view&max-depth=3",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "product:items"
+                },
+                {
+                  "key": "relation",
+                  "value": "view"
+                },
+                {
+                  "key": "max-depth",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Verification - List All Relations",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Relations exist in namespace\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.relation_tuples).to.be.an('array');",
+              "    pm.expect(response.relation_tuples.length).to.be.greaterThan(0);",
+              "});",
+              "",
+              "pm.test(\"Alice is admin in Tenant A\", function () {",
+              "    const response = pm.response.json();",
+              "    const aliceAdmin = response.relation_tuples.find(r => ",
+              "        r.object === 'tenant:A' && ",
+              "        r.relation === 'employs#admin' && ",
+              "        r.subject_id === 'user:alice'",
+              "    );",
+              "    pm.expect(aliceAdmin).to.not.be.undefined;",
+              "});",
+              "",
+              "pm.test(\"Alice is CS in Tenant B\", function () {",
+              "    const response = pm.response.json();",
+              "    const aliceCS = response.relation_tuples.find(r => ",
+              "        r.object === 'tenant:B' && ",
+              "        r.relation === 'employs#cs' && ",
+              "        r.subject_id === 'user:alice'",
+              "    );",
+              "    pm.expect(aliceCS).to.not.be.undefined;",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{keto_read_url}}/relation-tuples?namespace={{namespace}}",
+          "host": [
+            "{{keto_read_url}}"
+          ],
+          "path": [
+            "relation-tuples"
+          ],
+          "query": [
+            {
+              "key": "namespace",
+              "value": "{{namespace}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "keto_read_url",
+      "value": "http://localhost:4466",
+      "type": "string"
+    },
+    {
+      "key": "keto_write_url",
+      "value": "http://localhost:4467",
+      "type": "string"
+    },
+    {
+      "key": "namespace",
+      "value": "default",
+      "type": "string"
+    }
+  ]
+}

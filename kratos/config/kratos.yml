@@ -1,0 +1,117 @@
+version: "v1.3.0"
+
+dsn: postgres://postgres:postgres@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+
+serve:
+  public:
+    base_url: http://127.0.0.1:4433/
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://127.0.0.1:4455
+        - http://localhost:4455
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Session-Token
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
+  admin:
+    base_url: http://127.0.0.1:4434/
+
+selfservice:
+  default_browser_return_url: http://127.0.0.1:4455/
+  allowed_return_urls:
+    - http://127.0.0.1:4455
+
+  methods:
+    password:
+      enabled: true
+    totp:
+      config:
+        issuer: Ory Kratos Demo
+      enabled: true
+    lookup_secret:
+      enabled: true
+    link:
+      enabled: true
+    code:
+      enabled: true
+
+  flows:
+    error:
+      ui_url: http://127.0.0.1:4455/error
+
+    settings:
+      ui_url: http://127.0.0.1:4455/settings
+      privileged_session_max_age: 15m
+      required_aal: highest_available
+
+    recovery:
+      enabled: true
+      ui_url: http://127.0.0.1:4455/recovery
+      use: code
+
+    verification:
+      enabled: true
+      ui_url: http://127.0.0.1:4455/verification
+      use: code
+      after:
+        default_browser_return_url: http://127.0.0.1:4455/
+
+    logout:
+      after:
+        default_browser_return_url: http://127.0.0.1:4455/login
+
+    login:
+      ui_url: http://127.0.0.1:4455/login
+      lifespan: 10m
+
+    registration:
+      lifespan: 10m
+      ui_url: http://127.0.0.1:4455/registration
+      after:
+        password:
+          hooks:
+            - hook: session
+        code:
+          hooks:
+            - hook: session
+
+log:
+  level: error
+  format: json
+  leak_sensitive_values: false
+
+secrets:
+  cookie:
+    - changeme32characterslongcookies1
+  cipher:
+    - changeme32characterslongcipher12
+
+ciphers:
+  algorithm: xchacha20-poly1305
+
+hashers:
+  algorithm: bcrypt
+  bcrypt:
+    cost: 12
+
+identity:
+  default_schema_id: default
+  schemas:
+    - id: default
+      url: file:///etc/config/kratos/identity.schema.json
+
+courier:
+  smtp:
+    connection_uri: smtps://test:test@mailslurper:1025/?skip_ssl_verify=true
+    # For production, use environment variables:
+    # connection_uri: smtps://username:password@smtp.your-provider.com:587/
