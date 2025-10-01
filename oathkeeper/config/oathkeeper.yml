@@ -1,0 +1,117 @@
+version: v0.40.9
+
+log:
+  level: debug
+  format: json
+
+serve:
+  proxy:
+    port: 4455
+    host: 0.0.0.0
+    cors:
+      enabled: true
+      allowed_origins:
+        - "*"
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Tenant-Id
+      exposed_headers:
+        - Content-Type
+      allow_credentials: true
+  api:
+    port: 4456
+    host: 0.0.0.0
+
+access_rules:
+  matching_strategy: regexp
+  repositories:
+    - file:///etc/config/oathkeeper/access-rules.yml
+
+authenticators:
+  anonymous:
+    enabled: true
+
+  cookie_session:
+    enabled: true
+    config:
+      check_session_url: http://kratos:4433/sessions/whoami
+      preserve_path: true
+      extra_from: "@this"
+      subject_from: "identity.id"
+      only:
+        - ory_kratos_session
+
+  bearer_token:
+    enabled: true
+    config:
+      check_session_url: http://kratos:4433/sessions/whoami
+      preserve_path: true
+      extra_from: "@this"
+      subject_from: "identity.id"
+
+authorizers:
+  allow:
+    enabled: true
+
+  deny:
+    enabled: true
+
+  keto_engine_acp_ory:
+    enabled: true
+    config:
+      base_url: http://keto:4466
+      required_action: "read"
+      required_resource: "rn:app:tenant:default:resource"
+
+  remote_json:
+    enabled: true
+    config:
+      remote: "http://keto:4466/relation-tuples/check"
+      payload: |
+        {
+          "namespace": "tenant_permissions",
+          "object": "tenant:{{ index .MatchContext.RegexpCaptureGroups 0 }}:permissions:manage:resources",
+          "relation": "granted",
+          "subject_id": "{{ print .Subject }}"
+        }
+
+mutators:
+  noop:
+    enabled: true
+
+  header:
+    enabled: true
+    config:
+      headers: {}
+
+  hydrator:
+    enabled: false
+
+errors:
+  fallback:
+    - json
+
+  handlers:
+    redirect:
+      enabled: true
+      config:
+        to: http://127.0.0.1:4455/login
+        when:
+          - error:
+              - unauthorized
+              - forbidden
+            request:
+              header:
+                accept:
+                  - text/html
+    json:
+      enabled: true
+      config:
+        verbose: true

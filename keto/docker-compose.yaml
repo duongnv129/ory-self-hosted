@@ -1,0 +1,37 @@
+version: "3"
+services:
+  keto-migrate:
+    image: oryd/keto:v0.14.0
+    environment:
+      - DSN=postgres://postgres:postgres@postgres:5432/keto?sslmode=disable
+    volumes:
+      - type: bind
+        source: ./config/keto.yml
+        target: /home/ory/keto.yml
+    command: migrate up -c /home/ory/keto.yml --yes
+    restart: "no"
+    networks:
+      - ory
+
+  keto:
+    depends_on:
+      - keto-migrate
+    image: oryd/keto:v0.14.0
+    ports:
+      - "4466:4466"
+      - "4467:4467"
+    environment:
+      - DSN=postgres://postgres:postgres@postgres:5432/keto?sslmode=disable
+    command: serve -c /home/ory/keto.yml
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./config/keto.yml
+        target: /home/ory/keto.yml
+    networks:
+      - ory
+
+networks:
+  ory:
+    external: true
+    name: ory-network

@@ -41,6 +41,14 @@
               "type": "string"
             }
           }
+        },
+        "tenant_ids": {
+          "type": "array",
+          "title": "Tenant IDs",
+          "description": "List of tenant IDs this user belongs to",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [

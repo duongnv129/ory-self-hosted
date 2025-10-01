@@ -1,0 +1,1962 @@
+{
+  "info": {
+    "_postman_id": "comprehensive-oathkeeper-test",
+    "name": "Comprehensive Oathkeeper Test with Kratos Auth",
+    "description": "Complete test collection following keto-zanzibar-simple-rbac pattern with Kratos authentication.\n\nThis collection implements the exact test flow from AUTO_TEST_README.md but with Kratos authentication integration:\n\n## Test Flow (Based on AUTO_TEST_README.md):\n1. **Health Checks**: Verify all services are running\n2. **Setup Relations**: Create RBAC roles and permissions (Alice=Admin, Bob=Moderator, Charlie=Customer)\n3. **Kratos Authentication**: Create users and get bearer tokens\n4. **Authorization Tests**: Test Products/Categories APIs through Oathkeeper\n5. **Debug Queries**: Role expansion and verification\n\n## Key Features:\n- Follows keto-zanzibar-simple-rbac structure exactly\n- Kratos user creation and authentication\n- Bearer token extraction for API calls\n- Products and Categories API testing only (as requested)\n- Role-based access control validation\n- Skip tenant-based checks (as requested)\n\n## Users & Roles:\n- **Alice** (Admin): Full permissions\n- **Bob** (Moderator): Create/View products, Update/View categories\n- **Charlie** (Customer): View-only access\n\n## Setup Required:\n1. Kratos services running on localhost:4433 (public) and localhost:4434 (admin)\n2. Keto services running on localhost:4466 (read) and localhost:4467 (write)\n3. Oathkeeper proxy running on localhost:4455\n4. Multi-tenancy demo app running on port 9000\n\n## Expected Results:\n- 18 authorization tests total\n- 12 should pass, 6 should fail (67% success rate)\n- Alice: 6 pass, Bob: 4 pass/2 fail, Charlie: 2 pass/4 fail",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Phase 1: Health Checks",
+      "item": [
+        {
+          "name": "Keto Read Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Keto Read Service is healthy\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/health/ready",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Keto Write Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Keto Write Service is healthy\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_write_url}}/health/ready",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Kratos Public Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Kratos Public Service is healthy\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql('ok');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kratos_public_url}}/health/ready",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Oathkeeper Proxy Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Oathkeeper proxy is working\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.eql('ok');",
+                  "    pm.expect(response.service).to.eql('multi-tenancy-demo');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/health",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Setup Relations",
+      "item": [
+        {
+          "name": "Clean Namespace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Namespace cleaned successfully\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples?namespace={{namespace}}",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create moderator Role Hierarchies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Moderator role hierarchy created\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:customer\",\n    \"relation\": \"member\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create admin Role Hierarchies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin role hierarchy created\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:moderator\",\n    \"relation\": \"member\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set product view permission for customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Product view permission set for customers\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"view\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:customer\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set product create permission for moderators",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Product create permission set for moderators\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"create\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set product delete permission for admins",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Product delete permission set for admins\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"product:items\",\n    \"relation\": \"delete\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set category view permission for customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Category view permission set for customers\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"view\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:customer\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set category update permission for moderators",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Category update permission set for moderators\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"update\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:moderator\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set category create permission for admins",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Category create permission set for admins\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"category:items\",\n    \"relation\": \"create\",\n    \"subject_set\": {\n        \"namespace\": \"{{namespace}}\",\n        \"object\": \"role:admin\",\n        \"relation\": \"member\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Alice to Admin Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice assigned to admin role\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:admin\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:{{alice_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Bob to Moderator Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob assigned to moderator role\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:moderator\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:{{bob_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Charlie to Customer Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie assigned to customer role\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:customer\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:{{charlie_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{keto_write_url}}/admin/relation-tuples",
+              "host": [
+                "{{keto_write_url}}"
+              ],
+              "path": [
+                "admin",
+                "relation-tuples"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Kratos Authentication",
+      "item": [
+        {
+          "name": "Create Alice Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice account created\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('alice_identity_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema_id\": \"default\",\n    \"traits\": {\n        \"email\": \"{{alice_email}}\",\n        \"name\": {\n            \"first\": \"Alice\",\n            \"last\": \"Admin\"\n        },\n        \"tenant_ids\": [\"admin\"]\n    },\n    \"credentials\": {\n        \"password\": {\n            \"config\": {\n                \"password\": \"{{password}}\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{kratos_admin_url}}/admin/identities",
+              "host": [
+                "{{kratos_admin_url}}"
+              ],
+              "path": [
+                "admin",
+                "identities"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Bob Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob account created\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('bob_identity_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema_id\": \"default\",\n    \"traits\": {\n        \"email\": \"{{bob_email}}\",\n        \"name\": {\n            \"first\": \"Bob\",\n            \"last\": \"Moderator\"\n        },\n        \"tenant_ids\": [\"moderator\"]\n    },\n    \"credentials\": {\n        \"password\": {\n            \"config\": {\n                \"password\": \"{{password}}\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{kratos_admin_url}}/admin/identities",
+              "host": [
+                "{{kratos_admin_url}}"
+              ],
+              "path": [
+                "admin",
+                "identities"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Charlie Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie account created\", function () {",
+                  "    pm.expect([200, 201]).to.include(pm.response.code);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('charlie_identity_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"schema_id\": \"default\",\n    \"traits\": {\n        \"email\": \"{{charlie_email}}\",\n        \"name\": {\n            \"first\": \"Charlie\",\n            \"last\": \"Customer\"\n        },\n        \"tenant_ids\": [\"customer\"]\n    },\n    \"credentials\": {\n        \"password\": {\n            \"config\": {\n                \"password\": \"{{password}}\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{kratos_admin_url}}/admin/identities",
+              "host": [
+                "{{kratos_admin_url}}"
+              ],
+              "path": [
+                "admin",
+                "identities"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Init Alice Login Flow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice login flow initialized\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('alice_flow_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login/api",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login",
+                "api"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Alice Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice session created\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    const token = response.session_token || response.session.token;",
+                  "    pm.environment.set('alice_session_token', token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"method\": \"password\",\n    \"identifier\": \"{{alice_email}}\",\n    \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login?flow={{alice_flow_id}}",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "flow",
+                  "value": "{{alice_flow_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Init Bob Login Flow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob login flow initialized\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('bob_flow_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login/api",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login",
+                "api"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Bob Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob session created\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    const token = response.session_token || response.session.token;",
+                  "    pm.environment.set('bob_session_token', token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"method\": \"password\",\n    \"identifier\": \"{{bob_email}}\",\n    \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login?flow={{bob_flow_id}}",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "flow",
+                  "value": "{{bob_flow_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Init Charlie Login Flow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie login flow initialized\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('charlie_flow_id', response.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login/api",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login",
+                "api"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Charlie Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie session created\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    const token = response.session_token || response.session.token;",
+                  "    pm.environment.set('charlie_session_token', token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"method\": \"password\",\n    \"identifier\": \"{{charlie_email}}\",\n    \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{kratos_public_url}}/self-service/login?flow={{charlie_flow_id}}",
+              "host": [
+                "{{kratos_public_url}}"
+              ],
+              "path": [
+                "self-service",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "flow",
+                  "value": "{{charlie_flow_id}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Authorization Tests - Alice (Admin)",
+      "item": [
+        {
+          "name": "Alice CAN create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can create products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(201);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Product created successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Alice Admin Product\",\n    \"category\": \"Electronics\",\n    \"price\": 199.99\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alice CAN delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can delete products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('deleted successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/delete/1",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "delete",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alice CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can view products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Products listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alice CAN create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can create categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(201);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Category created successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Alice Admin Category\",\n    \"description\": \"Category created by admin\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alice CAN update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can update categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('updated successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Admin Category\",\n    \"description\": \"Updated by admin\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/update/1",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "update",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alice CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice can view categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Categories listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{alice_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "list"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 5: Authorization Tests - Bob (Moderator)",
+      "item": [
+        {
+          "name": "Bob CAN create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can create products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(201);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Product created successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bob Moderator Product\",\n    \"category\": \"Tools\",\n    \"price\": 99.99\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bob CANNOT delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob cannot delete products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/delete/2",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "delete",
+                "2"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bob CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can view products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Products listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bob CANNOT create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob cannot create categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bob Moderator Category\",\n    \"description\": \"Category by moderator\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bob CAN update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can update categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('updated successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated by Moderator\",\n    \"description\": \"Updated by Bob\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/update/1",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "update",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bob CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Bob can view categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Categories listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bob_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "list"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 6: Authorization Tests - Charlie (Customer)",
+      "item": [
+        {
+          "name": "Charlie CAN view Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie can view products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Products listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Charlie CAN view Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie can view categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Categories listed successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/list",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Charlie CANNOT create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot create products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Charlie Customer Product\",\n    \"category\": \"Books\",\n    \"price\": 19.99\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Charlie CANNOT delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot delete products\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/products/delete/1",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "products",
+                "delete",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Charlie CANNOT create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot create categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Charlie Customer Category\",\n    \"description\": \"Category by customer\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/create",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "create"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Charlie CANNOT update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Charlie cannot update categories\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{charlie_session_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated by Customer\",\n    \"description\": \"Updated by Charlie\"\n}"
+            },
+            "url": {
+              "raw": "{{oathkeeper_proxy_url}}/categories/update/1",
+              "host": [
+                "{{oathkeeper_proxy_url}}"
+              ],
+              "path": [
+                "categories",
+                "update",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 7: Debug Queries",
+      "item": [
+        {
+          "name": "Expand Admin Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin role expansion successful\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/expand?namespace={{namespace}}&object=role:admin&relation=member&max-depth=3",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "expand"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                },
+                {
+                  "key": "object",
+                  "value": "role:admin"
+                },
+                {
+                  "key": "relation",
+                  "value": "member"
+                },
+                {
+                  "key": "max-depth",
+                  "value": "3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Alice is Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Alice is confirmed as admin\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.allowed).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"role:admin\",\n    \"relation\": \"member\",\n    \"subject_id\": \"user:{{alice_email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples/check",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples",
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List All Relations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"All relations listed\", function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.relation_tuples).to.be.an('array');",
+                  "    pm.expect(response.relation_tuples.length).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keto_read_url}}/relation-tuples?namespace={{namespace}}",
+              "host": [
+                "{{keto_read_url}}"
+              ],
+              "path": [
+                "relation-tuples"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "{{namespace}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "oathkeeper_proxy_url",
+      "value": "http://localhost:4455",
+      "type": "string"
+    },
+    {
+      "key": "keto_read_url",
+      "value": "http://localhost:4466",
+      "type": "string"
+    },
+    {
+      "key": "keto_write_url",
+      "value": "http://localhost:4467",
+      "type": "string"
+    },
+    {
+      "key": "kratos_public_url",
+      "value": "http://localhost:4433",
+      "type": "string"
+    },
+    {
+      "key": "kratos_admin_url",
+      "value": "http://localhost:4434",
+      "type": "string"
+    },
+    {
+      "key": "namespace",
+      "value": "default",
+      "type": "string"
+    },
+    {
+      "key": "alice_identity_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bob_identity_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "charlie_identity_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "alice_session_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bob_session_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "charlie_session_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "alice_email",
+      "value": "alice@example.com",
+      "type": "string"
+    },
+    {
+      "key": "bob_email",
+      "value": "bob@example.com",
+      "type": "string"
+    },
+    {
+      "key": "charlie_email",
+      "value": "charlie@example.com",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "alice_flow_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bob_flow_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "charlie_flow_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
