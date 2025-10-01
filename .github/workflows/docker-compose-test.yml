@@ -1,0 +1,93 @@
+name: Docker Compose Tests
+
+on:
+  pull_request:
+    paths:
+      - '**/docker-compose.yaml'
+      - '**/Dockerfile'
+      - '.github/workflows/docker-compose-test.yml'
+
+jobs:
+  validate-compose:
+    name: Validate Docker Compose Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate postgres compose
+        run: docker-compose -f postgres/docker-compose.yaml config
+
+      - name: Validate kratos compose
+        run: docker-compose -f kratos/docker-compose.yaml config
+
+      - name: Validate keto compose
+        run: docker-compose -f keto/docker-compose.yaml config
+
+      - name: Validate oathkeeper compose
+        run: docker-compose -f oathkeeper/docker-compose.yaml config
+
+      - name: Validate demo compose
+        run: docker-compose -f multi-tenancy-demo/docker-compose.yaml config
+
+  test-full-stack:
+    name: Test Complete Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create network
+        run: docker network create ory-network
+
+      - name: Start full stack
+        run: |
+          cd postgres && docker-compose up -d
+          sleep 5
+          cd ../kratos && docker-compose up -d
+          sleep 10
+          cd ../keto && docker-compose up -d
+          sleep 10
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for Kratos..."
+          timeout 60 bash -c 'until curl -sf http://localhost:4433/health/ready; do sleep 2; done'
+          echo "Waiting for Keto..."
+          timeout 60 bash -c 'until curl -sf http://localhost:4466/health/ready; do sleep 2; done'
+
+      - name: Test service connectivity
+        run: |
+          # Test Kratos
+          curl -f http://localhost:4433/health/ready
+          curl -f http://localhost:4434/health/ready
+
+          # Test Keto
+          curl -f http://localhost:4466/health/ready
+          curl -f http://localhost:4467/health/ready
+
+      - name: Show container status
+        if: always()
+        run: |
+          cd postgres && docker-compose ps
+          cd ../kratos && docker-compose ps
+          cd ../keto && docker-compose ps
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "=== PostgreSQL Logs ==="
+          cd postgres && docker-compose logs
+          echo "=== Kratos Logs ==="
+          cd ../kratos && docker-compose logs
+          echo "=== Keto Logs ==="
+          cd ../keto && docker-compose logs
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd keto && docker-compose down -v || true
+          cd ../kratos && docker-compose down -v || true
+          cd ../postgres && docker-compose down -v || true
+          docker network rm ory-network || true
