@@ -1,0 +1,31 @@
+name: Docker Compose Tests
+
+on:
+  pull_request:
+    paths:
+      - "**/docker-compose.yaml"
+      - "**/Dockerfile"
+      - ".github/workflows/docker-compose-test.yml"
+
+jobs:
+  validate-compose:
+    name: Validate Docker Compose Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate postgres compose
+        run: docker compose -f postgres/docker-compose.yaml config
+
+      - name: Validate kratos compose
+        run: docker compose -f kratos/docker-compose.yaml config
+
+      - name: Validate keto compose
+        run: docker compose -f keto/docker-compose.yaml config
+
+      - name: Validate oathkeeper compose
+        run: docker compose -f oathkeeper/docker-compose.yaml config
+
+      - name: Validate demo compose
+        run: docker compose -f multi-tenancy-demo/docker-compose.yaml config

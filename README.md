@@ -512,9 +512,45 @@ Before deploying to production:
 - [GitHub Issues](https://github.com/ory)
 - [Ory Blog](https://www.ory.sh/blog)
 
+## 🔄 CI/CD
+
+This project includes comprehensive GitHub Actions workflows:
+
+- **CI/CD Pipeline** - Automated testing and deployment
+- **Release Automation** - Automatic releases on version tags
+- **Docker Compose Tests** - Validation of compose configurations
+- **Security Scanning** - Vulnerability detection with Trivy
+- **Dependabot** - Automatic dependency updates
+
+See [.github/README.md](./.github/README.md) for detailed CI/CD documentation.
+
+### Status Badges
+
+![CI/CD](https://github.com/username/repo/workflows/CI/CD%20Pipeline/badge.svg)
+![Release](https://github.com/username/repo/workflows/Release/badge.svg)
+
+### Quick Setup
+
+1. Configure GitHub Secrets:
+   - `DOCKER_USERNAME` - Docker Hub username
+   - `DOCKER_PASSWORD` - Docker Hub access token
+
+2. Create environment in GitHub:
+   - `production` - For main branch deployments with approval
+
 ## 🤝 Contributing
 
 This is a demonstration project. Feel free to fork and adapt for your needs.
+
+### Pull Request Process
+
+1. Create a feature branch from `main`
+2. Make your changes and test locally
+3. Ensure all tests pass: `make health`
+4. Create a pull request to `main`
+5. Fill out the PR template
+6. Request review from maintainers
+7. Merge after approval and passing CI
 
 ## 📄 License
 

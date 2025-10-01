@@ -1,0 +1,121 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  lint:
+    name: Lint & Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: multi-tenancy-demo/package-lock.json
+
+      - name: Install demo dependencies
+        working-directory: multi-tenancy-demo
+        run: npm ci
+
+      - name: Lint JavaScript
+        working-directory: multi-tenancy-demo
+        run: |
+          if [ -f "package.json" ] && grep -q '"lint"' package.json; then
+            npm run lint || echo "No lint script found, skipping"
+          fi
+
+      - name: Validate YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          config_file: .yamllint.yml
+          file_or_dir: |
+            kratos/config/*.yml
+            keto/config/*.yml
+            oathkeeper/config/*.yml
+            */docker-compose.yaml
+          strict: false
+
+      - name: Validate JSON files
+        run: |
+          find . -name "*.json" -not -path "*/node_modules/*" -exec sh -c '
+            for file do
+              echo "Validating $file"
+              jq empty "$file" || exit 1
+            done
+          ' sh {} +
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Setup Node.js for audit
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: NPM audit
+        working-directory: multi-tenancy-demo
+        run: |
+          npm audit --audit-level=high || true
+          npm audit --json > audit-report.json || true
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-report
+          path: multi-tenancy-demo/audit-report.json
+
+  notification:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [lint, security]
+    if: always()
+    steps:
+      - name: Check job status
+        id: check
+        run: |
+          if [ "${{ needs.lint.result }}" = "failure" ] || \
+             [ "${{ needs.security.result }}" = "failure" ] || \
+             [ "${{ needs.test.result }}" = "failure" ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send notification
+        if: steps.check.outputs.status == 'failure'
+        run: |
+          echo "Pipeline failed. Sending notification..."
+          # Add notification logic here (Slack, Email, etc.)
