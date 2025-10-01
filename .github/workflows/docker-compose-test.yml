@@ -16,19 +16,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate postgres compose
-        run: docker-compose -f postgres/docker-compose.yaml config
+        run: docker compose -f postgres/docker-compose.yaml config
 
       - name: Validate kratos compose
-        run: docker-compose -f kratos/docker-compose.yaml config
+        run: docker compose -f kratos/docker-compose.yaml config
 
       - name: Validate keto compose
-        run: docker-compose -f keto/docker-compose.yaml config
+        run: docker compose -f keto/docker-compose.yaml config
 
       - name: Validate oathkeeper compose
-        run: docker-compose -f oathkeeper/docker-compose.yaml config
+        run: docker compose -f oathkeeper/docker-compose.yaml config
 
       - name: Validate demo compose
-        run: docker-compose -f multi-tenancy-demo/docker-compose.yaml config
+        run: docker compose -f multi-tenancy-demo/docker-compose.yaml config
 
   test-full-stack:
     name: Test Complete Stack
@@ -43,11 +43,11 @@ jobs:
 
       - name: Start full stack
         run: |
-          cd postgres && docker-compose up -d
+          cd postgres && docker compose up -d
           sleep 5
-          cd ../kratos && docker-compose up -d
+          cd ../kratos && docker compose up -d
           sleep 10
-          cd ../keto && docker-compose up -d
+          cd ../keto && docker compose up -d
           sleep 10
 
       - name: Wait for services
@@ -70,24 +70,24 @@ jobs:
       - name: Show container status
         if: always()
         run: |
-          cd postgres && docker-compose ps
-          cd ../kratos && docker-compose ps
-          cd ../keto && docker-compose ps
+          cd postgres && docker compose ps
+          cd ../kratos && docker compose ps
+          cd ../keto && docker compose ps
 
       - name: Show logs on failure
         if: failure()
         run: |
           echo "=== PostgreSQL Logs ==="
-          cd postgres && docker-compose logs
+          cd postgres && docker compose logs
           echo "=== Kratos Logs ==="
-          cd ../kratos && docker-compose logs
+          cd ../kratos && docker compose logs
           echo "=== Keto Logs ==="
-          cd ../keto && docker-compose logs
+          cd ../keto && docker compose logs
 
       - name: Cleanup
         if: always()
         run: |
-          cd keto && docker-compose down -v || true
-          cd ../kratos && docker-compose down -v || true
-          cd ../postgres && docker-compose down -v || true
+          cd keto && docker compose down -v || true
+          cd ../kratos && docker compose down -v || true
+          cd ../postgres && docker compose down -v || true
           docker network rm ory-network || true

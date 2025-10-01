@@ -185,10 +185,26 @@ act -W .github/workflows/ci.yml
 # Validate workflow syntax
 yamllint .github/workflows/*.yml
 
-# Test docker-compose files
-docker-compose -f postgres/docker-compose.yaml config
-docker-compose -f kratos/docker-compose.yaml config
-docker-compose -f keto/docker-compose.yaml config
+# Test docker-compose files (using Docker Compose V2)
+docker compose -f postgres/docker-compose.yaml config
+docker compose -f kratos/docker-compose.yaml config
+docker compose -f keto/docker-compose.yaml config
+```
+
+### Docker Compose Version
+
+The workflows use **Docker Compose V2** (`docker compose`) which is bundled with Docker by default in GitHub Actions runners.
+
+**Local Development:**
+- V2 (recommended): `docker compose`
+- V1 (legacy): `docker-compose`
+
+If you're using V1 locally, install V2:
+```bash
+# macOS/Linux
+brew install docker-compose
+
+# Or use Docker Desktop which includes V2
 ```
 
 ## Monitoring CI/CD

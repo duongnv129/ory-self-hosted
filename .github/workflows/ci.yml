@@ -110,7 +110,7 @@ jobs:
       - name: Start PostgreSQL
         run: |
           cd postgres
-          docker-compose up -d
+          docker compose up -d
           sleep 5
 
       - name: Wait for PostgreSQL
@@ -120,7 +120,7 @@ jobs:
       - name: Start Kratos
         run: |
           cd kratos
-          docker-compose up -d
+          docker compose up -d
           sleep 10
 
       - name: Wait for Kratos
@@ -130,7 +130,7 @@ jobs:
       - name: Start Keto
         run: |
           cd keto
-          docker-compose up -d
+          docker compose up -d
           sleep 10
 
       - name: Wait for Keto
@@ -186,12 +186,12 @@ jobs:
       - name: Build Multi-Tenancy Demo
         run: |
           cd multi-tenancy-demo
-          docker-compose build
+          docker compose build
 
       - name: Start Multi-Tenancy Demo
         run: |
           cd multi-tenancy-demo
-          docker-compose up -d
+          docker compose up -d
           sleep 10
 
       - name: Test Demo Health
@@ -206,19 +206,19 @@ jobs:
         if: failure()
         run: |
           echo "=== Kratos Logs ==="
-          cd kratos && docker-compose logs kratos || true
+          cd kratos && docker compose logs kratos || true
           echo "=== Keto Logs ==="
-          cd keto && docker-compose logs keto || true
+          cd keto && docker compose logs keto || true
           echo "=== Demo Logs ==="
-          cd multi-tenancy-demo && docker-compose logs || true
+          cd multi-tenancy-demo && docker compose logs || true
 
       - name: Cleanup
         if: always()
         run: |
-          cd multi-tenancy-demo && docker-compose down -v || true
-          cd keto && docker-compose down -v || true
-          cd kratos && docker-compose down -v || true
-          cd postgres && docker-compose down -v || true
+          cd multi-tenancy-demo && docker compose down -v || true
+          cd keto && docker compose down -v || true
+          cd kratos && docker compose down -v || true
+          cd postgres && docker compose down -v || true
           docker network rm ory-network || true
 
   build-demo:
