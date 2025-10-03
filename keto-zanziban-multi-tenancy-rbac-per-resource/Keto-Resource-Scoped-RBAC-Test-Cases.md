@@ -1,10 +1,10 @@
-# Test Cases - Resource-Scoped Multi-Tenant RBAC
+# Keto Multi-Tenant Resource-Scoped RBAC - Test Cases
 
 ## Overview
 
-This document describes the test cases for the **resource-scoped multi-tenancy RBAC** approach where users have separate role assignments per resource type.
+This document describes the test cases for the **Keto Multi-Tenant Resource-Scoped RBAC** approach where users have separate role assignments per resource type.
 
-**Test Script Location:** `/keto-zanziban-multi-tenancy-rbac-per-resource/test-resource-scoped.sh`
+**Test Script Location:** `/keto-zanziban-multi-tenancy-rbac-per-resource/Keto-Resource-Scoped-RBAC-Test.sh`
 
 ---
 
@@ -14,8 +14,8 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 
 | User | Tenant A | Tenant B |
 |------|----------|----------|
-| **Alice** | admin (product:items)<br>admin (category:items) | customer (product:items) |
-| **Bob** | moderator (product:items) | - |
+| **Alice** | admin (product:items)<br>moderator (category:items) | customer (product:items) |
+| **Bob** | - | admin (product:items)<br>admin (category:items) |
 | **Charlie** | - | customer (product:items) |
 
 **Key Point:** Each resource type requires **separate role assignment**
@@ -32,9 +32,9 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 - **Subject:** `user:alice`
 - **Expected:** Role assigned successfully
 
-**TC-1.2: Alice Category Admin Assignment**
+**TC-1.2: Alice Category Moderator Assignment**
 - **Object:** `tenant:a#category:items`
-- **Relation:** `admin`
+- **Relation:** `moderator`
 - **Subject:** `user:alice`
 - **Expected:** Separate role assignment (not inherited from products)
 
@@ -60,13 +60,13 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 
 **TC-2.3: Alice Creates Category in Tenant A**
 - **Check:** `tenant:a#category:items` → `create` → `user:alice`
-- **Expected:** `{"allowed": true}`
-- **Reason:** Separate admin role on categories
+- **Expected:** `{"allowed": false}`
+- **Reason:** Alice is moderator on categories (create is admin-only)
 
 **TC-2.4: Alice Updates Category in Tenant A**
 - **Check:** `tenant:a#category:items` → `update` → `user:alice`
 - **Expected:** `{"allowed": true}`
-- **Reason:** Admin permission on categories
+- **Reason:** Moderator permission on categories
 
 ---
 
@@ -91,37 +91,37 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 
 ### 4. Resource Isolation Tests
 
-**TC-4.1: Bob Creates Product in Tenant A**
-- **Check:** `tenant:a#product:items` → `create` → `user:bob`
+**TC-4.1: Bob Creates Product in Tenant B**
+- **Check:** `tenant:b#product:items` → `create` → `user:bob`
 - **Expected:** `{"allowed": true}`
-- **Reason:** Moderator role on products
+- **Reason:** Admin role on products in Tenant B
 
-**TC-4.2: Bob Deletes Product in Tenant A**
-- **Check:** `tenant:a#product:items` → `delete` → `user:bob`
-- **Expected:** `{"allowed": false}`
-- **Reason:** Moderator lacks delete permission (admin-only)
+**TC-4.2: Bob Creates Category in Tenant B**
+- **Check:** `tenant:b#category:items` → `create` → `user:bob`
+- **Expected:** `{"allowed": true}`
+- **Reason:** Admin role on categories in Tenant B (separate assignment)
 
-**TC-4.3: Bob Creates Category in Tenant A**
-- **Check:** `tenant:a#category:items` → `create` → `user:bob`
+**TC-4.3: Alice Creates Category in Tenant A (Denied)**
+- **Check:** `tenant:a#category:items` → `create` → `user:alice`
 - **Expected:** `{"allowed": false}`
-- **Reason:** Bob has NO role on categories (only on products)
+- **Reason:** Alice is moderator on categories (create is admin-only)
 
-**TC-4.4: Bob Updates Category in Tenant A**
-- **Check:** `tenant:a#category:items` → `update` → `user:bob`
+**TC-4.4: Charlie Views Category in Tenant B (Denied)**
+- **Check:** `tenant:b#category:items` → `view` → `user:charlie`
 - **Expected:** `{"allowed": false}`
-- **Reason:** Bob's moderator role on products does NOT grant access to categories
+- **Reason:** Charlie's customer role on products does NOT grant access to categories
 
 ---
 
 ### 5. Cross-Tenant Denial Tests
 
-**TC-5.1: Bob Views Product in Tenant B**
-- **Check:** `tenant:b#product:items` → `view` → `user:bob`
+**TC-5.1: Bob Views Product in Tenant A**
+- **Check:** `tenant:a#product:items` → `view` → `user:bob`
 - **Expected:** `{"allowed": false}`
-- **Reason:** Bob has no role in Tenant B
+- **Reason:** Bob has no role in Tenant A
 
-**TC-5.2: Bob Creates Product in Tenant B**
-- **Check:** `tenant:b#product:items` → `create` → `user:bob`
+**TC-5.2: Bob Creates Product in Tenant A**
+- **Check:** `tenant:a#product:items` → `create` → `user:bob`
 - **Expected:** `{"allowed": false}`
 - **Reason:** No cross-tenant access
 
@@ -147,7 +147,7 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 **TC-6.2: Separate Hierarchy Per Resource**
 - **Check:** Product hierarchy ≠ Category hierarchy
 - **Expected:** Each resource type has independent role hierarchy
-- **Result:** Admin on products does NOT inherit moderator on categories
+- **Result:** Admin on products does NOT grant admin (or moderator) on categories
 
 ---
 
@@ -159,9 +159,9 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 - **Result:** Alice is admin for products in Tenant A
 
 **TC-7.2: Alice Role in Tenant A (Categories)**
-- **Check:** `tenant:a#category:items` → `admin` → `user:alice`
+- **Check:** `tenant:a#category:items` → `moderator` → `user:alice`
 - **Expected:** `{"allowed": true}`
-- **Result:** Alice is admin for categories in Tenant A (separate assignment)
+- **Result:** Alice is moderator for categories in Tenant A (separate assignment)
 
 **TC-7.3: Alice Role in Tenant B (Products)**
 - **Check:** `tenant:b#product:items` → `customer` → `user:alice`
@@ -192,34 +192,35 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 
 ### Alice (Multi-Tenant, Multi-Resource User)
 
-| Tenant | Resource | Role | Create | Delete | Update | View |
-|--------|----------|------|--------|--------|--------|------|
-| A | product:items | admin | ✅ | ✅ | - | - |
-| A | category:items | admin | ✅ | - | ✅ | - |
-| B | product:items | customer | ❌ | ❌ | - | ✅ |
+| Tenant | Resource | Role | View | Create | Update | Delete |
+|--------|----------|------|------|--------|--------|--------|
+| A | product:items | admin | ✅ | ✅ | - | ✅ |
+| A | category:items | moderator | ✅ | ❌ | ✅ | - |
+| B | product:items | customer | ✅ | ❌ | - | ❌ |
 
-**Total Permissions:** 5 actions across 3 resource assignments
+**Total Permissions:** 6 actions across 3 resource assignments
 
 ---
 
-### Bob (Single-Tenant, Single-Resource User)
+### Bob (Single-Tenant, Multi-Resource User)
 
-| Tenant | Resource | Role | Create | Delete | Update | View |
-|--------|----------|------|--------|--------|--------|------|
-| A | product:items | moderator | ✅ | ❌ | - | - |
+| Tenant | Resource | Role | View | Create | Update | Delete |
+|--------|----------|------|------|--------|--------|--------|
+| A | product:items | - | ❌ | ❌ | - | ❌ |
 | A | category:items | - | ❌ | - | ❌ | - |
-| B | product:items | - | ❌ | ❌ | - | ❌ |
+| B | product:items | admin | ✅ | ✅ | - | ✅ |
+| B | category:items | admin | ✅ | ✅ | ✅ | - |
 
-**Total Permissions:** 1 action (create products in Tenant A only)
+**Total Permissions:** 6 actions (in Tenant B only)
 
 ---
 
 ### Charlie (Single-Tenant, Single-Resource User)
 
-| Tenant | Resource | Role | Create | Delete | Update | View |
-|--------|----------|------|--------|--------|--------|------|
+| Tenant | Resource | Role | View | Create | Update | Delete |
+|--------|----------|------|------|--------|--------|--------|
 | A | product:items | - | ❌ | ❌ | - | ❌ |
-| B | product:items | customer | ❌ | ❌ | - | ✅ |
+| B | product:items | customer | ✅ | ❌ | - | ❌ |
 
 **Total Permissions:** 1 action (view products in Tenant B only)
 
@@ -229,17 +230,17 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 
 ### ✅ Resource-Scoped Roles
 - Each resource type requires **separate role assignment**
-- Bob is moderator on products but has **NO access** to categories
-- Alice needs **2 separate admin assignments** (products + categories)
+- Alice is admin on products but moderator on categories (different roles per resource)
+- Charlie has customer on products but **NO access** to categories in Tenant B
 
 ### ✅ Tenant Isolation
 - Alice's admin role in Tenant A grants **zero access** to Tenant B
-- Bob (Tenant A) cannot access Tenant B
+- Bob (Tenant B) cannot access Tenant A
 - Charlie (Tenant B) cannot access Tenant A
 
 ### ✅ Role Hierarchy (Per Resource)
-- Admin → Moderator inheritance works for **products only**
-- Categories have **separate admin permissions** (no moderator role)
+- Admin → Moderator → Customer inheritance works independently per resource
+- Alice is admin on products (inherits moderator/customer) but only moderator on categories
 - Hierarchy is **resource-specific**, not global
 
 ### ✅ Multi-Tenant Users
@@ -258,12 +259,13 @@ This document describes the test cases for the **resource-scoped multi-tenancy R
 ### Role Assignment Tuples
 ```
 1. user:alice → tenant:a#product:items#admin
-2. user:alice → tenant:a#category:items#admin
+2. user:alice → tenant:a#category:items#moderator
 3. user:alice → tenant:b#product:items#customer
-4. user:bob → tenant:a#product:items#moderator
-5. user:charlie → tenant:b#product:items#customer
+4. user:bob → tenant:b#product:items#admin
+5. user:bob → tenant:b#category:items#admin
+6. user:charlie → tenant:b#product:items#customer
 
-Total: 5 tuples
+Total: 6 tuples
 ```
 
 ### Comparison with Tenant-Scoped
@@ -271,13 +273,13 @@ Total: 5 tuples
 ```
 1. user:alice → tenant:a#admin (covers all resources)
 2. user:alice → tenant:b#customer (covers all resources)
-3. user:bob → tenant:a#moderator (covers all resources)
+3. user:bob → tenant:b#admin (covers all resources)
 4. user:charlie → tenant:b#customer (covers all resources)
 
 Total: 4 tuples
 ```
 
-**Difference:** Resource-scoped uses more tuples for per-resource granularity
+**Difference:** Resource-scoped uses 50% more tuples for per-resource granularity
 
 ---
 
@@ -286,14 +288,14 @@ Total: 4 tuples
 ### Run Tests
 ```bash
 cd /Users/duong.nguyen1/worksplace/ory-self-hosted/keto-zanziban-multi-tenancy-rbac-per-resource
-chmod +x test-resource-scoped.sh
-./test-resource-scoped.sh
+chmod +x Keto-Resource-Scoped-RBAC-Test.sh
+./Keto-Resource-Scoped-RBAC-Test.sh
 ```
 
 ### Expected Output
 ```
 ========================================
-Resource-Scoped Multi-Tenant RBAC Test
+Keto Multi-Tenant Resource-Scoped RBAC Test
 ========================================
 
 Step 1: Cleaning up existing relations...
@@ -307,9 +309,9 @@ Step 2: Setting up Tenant A - Products...
 ========================================
 Test Summary
 ========================================
-Passed: 28
+Passed: 40
 Failed: 0
-Total:  28
+Total:  40
 
 🎉 All tests passed!
 ```
@@ -344,7 +346,7 @@ Total:  28
 ## Success Criteria
 
 All tests must pass with:
-- ✅ 100% pass rate (28/28 tests)
+- ✅ 100% pass rate (40/40 tests)
 - ✅ Complete tenant isolation verified
 - ✅ Resource-level access control confirmed
 - ✅ No unintended permission grants
@@ -367,6 +369,7 @@ If tests fail, verify:
 
 After successful test execution:
 1. Review test output to understand authorization flows
-2. Check `/keto-zanziban-multi-tenancy-rbac-per-resource/ARCHITECTURE.md` for tuple structure
-3. See `/keto-zanziban-multi-tenancy-rbac-per-resource/ALICE_HIERARCHY.md` for visual diagrams
-4. Implement resource-scoped authorization in your application
+2. Check `Keto-Resource-Scoped-RBAC-Architecture.md` for detailed tuple structure
+3. See `Keto-Resource-Scoped-RBAC-Alice-Hierarchy.md` for visual diagrams
+4. Import `Keto-Resource-Scoped-RBAC.postman_collection.json` for interactive testing
+5. Implement resource-scoped authorization in your application

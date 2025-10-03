@@ -1,4 +1,4 @@
-# Multi-Tenancy RBAC - Resource-Scoped Roles
+# Keto Multi-Tenant Resource-Scoped RBAC
 
 ## Overview
 
@@ -7,11 +7,67 @@ This approach models **resource-scoped roles** where users are assigned differen
 ## Hierarchy Model
 
 ```
-user:alice → tenant:a → product:items → as admin(product:items) (create, delete permission)
-user:alice → tenant:a → category:items → as admin(category:items) (create, update permission)
-user:alice → tenant:b → product:items → as customer(product:items) (view permission)
-user:bob → tenant:a → product:items → as moderator(product:items) (create permission)
-user:charlie → tenant:b → product:items → as customer(product:items) (view permission)
+user:alice → tenant:a → product:items → as admin(product:items)
+user:alice → tenant:a → category:items → as moderator(category:items)
+user:alice → tenant:b → product:items → as customer(product:items)
+
+user:bob → tenant:b → product:items → as admin(product:items)
+user:bob → tenant:b → category:items → as admin(category:items)
+
+user:charlie → tenant:b → product:items → as customer(product:items)
+```
+
+### Role Hierarchy
+
+#### **Tenant A** (3-tier hierarchy per resource)
+
+**Products:**
+```
+admin (highest privileges)
+  ├─ Inherits all moderator permissions
+  └─ Additional: delete products
+
+moderator (middle privileges)
+  ├─ Inherits all customer permissions
+  └─ Additional: create products
+
+customer (base privileges)
+  └─ View products only
+```
+
+**Categories:**
+```
+admin (highest privileges)
+  └─ Additional: create categories
+
+moderator (middle privileges)
+  ├─ Inherits all customer permissions
+  └─ Additional: update categories
+
+customer (base privileges)
+  └─ View categories only
+```
+
+#### **Tenant B** (2-tier hierarchy per resource)
+
+**Products:**
+```
+admin (highest privileges)
+  ├─ Inherits all customer permissions
+  └─ Additional: create/delete products
+
+customer (base privileges)
+  └─ View products only
+```
+
+**Categories:**
+```
+admin (highest privileges)
+  ├─ Inherits all customer permissions
+  └─ Additional: create/update categories
+
+customer (base privileges)
+  └─ View categories only
 ```
 
 ## Key Characteristics
@@ -38,11 +94,12 @@ user:charlie → tenant:b → product:items → as customer(product:items) (view
 ```
 user:alice
     ├── tenant:a#product:items (role: admin)
+    │   ├── view permission ✅
     │   ├── create permission ✅
     │   └── delete permission ✅
     │
-    ├── tenant:a#category:items (role: admin)
-    │   ├── create permission ✅
+    ├── tenant:a#category:items (role: moderator)
+    │   ├── view permission ✅
     │   └── update permission ✅
     │
     └── tenant:b#product:items (role: customer)
@@ -80,16 +137,17 @@ user:alice
 ### Alice - Multi-Tenant, Multi-Resource User
 
 **Tenant A:**
-- **product:items**: admin (can create, delete)
-- **category:items**: admin (can create, update)
+- **product:items**: admin (can view, create, delete)
+- **category:items**: moderator (can view, update - NOT create)
 
 **Tenant B:**
 - **product:items**: customer (can view only)
 
 ### Bob - Single-Tenant User
 
-**Tenant A:**
-- **product:items**: moderator (can create)
+**Tenant B:**
+- **product:items**: admin (can view, create, delete)
+- **category:items**: admin (can view, create, update)
 
 ### Charlie - Single-Tenant User
 
@@ -104,14 +162,15 @@ user:alice
 
 | User | Resource | Role | View | Create | Update | Delete |
 |------|----------|------|------|--------|--------|--------|
-| **Alice** | product:items | admin | - | ✅ | - | ✅ |
-| **Alice** | category:items | admin | - | ✅ | ✅ | - |
-| **Bob** | product:items | moderator | - | ✅ | - | ❌ |
+| **Alice** | product:items | admin | ✅ | ✅ | - | ✅ |
+| **Alice** | category:items | moderator | ✅ | ❌ | ✅ | - |
 
 ### Tenant B
 
 | User | Resource | Role | View | Create | Update | Delete |
 |------|----------|------|------|--------|--------|--------|
+| **Bob** | product:items | admin | ✅ | ✅ | - | ✅ |
+| **Bob** | category:items | admin | ✅ | ✅ | ✅ | - |
 | **Alice** | product:items | customer | ✅ | ❌ | - | ❌ |
 | **Charlie** | product:items | customer | ✅ | ❌ | - | ❌ |
 
@@ -166,11 +225,12 @@ user:alice
 ## Files in This Documentation
 
 - **README.md** - This overview
-- **ARCHITECTURE.md** - Detailed tuple structure and authorization flows
-- **ALICE_HIERARCHY.md** - Visual diagrams of Alice's authorization graph
-- **COMPARISON.md** - Side-by-side comparison with tenant-scoped approach
-- **test-resource-scoped.sh** - Automated test suite
-- **IMPLEMENTATION.md** - Step-by-step implementation guide
+- **Keto-Resource-Scoped-RBAC-Architecture.md** - Detailed tuple structure and authorization flows
+- **Keto-Resource-Scoped-RBAC-Alice-Hierarchy.md** - Visual diagrams of Alice's authorization graph
+- **Keto-Resource-Scoped-RBAC-Test-Cases.md** - Comprehensive test cases and validation
+- **Keto-Resource-Scoped-RBAC-Test.sh** - Automated test suite
+- **Keto-Resource-Scoped-RBAC.postman_collection.json** - Postman collection for testing
+- **Keto-Resource-Scoped-RBAC.postman_environment.json** - Postman environment variables
 
 ---
 
@@ -178,23 +238,28 @@ user:alice
 
 ### 1. Review Architecture
 ```bash
-cat ARCHITECTURE.md
+cat Keto-Resource-Scoped-RBAC-Architecture.md
 ```
 
 ### 2. Understand Alice's Hierarchy
 ```bash
-cat ALICE_HIERARCHY.md
+cat Keto-Resource-Scoped-RBAC-Alice-Hierarchy.md
 ```
 
 ### 3. Run Tests
 ```bash
-./test-resource-scoped.sh
+./Keto-Resource-Scoped-RBAC-Test.sh
 ```
 
-### 4. Compare Approaches
+### 4. Review Test Cases
 ```bash
-cat COMPARISON.md
+cat Keto-Resource-Scoped-RBAC-Test-Cases.md
 ```
+
+### 5. Test with Postman
+- Import `Keto-Resource-Scoped-RBAC.postman_collection.json`
+- Import `Keto-Resource-Scoped-RBAC.postman_environment.json`
+- Run the Setup folder, then run the test folders
 
 ---
 
@@ -234,14 +299,24 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 # Result: {"allowed": true} - via admin role
 ```
 
-### Alice creates category in Tenant A
+### Alice updates category in Tenant A
+```bash
+curl -G "http://localhost:4466/relation-tuples/check" \
+  --data-urlencode "namespace=default" \
+  --data-urlencode "object=tenant:a#category:items" \
+  --data-urlencode "relation=update" \
+  --data-urlencode "subject_id=user:alice"
+# Result: {"allowed": true} - via moderator role (separate assignment)
+```
+
+### Alice creates category in Tenant A (DENIED)
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
   --data-urlencode "namespace=default" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
-# Result: {"allowed": true} - via admin role (separate assignment)
+# Result: {"allowed": false} - Alice is moderator, not admin (create is admin-only)
 ```
 
 ### Alice creates product in Tenant B
@@ -258,11 +333,11 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 ## Next Steps
 
-1. **Review Architecture**: Read `ARCHITECTURE.md` for detailed tuple structure
-2. **Study Visual Diagrams**: Check `ALICE_HIERARCHY.md` for authorization graphs
-3. **Run Tests**: Execute `./test-resource-scoped.sh` to verify implementation
-4. **Compare Approaches**: Read `COMPARISON.md` to choose the right approach
-5. **Implement**: Follow `IMPLEMENTATION.md` for step-by-step setup
+1. **Review Architecture**: Read `Keto-Resource-Scoped-RBAC-Architecture.md` for detailed tuple structure
+2. **Study Visual Diagrams**: Check `Keto-Resource-Scoped-RBAC-Alice-Hierarchy.md` for authorization graphs
+3. **Review Test Cases**: Read `Keto-Resource-Scoped-RBAC-Test-Cases.md` for comprehensive testing scenarios
+4. **Run Tests**: Execute `./Keto-Resource-Scoped-RBAC-Test.sh` to verify implementation
+5. **Test with Postman**: Import the Postman collection and environment to run interactive tests
 
 ---
 

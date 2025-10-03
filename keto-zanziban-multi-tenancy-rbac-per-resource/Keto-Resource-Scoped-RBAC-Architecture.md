@@ -1,4 +1,4 @@
-# Architecture - Resource-Scoped Multi-Tenancy RBAC
+# Keto Multi-Tenant Resource-Scoped RBAC - Architecture
 
 ## Core Concept
 
@@ -8,6 +8,13 @@ In this architecture, **roles are assigned at the resource level** within tenant
 user:alice
     ├── tenant:a#product:items → admin
     ├── tenant:a#category:items → moderator
+    └── tenant:b#product:items → customer
+
+user:bob
+    ├── tenant:b#product:items → admin
+    └── tenant:b#category:items → admin
+
+user:charlie
     └── tenant:b#product:items → customer
 ```
 
@@ -119,14 +126,6 @@ user:alice
   "relation": "admin",
   "subject_id": "user:alice"
 }
-
-// Bob as moderator
-{
-  "namespace": "default",
-  "object": "tenant:a#product:items",
-  "relation": "moderator",
-  "subject_id": "user:bob"
-}
 ```
 
 #### Role Hierarchy
@@ -142,10 +141,34 @@ user:alice
     "relation": "admin"
   }
 }
+
+// Moderator inherits customer
+{
+  "namespace": "default",
+  "object": "tenant:a#product:items",
+  "relation": "customer",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:a#product:items",
+    "relation": "moderator"
+  }
+}
 ```
 
 #### Permissions
 ```json
+// Customers can view
+{
+  "namespace": "default",
+  "object": "tenant:a#product:items",
+  "relation": "view",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:a#product:items",
+    "relation": "customer"
+  }
+}
+
 // Moderators can create
 {
   "namespace": "default",
@@ -177,34 +200,61 @@ user:alice
 
 #### User Role Assignments
 ```json
-// Alice as admin
+// Alice as moderator
 {
   "namespace": "default",
   "object": "tenant:a#category:items",
-  "relation": "admin",
+  "relation": "moderator",
   "subject_id": "user:alice"
+}
+```
+
+#### Role Hierarchy
+```json
+// Moderator inherits customer
+{
+  "namespace": "default",
+  "object": "tenant:a#category:items",
+  "relation": "customer",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:a#category:items",
+    "relation": "moderator"
+  }
 }
 ```
 
 #### Permissions
 ```json
+// Customers can view
+{
+  "namespace": "default",
+  "object": "tenant:a#category:items",
+  "relation": "view",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:a#category:items",
+    "relation": "customer"
+  }
+}
+
+// Moderators can update
+{
+  "namespace": "default",
+  "object": "tenant:a#category:items",
+  "relation": "update",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:a#category:items",
+    "relation": "moderator"
+  }
+}
+
 // Admins can create
 {
   "namespace": "default",
   "object": "tenant:a#category:items",
   "relation": "create",
-  "subject_set": {
-    "namespace": "default",
-    "object": "tenant:a#category:items",
-    "relation": "admin"
-  }
-}
-
-// Admins can update
-{
-  "namespace": "default",
-  "object": "tenant:a#category:items",
-  "relation": "update",
   "subject_set": {
     "namespace": "default",
     "object": "tenant:a#category:items",
@@ -219,6 +269,14 @@ user:alice
 
 #### User Role Assignments
 ```json
+// Bob as admin
+{
+  "namespace": "default",
+  "object": "tenant:b#product:items",
+  "relation": "admin",
+  "subject_id": "user:bob"
+}
+
 // Alice as customer
 {
   "namespace": "default",
@@ -236,6 +294,21 @@ user:alice
 }
 ```
 
+#### Role Hierarchy
+```json
+// Admin inherits customer
+{
+  "namespace": "default",
+  "object": "tenant:b#product:items",
+  "relation": "customer",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#product:items",
+    "relation": "admin"
+  }
+}
+```
+
 #### Permissions
 ```json
 // Customers can view
@@ -247,6 +320,99 @@ user:alice
     "namespace": "default",
     "object": "tenant:b#product:items",
     "relation": "customer"
+  }
+}
+
+// Admins can create
+{
+  "namespace": "default",
+  "object": "tenant:b#product:items",
+  "relation": "create",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#product:items",
+    "relation": "admin"
+  }
+}
+
+// Admins can delete
+{
+  "namespace": "default",
+  "object": "tenant:b#product:items",
+  "relation": "delete",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#product:items",
+    "relation": "admin"
+  }
+}
+```
+
+---
+
+### Tenant B - Categories
+
+#### User Role Assignments
+```json
+// Bob as admin
+{
+  "namespace": "default",
+  "object": "tenant:b#category:items",
+  "relation": "admin",
+  "subject_id": "user:bob"
+}
+```
+
+#### Role Hierarchy
+```json
+// Admin inherits customer
+{
+  "namespace": "default",
+  "object": "tenant:b#category:items",
+  "relation": "customer",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#category:items",
+    "relation": "admin"
+  }
+}
+```
+
+#### Permissions
+```json
+// Customers can view
+{
+  "namespace": "default",
+  "object": "tenant:b#category:items",
+  "relation": "view",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#category:items",
+    "relation": "customer"
+  }
+}
+
+// Admins can update
+{
+  "namespace": "default",
+  "object": "tenant:b#category:items",
+  "relation": "update",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#category:items",
+    "relation": "admin"
+  }
+}
+
+// Admins can create
+{
+  "namespace": "default",
+  "object": "tenant:b#category:items",
+  "relation": "create",
+  "subject_set": {
+    "namespace": "default",
+    "object": "tenant:b#category:items",
+    "relation": "admin"
   }
 }
 ```
@@ -305,29 +471,29 @@ user:alice
 
 ---
 
-### Flow 3: Alice Creates Category in Tenant A
+### Flow 3: Alice Updates Category in Tenant A
 
 **Check:**
 ```
 object: tenant:a#category:items
-relation: create
+relation: update
 subject: user:alice
 ```
 
 **Resolution:**
-1. ✅ Check direct assignment: `user:alice` → `tenant:a#category:items#admin`
-2. ✅ Check permission: `admin` → `create`
+1. ✅ Check direct assignment: `user:alice` → `tenant:a#category:items#moderator`
+2. ✅ Check permission: `moderator` → `update`
 
 **Result:** `{"allowed": true}`
 
 **Path:**
 ```
 user:alice
-  → tenant:a#category:items#admin
-    → tenant:a#category:items#create ✅
+  → tenant:a#category:items#moderator
+    → tenant:a#category:items#update ✅
 ```
 
-**Note:** This is a **separate role assignment** from product:items
+**Note:** Alice is **moderator** on categories (different from admin on products)
 
 ---
 
@@ -355,50 +521,50 @@ user:alice
 
 ---
 
-### Flow 5: Bob Creates Product in Tenant A
+### Flow 5: Bob Creates Product in Tenant B
 
 **Check:**
 ```
-object: tenant:a#product:items
+object: tenant:b#product:items
 relation: create
 subject: user:bob
 ```
 
 **Resolution:**
-1. ✅ Check direct assignment: `user:bob` → `tenant:a#product:items#moderator`
-2. ✅ Check permission: `moderator` → `create`
+1. ✅ Check direct assignment: `user:bob` → `tenant:b#product:items#admin`
+2. ✅ Check permission: `admin` → `create`
 
 **Result:** `{"allowed": true}`
 
 **Path:**
 ```
 user:bob
-  → tenant:a#product:items#moderator
-    → tenant:a#product:items#create ✅
+  → tenant:b#product:items#admin
+    → tenant:b#product:items#create ✅
 ```
 
 ---
 
-### Flow 6: Bob Deletes Product in Tenant A
+### Flow 6: Bob Updates Category in Tenant B
 
 **Check:**
 ```
-object: tenant:a#product:items
-relation: delete
+object: tenant:b#category:items
+relation: update
 subject: user:bob
 ```
 
 **Resolution:**
-1. ✅ Check direct assignment: `user:bob` → `tenant:a#product:items#moderator`
-2. ❌ Check permission: `moderator` → `delete` (only admins can delete)
+1. ✅ Check direct assignment: `user:bob` → `tenant:b#category:items#admin`
+2. ✅ Check permission: `admin` → `update`
 
-**Result:** `{"allowed": false}`
+**Result:** `{"allowed": true}`
 
 **Path:**
 ```
 user:bob
-  → tenant:a#product:items#moderator
-    → tenant:a#product:items#delete ❌ (no permission grant)
+  → tenant:b#category:items#admin
+    → tenant:b#category:items#update ✅
 ```
 
 ---
@@ -409,20 +575,23 @@ user:bob
 
 ```
 TENANT A - product:items
-├── user:alice (admin)
-│   ├── create ✅ (via moderator inheritance)
-│   └── delete ✅ (direct admin permission)
-│
-└── user:bob (moderator)
-    ├── create ✅ (direct moderator permission)
-    └── delete ❌ (admin-only)
+└── user:alice (admin)
+    ├── view ✅ (via moderator → customer inheritance)
+    ├── create ✅ (via moderator inheritance)
+    └── delete ✅ (direct admin permission)
 
 TENANT A - category:items
-└── user:alice (admin)
-    ├── create ✅ (direct admin permission)
-    └── update ✅ (direct admin permission)
+└── user:alice (moderator)
+    ├── view ✅ (via customer inheritance)
+    ├── update ✅ (direct moderator permission)
+    └── create ❌ (admin-only)
 
 TENANT B - product:items
+├── user:bob (admin)
+│   ├── view ✅ (via customer inheritance)
+│   ├── create ✅ (direct admin permission)
+│   └── delete ✅ (direct admin permission)
+│
 ├── user:alice (customer)
 │   ├── view ✅ (direct customer permission)
 │   └── create ❌ (no permission)
@@ -430,6 +599,12 @@ TENANT B - product:items
 └── user:charlie (customer)
     ├── view ✅ (direct customer permission)
     └── create ❌ (no permission)
+
+TENANT B - category:items
+└── user:bob (admin)
+    ├── view ✅ (via customer inheritance)
+    ├── update ✅ (direct admin permission)
+    └── create ✅ (direct admin permission)
 ```
 
 ---
@@ -441,7 +616,7 @@ TENANT B - product:items
 **Alice:**
 ```
 1. tenant:a#product:items → admin
-2. tenant:a#category:items → admin
+2. tenant:a#category:items → moderator
 3. tenant:b#product:items → customer
 
 Total: 3 tuples
@@ -449,9 +624,10 @@ Total: 3 tuples
 
 **Bob:**
 ```
-1. tenant:a#product:items → moderator
+1. tenant:b#product:items → admin
+2. tenant:b#category:items → admin
 
-Total: 1 tuple
+Total: 2 tuples
 ```
 
 **Charlie:**
@@ -461,7 +637,7 @@ Total: 1 tuple
 Total: 1 tuple
 ```
 
-**Grand Total:** 5 user role assignment tuples
+**Grand Total:** 6 user role assignment tuples
 
 ---
 
@@ -506,10 +682,10 @@ Compare to tenant-scoped:
 **Decision:** Each resource type requires separate role assignment
 ```
 tenant:a#product:items → admin → user:alice
-tenant:a#category:items → admin → user:alice
+tenant:a#category:items → moderator → user:alice
 ```
 
-**Rationale:** Enables different roles per resource type
+**Rationale:** Enables different roles per resource type (Alice is admin on products, moderator on categories)
 
 **Trade-off:** More tuples but maximum flexibility
 

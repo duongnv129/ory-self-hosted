@@ -1,4 +1,4 @@
-# Alice's Authorization Hierarchy - Resource-Scoped Approach
+# Keto Multi-Tenant Resource-Scoped RBAC - Alice's Authorization Hierarchy
 
 ## Visual Hierarchy Diagram
 
@@ -14,11 +14,29 @@
         ┌───────────┴───────────┐                  │
         │                       │                  │
    product:items          category:items      product:items
-   (admin role)           (admin role)        (customer role)
+   (admin role)           (moderator role)    (customer role)
         │                       │                  │
-    ┌───┴───┐              ┌───┴───┐          ┌───┴───┐
-    │       │              │       │              │
- create  delete        create  update           view
+   ┌────┼────┐              ┌───┼───┐              │
+   │    │    │              │   │   │              │
+admin→mod→cust           mod→cust │            customer
+   │    │    │              │   │  │               │
+   ▼    ▼    ▼              ▼   ▼  ▼               ▼
+delete create view       update view ❌            view
+                                    (no create)
+
+Role Hierarchy & Permissions:
+┌─ PRODUCTS (admin → moderator → customer):
+│  ├─ delete ← admin (direct)
+│  ├─ create ← moderator (inherited ↑)
+│  └─ view ← customer (inherited ↑)
+│
+├─ CATEGORIES (moderator → customer):
+│  ├─ update ← moderator (direct)
+│  ├─ view ← customer (inherited ↑)
+│  └─ create ← ❌ DENIED (admin-only, Alice is moderator)
+│
+└─ TENANT B PRODUCTS (customer):
+   └─ view ← customer (direct)
 ```
 
 ---
@@ -44,8 +62,11 @@ user:alice
 tenant:a#product:items#admin
     ↓ (inherits from moderator)
 tenant:a#product:items#moderator
+    ↓ (inherits from customer)
+tenant:a#product:items#customer
     ↓ (permission grants)
-    ├── create ✅
+    ├── view ✅ (customer)
+    ├── create ✅ (moderator)
     └── delete ✅ (admin-only)
 ```
 
@@ -53,39 +74,43 @@ tenant:a#product:items#moderator
 
 | Action | Allowed | Reason |
 |--------|---------|--------|
+| **view** | ✅ | Inherited from customer (via moderator) |
 | **create** | ✅ | Inherited from moderator |
 | **delete** | ✅ | Direct admin permission |
 
 ---
 
-### Alice in Tenant A - Category Admin
+### Alice in Tenant A - Category Moderator
 
 **Direct Assignment:**
 ```json
 {
   "namespace": "default",
   "object": "tenant:a#category:items",
-  "relation": "admin",
+  "relation": "moderator",
   "subject_id": "user:alice"
 }
 ```
 
-**Permissions:**
+**Inherited Permissions:**
 ```
 user:alice
     ↓ (direct assignment)
-tenant:a#category:items#admin
+tenant:a#category:items#moderator
+    ↓ (inherits from customer)
+tenant:a#category:items#customer
     ↓ (permission grants)
-    ├── create ✅
-    └── update ✅
+    ├── view ✅ (via customer inheritance)
+    └── update ✅ (direct moderator permission)
 ```
 
 **Permission Matrix:**
 
 | Action | Allowed | Reason |
 |--------|---------|--------|
-| **create** | ✅ | Direct admin permission |
-| **update** | ✅ | Direct admin permission |
+| **view** | ✅ | Inherited from customer |
+| **update** | ✅ | Direct moderator permission |
+| **create** | ❌ | Admin-only (Alice is moderator, not admin) |
 
 ---
 
@@ -140,14 +165,14 @@ tenant:b#product:items#customer
 │tenant:a#     │ │tenant:a#     │ │tenant:b#     │
 │product:items │ │category:items│ │product:items │
 │              │ │              │ │              │
-│role: admin   │ │role: admin   │ │role: customer│
+│role: admin   │ │role:moderator│ │role: customer│
 └──────┬───────┘ └──────┬───────┘ └──────┬───────┘
        │                │                │
-   ┌───┴───┐        ┌───┴───┐        ┌───┴───┐
-   ▼       ▼        ▼       ▼        ▼       │
-create  delete  create  update    view      │
-                                             ▼
-                                        (no create)
+   ┌───┴───┴───┐    ┌───┴───┐        ┌───┴───┐
+   ▼   ▼       ▼    ▼       ▼        ▼       │
+ view create delete view  update    view     │
+  ↑    ↑       │    ↑       │                ▼
+ cust  mod   admin cust    mod          (no create)
                                         (no delete)
 ```
 
@@ -193,23 +218,23 @@ tenant:a#product:items#create ✅
 
 ---
 
-### Example 2: Alice Creates Category in Tenant A
+### Example 2: Alice Updates Category in Tenant A
 
 **Request:**
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
   --data-urlencode "namespace=default" \
   --data-urlencode "object=tenant:a#category:items" \
-  --data-urlencode "relation=create" \
+  --data-urlencode "relation=update" \
   --data-urlencode "subject_id=user:alice"
 ```
 
 **Keto Resolution:**
 ```
-Step 1: Check user:alice → tenant:a#category:items#admin
+Step 1: Check user:alice → tenant:a#category:items#moderator
         ✅ YES (separate direct assignment)
 
-Step 2: Check tenant:a#category:items#admin → tenant:a#category:items#create
+Step 2: Check tenant:a#category:items#moderator → tenant:a#category:items#update
         ✅ YES (permission grant)
 
 Result: {"allowed": true}
@@ -219,12 +244,12 @@ Result: {"allowed": true}
 ```
 user:alice
     ↓
-tenant:a#category:items#admin
+tenant:a#category:items#moderator
     ↓ (grants)
-tenant:a#category:items#create ✅
+tenant:a#category:items#update ✅
 ```
 
-**Note:** This is a **different role assignment** than product:items!
+**Note:** Alice is **moderator** on categories (different from admin on products)!
 
 ---
 
@@ -309,11 +334,11 @@ tenant:b#product:items#view ✅
   "subject_id": "user:alice"
 }
 
-// 2. Category admin in Tenant A
+// 2. Category moderator in Tenant A
 {
   "namespace": "default",
   "object": "tenant:a#category:items",
-  "relation": "admin",
+  "relation": "moderator",
   "subject_id": "user:alice"
 }
 
@@ -336,10 +361,10 @@ tenant:b#product:items#view ✅
 
 | Resource | Role | Actions Allowed |
 |----------|------|-----------------|
-| **product:items** | admin | create ✅, delete ✅ |
-| **category:items** | admin | create ✅, update ✅ |
+| **product:items** | admin | view ✅, create ✅, delete ✅ |
+| **category:items** | moderator | view ✅, update ✅ |
 
-**Result:** Alice has **admin control** over 2 resource types in Tenant A
+**Result:** Alice has **different privilege levels** across 2 resource types in Tenant A
 
 ---
 
@@ -359,10 +384,10 @@ tenant:b#product:items#view ✅
 
 Alice demonstrates the power of resource-scoped roles:
 
-1. **Tenant A - Admin**
-   - Full control over products (create, delete)
-   - Full control over categories (create, update)
-   - Total: **4 actions** across 2 resources
+1. **Tenant A - Mixed Roles**
+   - Admin on products (view, create, delete)
+   - Moderator on categories (view, update)
+   - Total: **5 actions** across 2 resources
 
 2. **Tenant B - Customer**
    - View-only access to products
@@ -374,14 +399,14 @@ Alice demonstrates the power of resource-scoped roles:
 
 ### Resource-Level Granularity
 
-Within Tenant A, Alice has **separate role assignments** for each resource:
+Within Tenant A, Alice has **different roles** for each resource:
 
 ```
 product:items → admin (assigned explicitly)
-category:items → admin (assigned explicitly, separate from products)
+category:items → moderator (assigned explicitly, separate from products)
 ```
 
-**Important:** Being admin on products does **NOT** automatically make Alice admin on categories. Each resource requires explicit assignment.
+**Important:** Being admin on products does **NOT** automatically make Alice admin (or even moderator) on categories. Each resource requires explicit assignment.
 
 ---
 
@@ -406,7 +431,7 @@ tenant:b → customer (applies to ALL resources)
 **Alice's assignments:**
 ```
 tenant:a#product:items → admin
-tenant:a#category:items → admin
+tenant:a#category:items → moderator
 tenant:b#product:items → customer
 ```
 
@@ -461,9 +486,9 @@ user:alice → tenant:a#category:items#moderator
 **Scenario:** Alice works at Company A and is a customer of Company B
 
 ### Company A (Tenant A)
-- Alice is **Product Manager** → admin on product:items
-- Alice is **Product Manager** → admin on category:items
-- Full control over product catalog
+- Alice is **Product Manager** → admin on product:items (full control)
+- Alice is **Category Reviewer** → moderator on category:items (can review/update, not create)
+- Mixed privilege levels across different resources
 
 ### Company B (Tenant B)
 - Alice is **Paying Customer** → customer on product:items
@@ -487,13 +512,21 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
   --data-urlencode "subject_id=user:alice"
 # Expected: {"allowed": true}
 
-# Tenant A - Category create (should succeed)
+# Tenant A - Category update (should succeed)
+curl -s -G "http://localhost:4466/relation-tuples/check" \
+  --data-urlencode "namespace=default" \
+  --data-urlencode "object=tenant:a#category:items" \
+  --data-urlencode "relation=update" \
+  --data-urlencode "subject_id=user:alice"
+# Expected: {"allowed": true}
+
+# Tenant A - Category create (should fail - Alice is moderator, not admin)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
   --data-urlencode "namespace=default" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
-# Expected: {"allowed": true}
+# Expected: {"allowed": false}
 
 # Tenant B - Product view (should succeed)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
@@ -520,16 +553,18 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
 ┌─────────────────────────────────────────────────────────────┐
 │                      user:alice                             │
 │                                                             │
-│  Tenant A:                    Tenant B:                    │
-│  ├─ product:items (admin)     └─ product:items (customer)  │
-│  │  ├─ create ✅                 ├─ view ✅               │
-│  │  └─ delete ✅                 ├─ create ❌             │
-│  │                               └─ delete ❌             │
-│  └─ category:items (admin)                                 │
-│     ├─ create ✅                                           │
-│     └─ update ✅                                           │
+│  Tenant A:                      Tenant B:                  │
+│  ├─ product:items (admin)       └─ product:items (customer)│
+│  │  ├─ view ✅                     ├─ view ✅             │
+│  │  ├─ create ✅                   ├─ create ❌           │
+│  │  └─ delete ✅                   └─ delete ❌           │
+│  │                                                          │
+│  └─ category:items (moderator)                             │
+│     ├─ view ✅                                             │
+│     ├─ update ✅                                           │
+│     └─ create ❌                                           │
 │                                                             │
-│  Total Permissions: 5                                      │
+│  Total Permissions: 6                                      │
 │  Role Assignments: 3                                       │
 │  Tuple Count: 3                                            │
 └─────────────────────────────────────────────────────────────┘

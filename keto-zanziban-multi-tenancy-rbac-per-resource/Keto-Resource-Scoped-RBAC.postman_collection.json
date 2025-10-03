@@ -1,0 +1,1890 @@
+{
+	"info": {
+		"_postman_id": "keto-resource-scoped-rbac-collection",
+		"name": "Keto Multi-Tenant Resource-Scoped RBAC",
+		"description": "Comprehensive test suite for Keto Multi-Tenant Resource-Scoped RBAC using ORY Keto.\n\nApproach: user → tenant → resource (role) → action\n\nKey Features:\n- Separate role assignments per resource type\n- Alice: admin on products, moderator on categories (Tenant A), customer on products (Tenant B)\n- Bob: admin on products + categories (Tenant B only)\n- Charlie: customer on products (Tenant B only)\n\nTotal: 40 permission checks + 6 role membership verifications\n\nDocumentation:\n- Keto-Resource-Scoped-RBAC-Architecture.md - Detailed tuple structure\n- Keto-Resource-Scoped-RBAC-Alice-Hierarchy.md - Visual diagrams\n- Keto-Resource-Scoped-RBAC-Test-Cases.md - Test scenarios\n- Keto-Resource-Scoped-RBAC-Test.sh - Automated test script",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "0. Cleanup Existing Relations",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples?namespace={{namespace}}",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"],
+							"query": [
+								{
+									"key": "namespace",
+									"value": "{{namespace}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1. Assign Alice as Admin (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"admin\",\n  \"subject_id\": \"user:alice\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Role Hierarchy: Admin → Moderator (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"moderator\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#product:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Role Hierarchy: Moderator → Customer (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"customer\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#product:items\",\n    \"relation\": \"moderator\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Permission: Customer → View (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"view\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#product:items\",\n    \"relation\": \"customer\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Permission: Moderator → Create (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"create\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#product:items\",\n    \"relation\": \"moderator\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Permission: Admin → Delete (Products - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#product:items\",\n  \"relation\": \"delete\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#product:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Assign Alice as Moderator (Categories - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#category:items\",\n  \"relation\": \"moderator\",\n  \"subject_id\": \"user:alice\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Role Hierarchy: Moderator → Customer (Categories - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#category:items\",\n  \"relation\": \"customer\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#category:items\",\n    \"relation\": \"moderator\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Permission: Customer → View (Categories - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#category:items\",\n  \"relation\": \"view\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#category:items\",\n    \"relation\": \"customer\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Permission: Moderator → Update (Categories - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#category:items\",\n  \"relation\": \"update\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#category:items\",\n    \"relation\": \"moderator\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Permission: Admin → Create (Categories - Tenant A)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:a#category:items\",\n  \"relation\": \"create\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:a#category:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Assign Bob as Admin (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"admin\",\n  \"subject_id\": \"user:bob\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Assign Alice as Customer (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"customer\",\n  \"subject_id\": \"user:alice\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14. Assign Charlie as Customer (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"customer\",\n  \"subject_id\": \"user:charlie\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "15. Role Hierarchy: Admin → Customer (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"customer\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#product:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "16. Permission: Customer → View (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"view\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#product:items\",\n    \"relation\": \"customer\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "17. Permission: Admin → Create (Products - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#product:items\",\n  \"relation\": \"create\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#product:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "18. Assign Bob as Admin (Categories - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#category:items\",\n  \"relation\": \"admin\",\n  \"subject_id\": \"user:bob\"\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "19. Role Hierarchy: Admin → Customer (Categories - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#category:items\",\n  \"relation\": \"customer\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#category:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "20. Permission: Customer → View (Categories - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#category:items\",\n  \"relation\": \"view\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#category:items\",\n    \"relation\": \"customer\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "21. Permission: Admin → Create (Categories - Tenant B)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"object\": \"tenant:b#category:items\",\n  \"relation\": \"create\",\n  \"subject_set\": {\n    \"namespace\": \"{{namespace}}\",\n    \"object\": \"tenant:b#category:items\",\n    \"relation\": \"admin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{keto_write_url}}/admin/relation-tuples",
+							"host": ["{{keto_write_url}}"],
+							"path": ["admin", "relation-tuples"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Alice - Tenant A (Products - Admin)",
+			"item": [
+				{
+					"name": "Alice can view products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (admin on products) can view products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=view&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice can create products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (admin on products) can create products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=create&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice can delete products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (admin on products) can delete products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=delete&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "delete"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Alice - Tenant A (Categories - Moderator)",
+			"item": [
+				{
+					"name": "Alice can view categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (moderator on categories) can view categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=view&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice can update categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (moderator on categories) can update categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=update&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "update"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice CANNOT create categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (moderator on categories) CANNOT create categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=create&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Alice - Tenant B (Products - Customer)",
+			"item": [
+				{
+					"name": "Alice can view products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (customer on products) can view products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=view&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice CANNOT create products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (customer on products) CANNOT create products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=create&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Alice - Tenant B (Categories - No Role)",
+			"item": [
+				{
+					"name": "Alice CANNOT view categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (no role on categories) CANNOT view categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=view&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice CANNOT create categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice (no role on categories) CANNOT create categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=create&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Bob - Tenant B (Products - Admin)",
+			"item": [
+				{
+					"name": "Bob can view products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (admin on products) can view products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=view&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob can create products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (admin on products) can create products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=create&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Bob - Tenant B (Categories - Admin)",
+			"item": [
+				{
+					"name": "Bob can view categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (admin on categories) can view categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=view&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob can create categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (admin on categories) can create categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=create&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Bob - Tenant A (Isolation Tests)",
+			"item": [
+				{
+					"name": "Bob CANNOT view products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT view products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=view&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob CANNOT create products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT create products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=create&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob CANNOT delete products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT delete products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=delete&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "delete"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob CANNOT view categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT view categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=view&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob CANNOT create categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT create categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=create&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob CANNOT update categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob (no role in Tenant A) CANNOT update categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=update&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "update"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Charlie - Tenant B (Products - Customer)",
+			"item": [
+				{
+					"name": "Charlie can view products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (customer) can view products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=view&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT create products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (customer) CANNOT create products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=create&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT delete products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (customer) CANNOT delete products in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=delete&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "delete"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Charlie - Tenant B (Categories - No Role)",
+			"item": [
+				{
+					"name": "Charlie CANNOT view categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role on categories) CANNOT view categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=view&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT create categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role on categories) CANNOT create categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=create&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT update categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role on categories) CANNOT update categories in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=update&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "update"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Charlie - Tenant A (Isolation Tests)",
+			"item": [
+				{
+					"name": "Charlie CANNOT view products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT view products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=view&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT create products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT create products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=create&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT delete products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT delete products in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=delete&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "delete"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT view categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT view categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=view&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT create categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT create categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=create&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie CANNOT update categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie (no role in Tenant A) CANNOT update categories in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=update&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "update"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Resource Isolation Tests",
+			"item": [
+				{
+					"name": "Alice admin on products ≠ create on categories",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice is admin on products but CANNOT create categories (only moderator on categories)', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=create&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "create"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie product role ≠ category access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie\\'s customer role on products does NOT grant view access to categories', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=view&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "view"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Role Membership Verification",
+			"item": [
+				{
+					"name": "Alice is admin for products (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice is admin for product:items in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#product:items&relation=admin&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#product:items"},
+								{"key": "relation", "value": "admin"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice is moderator for categories (Tenant A)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice is moderator for category:items in Tenant A', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:a#category:items&relation=moderator&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:a#category:items"},
+								{"key": "relation", "value": "moderator"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Alice is customer for products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice is customer for product:items in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=customer&subject_id=user:alice",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "customer"},
+								{"key": "subject_id", "value": "user:alice"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob is admin for products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob is admin for product:items in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=admin&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "admin"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bob is admin for categories (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob is admin for category:items in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#category:items&relation=admin&subject_id=user:bob",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#category:items"},
+								{"key": "relation", "value": "admin"},
+								{"key": "subject_id", "value": "user:bob"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Charlie is customer for products (Tenant B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Charlie is customer for product:items in Tenant B', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.allowed).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{keto_read_url}}/relation-tuples/check?namespace={{namespace}}&object=tenant:b#product:items&relation=customer&subject_id=user:charlie",
+							"host": ["{{keto_read_url}}"],
+							"path": ["relation-tuples", "check"],
+							"query": [
+								{"key": "namespace", "value": "{{namespace}}"},
+								{"key": "object", "value": "tenant:b#product:items"},
+								{"key": "relation", "value": "customer"},
+								{"key": "subject_id", "value": "user:charlie"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "keto_read_url",
+			"value": "http://localhost:4466"
+		},
+		{
+			"key": "keto_write_url",
+			"value": "http://localhost:4467"
+		},
+		{
+			"key": "namespace",
+			"value": "default"
+		}
+	]
+}
