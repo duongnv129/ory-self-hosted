@@ -179,6 +179,34 @@ clean: ## Stop and remove all containers, networks, and volumes
 clean-identities: ## Clean up test Kratos identities
 	@./clean-kratos-identities.sh
 
+create-admin: ## Create Kratos admin user (username: admin, email: admin@example.com)
+	@echo "Creating admin user..."
+	@curl -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{ \
+			"schema_id": "default", \
+			"traits": { \
+				"email": "admin@example.com", \
+				"name": { \
+					"first": "Admin", \
+					"last": "User" \
+				}, \
+				"tenant_ids": ["tenant-a", "tenant-b", "tenant-c"] \
+			}, \
+			"credentials": { \
+				"password": { \
+					"config": { \
+						"password": "admin" \
+					} \
+				} \
+			} \
+		}' | jq '.' 2>/dev/null || echo "Failed to create admin user. Is Kratos running?"
+	@echo ""
+	@echo "✓ Admin user created:"
+	@echo "  Email:    admin@example.com"
+	@echo "  Password: admin"
+	@echo "  Tenants:  tenant-a, tenant-b, tenant-c"
+
 reset: clean network up ## Full reset: clean everything and start fresh
 
 # Development URLs

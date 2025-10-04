@@ -1,5 +1,66 @@
 # access-rules.yml
 
+# =============================================================================
+# Authentication Routes (Next.js Web App)
+# =============================================================================
+
+# Allow anonymous access to auth pages (login, register)
+- id: "auth-pages"
+  upstream:
+    url: "http://host.docker.internal:3000"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/(login|register)"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos self-service flows (login, registration, etc)
+- id: "kratos-self-service"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/self-service/<.*>"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos session endpoint (requires authentication)
+- id: "kratos-session"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/sessions/whoami"
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+
+# =============================================================================
+# API Routes (Multi-Tenancy Demo)
+# =============================================================================
+
 # Users API Rule
 - id: "app-users-rule"
   upstream:

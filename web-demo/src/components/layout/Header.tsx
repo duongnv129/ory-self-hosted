@@ -7,14 +7,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut, User } from 'lucide-react';
 import { Navigation } from './Navigation';
 import { TenantSelector } from '@/components/features/TenantSelector';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/hooks';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { identity, isAuthenticated, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -32,11 +34,28 @@ export function Header() {
           <Navigation />
         </div>
 
-        {/* Tenant Selector & Mobile Menu Button */}
+        {/* Tenant Selector, User Info & Mobile Menu Button */}
         <div className="flex items-center gap-4">
           <div className="hidden md:block">
             <TenantSelector />
           </div>
+          {isAuthenticated && identity && (
+            <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4" />
+                <span className="hidden lg:inline">{identity.traits.email}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden lg:inline">Logout</span>
+              </Button>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -65,6 +84,23 @@ export function Header() {
           <div className="mt-4 border-t pt-4">
             <TenantSelector />
           </div>
+          {isAuthenticated && identity && (
+            <div className="mt-4 border-t pt-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm px-3 py-2">
+                <User className="h-4 w-4" />
+                <span>{identity.traits.email}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="w-full justify-start gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </header>

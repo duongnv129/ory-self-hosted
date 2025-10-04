@@ -14,11 +14,8 @@ const getEnvVar = (key: string, defaultValue?: string): string => {
 };
 
 export const env = {
-  // Oathkeeper API Gateway (single entry point for all API calls)
+  // Oathkeeper API Gateway (single entry point for ALL API calls including Kratos)
   oathkeeperUrl: getEnvVar('NEXT_PUBLIC_OATHKEEPER_URL', 'http://localhost:4455'),
-
-  // Kratos Public API (for login/registration flows only)
-  kratosPublicUrl: getEnvVar('NEXT_PUBLIC_KRATOS_PUBLIC_URL', 'http://localhost:4433'),
 
   // App Configuration
   appName: getEnvVar('NEXT_PUBLIC_APP_NAME', 'Ory RBAC Demo'),
@@ -35,7 +32,6 @@ if (typeof window === 'undefined') {
   // Server-side validation
   console.log('Environment configuration loaded:', {
     oathkeeperUrl: env.oathkeeperUrl,
-    kratosPublicUrl: env.kratosPublicUrl,
     nodeEnv: process.env.NODE_ENV,
   });
 }

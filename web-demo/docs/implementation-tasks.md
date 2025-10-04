@@ -13,11 +13,12 @@
 - [Epic 1: Project Setup & Infrastructure](#epic-1-project-setup--infrastructure)
 - [Epic 2: Core API Integration Layer](#epic-2-core-api-integration-layer)
 - [Epic 3: Shared Components & Layout](#epic-3-shared-components--layout)
-- [Epic 4: Use Case 1 - Simple RBAC](#epic-4-use-case-1---simple-rbac)
-- [Epic 5: Use Case 2 - Tenant-Centric RBAC](#epic-5-use-case-2---tenant-centric-rbac)
-- [Epic 6: Use Case 3 - Resource-Scoped RBAC](#epic-6-use-case-3---resource-scoped-rbac)
-- [Epic 7: Testing & Quality Assurance](#epic-7-testing--quality-assurance)
-- [Epic 8: Documentation & Deployment](#epic-8-documentation--deployment)
+- [Epic 4: Authentication Flow (Kratos Integration)](#epic-4-authentication-flow-kratos-integration)
+- [Epic 6: Use Case 1 - Simple RBAC](#epic-5-use-case-1---simple-rbac)
+- [Epic 6: Use Case 2 - Tenant-Centric RBAC](#epic-6-use-case-2---tenant-centric-rbac)
+- [Epic 7: Use Case 3 - Resource-Scoped RBAC](#epic-7-use-case-3---resource-scoped-rbac)
+- [Epic 8: Testing & Quality Assurance](#epic-8-testing--quality-assurance)
+- [Epic 9: Documentation & Deployment](#epic-9-documentation--deployment)
 
 ---
 
@@ -578,11 +579,189 @@ export class KetoApi {
 
 ---
 
-## Epic 4: Use Case 1 - Simple RBAC
+## Epic 4: Authentication Flow (Kratos Integration)
 
-**Story Points**: 24 | **Priority**: 🟠 High | **Sprint**: 3-4
+**Story Points**: 21 | **Priority**: 🔴 Critical | **Sprint**: 3
 
-### Task 4.1: User Management Interface (Simple RBAC)
+**Description**: Implement Kratos authentication with login, registration, and session management. Users must authenticate before accessing RBAC features.
+
+### Task 4.1: Kratos Session Context & Auth State
+
+**Story Points**: 5 | **Priority**: 🔴 Critical
+
+**Description**: Create authentication context and session management
+
+**Acceptance Criteria**:
+- [ ] Auth context provider with session state
+- [ ] Session check on app initialization via `/sessions/whoami`
+- [ ] Automatic session refresh logic
+- [ ] Logout functionality
+- [ ] Protected route wrapper component
+- [ ] Redirect to login if unauthenticated (401 error)
+
+**Files to Create**:
+- `src/lib/context/AuthContext.tsx`
+- `src/lib/hooks/useAuth.ts`
+- `src/lib/api/kratos.ts`
+- `src/components/auth/ProtectedRoute.tsx`
+
+**Implementation Notes**:
+```typescript
+interface AuthContextType {
+  session: Session | null;
+  identity: Identity | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  logout: () => Promise<void>;
+}
+
+// All calls through Oathkeeper
+const sessionUrl = `${OATHKEEPER_URL}/sessions/whoami`;
+```
+
+---
+
+### Task 4.2: Login Page
+
+**Story Points**: 5 | **Priority**: 🔴 Critical
+
+**Description**: Build login page with Kratos self-service login flow
+
+**Acceptance Criteria**:
+- [ ] Login form with email/password fields
+- [ ] Form validation with zod
+- [ ] Integration with Kratos login flow API
+- [ ] Error handling (invalid credentials, flow expired)
+- [ ] Link to registration page
+- [ ] Redirect to original destination after login
+
+**Files to Create**:
+- `src/app/login/page.tsx`
+- `src/components/auth/LoginForm.tsx`
+
+**Kratos Flow**:
+```
+1. GET /self-service/login/browser → Initialize flow
+2. Render UI nodes from flow response
+3. POST /self-service/login?flow=<id> → Submit credentials
+4. On success: Redirect to dashboard
+```
+
+---
+
+### Task 4.3: Registration Page
+
+**Story Points**: 5 | **Priority**: 🔴 Critical
+
+**Description**: Build registration page with Kratos self-service registration flow
+
+**Acceptance Criteria**:
+- [ ] Registration form (email, password, first name, last name)
+- [ ] Password confirmation field
+- [ ] Form validation
+- [ ] Integration with Kratos registration flow
+- [ ] Link to login page
+- [ ] Auto-assign default tenant (tenant-a) to new users
+
+**Files to Create**:
+- `src/app/register/page.tsx`
+- `src/components/auth/RegisterForm.tsx`
+
+**Default User Traits**:
+```json
+{
+  "email": "user@example.com",
+  "name": { "first": "John", "last": "Doe" },
+  "tenant_ids": ["tenant-a"]
+}
+```
+
+---
+
+### Task 4.4: Session Management & Protected Routes
+
+**Story Points**: 3 | **Priority**: 🔴 Critical
+
+**Description**: Implement session persistence and route protection
+
+**Acceptance Criteria**:
+- [ ] Protect all RBAC routes (redirect if not authenticated)
+- [ ] Session persistence across page refreshes
+- [ ] Handle session expiration (401 → redirect to login)
+- [ ] Show user email in header when authenticated
+- [ ] Logout button in header
+
+**Files to Update**:
+- `src/app/simple-rbac/layout.tsx`
+- `src/components/layout/Header.tsx`
+
+**Protected Route Pattern**:
+```typescript
+export default function ProtectedLayout({ children }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <FullPageLoading />;
+  if (!isAuthenticated) redirect('/login');
+  return <>{children}</>;
+}
+```
+
+---
+
+### Task 4.5: Oathkeeper Access Rules for Auth
+
+**Story Points**: 3 | **Priority**: 🔴 Critical
+
+**Description**: Configure Oathkeeper to allow unauthenticated access to login/register pages and Kratos self-service endpoints
+
+**Acceptance Criteria**:
+- [ ] Login/register pages accessible without authentication
+- [ ] Kratos self-service flows proxied through Oathkeeper
+- [ ] Session endpoint protected (requires valid session cookie)
+
+**Files to Update**:
+- `/oathkeeper/config/access-rules.yml`
+
+**Required Rules**:
+```yaml
+# Allow anonymous access to auth pages
+- id: "auth-pages"
+  match:
+    url: "<http|https>://<.*>/(login|register)"
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    - handler: allow
+
+# Proxy Kratos self-service flows
+- id: "kratos-self-service"
+  upstream:
+    url: "http://kratos:4433"
+  match:
+    url: "<http|https>://<.*>/self-service/<.*>"
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    - handler: allow
+
+# Proxy Kratos session endpoint
+- id: "kratos-session"
+  upstream:
+    url: "http://kratos:4433"
+  match:
+    url: "<http|https>://<.*>/sessions/whoami"
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    - handler: allow
+```
+
+---
+
+## Epic 5: Use Case 1 - Simple RBAC
+
+**Story Points**: 24 | **Priority**: 🟠 High | **Sprint**: 4-5
+
+### Task 5.1: User Management Interface (Simple RBAC)
 
 **Story Points**: 8 | **Priority**: 🟠 High
 
@@ -603,7 +782,7 @@ export class KetoApi {
 
 ---
 
-### Task 4.2: Role Management Interface (Simple RBAC)
+### Task 5.2: Role Management Interface (Simple RBAC)
 
 **Story Points**: 8 | **Priority**: 🟠 High
 
@@ -623,7 +802,7 @@ export class KetoApi {
 
 ---
 
-### Task 4.3: Product Management Interface (Simple RBAC)
+### Task 5.3: Product Management Interface (Simple RBAC)
 
 **Story Points**: 4 | **Priority**: 🟡 Medium
 
@@ -641,7 +820,7 @@ export class KetoApi {
 
 ---
 
-### Task 4.4: Category Management Interface (Simple RBAC)
+### Task 5.4: Category Management Interface (Simple RBAC)
 
 **Story Points**: 4 | **Priority**: 🟡 Medium
 
@@ -658,7 +837,7 @@ export class KetoApi {
 
 ---
 
-## Epic 5: Use Case 2 - Tenant-Centric RBAC
+## Epic 6: Use Case 2 - Tenant-Centric RBAC
 
 **Story Points**: 28 | **Priority**: 🟠 High | **Sprint**: 4-5
 
@@ -757,7 +936,7 @@ export class KetoApi {
 
 **Story Points**: 26 | **Priority**: 🟡 Medium | **Sprint**: 5-6
 
-### Task 6.1: Resource-Scoped Role Assignment Interface
+### Task 5.1: Resource-Scoped Role Assignment Interface
 
 **Story Points**: 8 | **Priority**: 🟠 High
 
@@ -776,7 +955,7 @@ export class KetoApi {
 
 ---
 
-### Task 6.2: Resource-Scoped Product Management
+### Task 5.2: Resource-Scoped Product Management
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -793,7 +972,7 @@ export class KetoApi {
 
 ---
 
-### Task 6.3: Resource-Scoped Category Management
+### Task 5.3: Resource-Scoped Category Management
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -810,7 +989,7 @@ export class KetoApi {
 
 ---
 
-### Task 6.4: Resource-Scoped Permission Comparison
+### Task 5.4: Resource-Scoped Permission Comparison
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -983,7 +1162,7 @@ export class KetoApi {
 
 ### 🟠 **Phase 2: Core Features (Sprints 3-5)**
 4. Epic 4: Use Case 1 - Simple RBAC
-5. Epic 5: Use Case 2 - Tenant-Centric RBAC
+5. Epic 6: Use Case 2 - Tenant-Centric RBAC
 
 ### 🟡 **Phase 3: Advanced Features (Sprints 5-6)**
 6. Epic 6: Use Case 3 - Resource-Scoped RBAC
@@ -1002,7 +1181,7 @@ export class KetoApi {
 | Epic 2: API Integration | 21 | 🔴 Critical | 1-2 sprints |
 | Epic 3: Shared Components | 18 | 🟠 High | 1 sprint |
 | Epic 4: Simple RBAC | 24 | 🟠 High | 1-2 sprints |
-| Epic 5: Tenant-Centric RBAC | 28 | 🟠 High | 1-2 sprints |
+| Epic 6: Tenant-Centric RBAC | 28 | 🟠 High | 1-2 sprints |
 | Epic 6: Resource-Scoped RBAC | 26 | 🟡 Medium | 1-2 sprints |
 | Epic 7: Testing | 21 | 🟡 Medium | 1-2 sprints |
 | Epic 8: Documentation | 13 | 🟢 Low | 1 sprint |

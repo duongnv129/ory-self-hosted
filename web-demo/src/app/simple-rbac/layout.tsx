@@ -6,7 +6,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -17,8 +17,10 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
+import { useAuth } from '@/lib/hooks';
+import { FullPageLoading } from '@/components/ui/loading';
 
 const sidebarItems = [
   { href: '/simple-rbac', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -34,7 +36,23 @@ export default function SimpleRBACLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login?return_to=/simple-rbac');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return <FullPageLoading message="Checking authentication..." />;
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
