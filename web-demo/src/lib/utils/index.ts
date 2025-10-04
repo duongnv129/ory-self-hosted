@@ -4,3 +4,6 @@
  */
 
 export * from './cn';
+
+// Re-export from main utils.ts for shadcn compatibility
+export { cn } from '../utils';

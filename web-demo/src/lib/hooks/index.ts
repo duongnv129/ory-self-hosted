@@ -6,3 +6,4 @@
 export * from './useUsers';
 export * from './useProducts';
 export * from './useCategories';
+export * from './useTenant';
