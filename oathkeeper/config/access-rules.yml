@@ -6,7 +6,7 @@
     url: "http://multi-tenancy-demo:9000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/users/<[^/]+>/<.*>"
+    url: "<http|https>://<.*>/users/<[^/]+><.*>"
     methods:
       - GET
       - POST
@@ -24,7 +24,7 @@
         {
           "namespace": "default",
           "object": "user:items",
-          "relation": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
+          "relation": "{{ index .MatchContext.RegexpCaptureGroups 2 }}",
           "subject_id": "{{ print .Subject }}"
         }
   mutators:
@@ -32,7 +32,6 @@
       config:
         headers:
           X-User-Id: "{{ .Subject }}"
-          X-Tenant-Id: "{{ index .MatchContext.RegexpCaptureGroups 0 }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
 
@@ -42,11 +41,13 @@
     url: "http://multi-tenancy-demo:9000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/products/<[^/]+><.*>"
+    url: "<http|https>://<.*>/products/<[^/]+><.*>"
     methods:
       - GET
       - POST
       - DELETE
+      - PUT
+      - PATCH
   authenticators:
     - handler: cookie_session
     - handler: bearer_token
@@ -58,7 +59,7 @@
         {
           "namespace": "default",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -74,11 +75,13 @@
     url: "http://multi-tenancy-demo:9000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/categories/<[^/]+><.*>"
+    url: "<http|https>://<.*>/categories/<[^/]+><.*>"
     methods:
       - GET
       - POST
       - PUT
+      - PATCH
+      - DELETE
   authenticators:
     - handler: cookie_session
     - handler: bearer_token
@@ -90,7 +93,7 @@
         {
           "namespace": "default",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -104,7 +107,7 @@
   upstream:
     url: "http://multi-tenancy-demo:9000"
   match:
-    url: "http://localhost:4455/health"
+    url: "<http|https>://<.*>/health"
     methods:
       - GET
   authenticators:

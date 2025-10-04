@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import { env } from '@/config/env';
 import { TenantProvider } from '@/lib/context/TenantContext';
 import { Header, Footer } from '@/components/layout';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
             </main>
             <Footer />
           </div>
+          <Toaster position="top-right" richColors closeButton />
         </TenantProvider>
       </body>
     </html>
