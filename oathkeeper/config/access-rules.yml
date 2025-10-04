@@ -1,17 +1,104 @@
 # access-rules.yml
 
+# =============================================================================
+# Authentication Routes (Next.js Web App)
+# =============================================================================
+
+# Allow anonymous access to auth pages (login, register)
+- id: "auth-pages"
+  upstream:
+    url: "http://host.docker.internal:3000"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/(login|register)"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos self-service flows (login, registration, etc)
+- id: "kratos-self-service"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/self-service/<.*>"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos session endpoint (requires authentication)
+- id: "kratos-session"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/sessions/whoami"
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+
+# =============================================================================
+# API Routes (Multi-Tenancy Demo)
+# =============================================================================
+
 # Users API Rule
 - id: "app-users-rule"
   upstream:
     url: "http://multi-tenancy-demo:9000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/users/<[^/]+>/<.*>"
+    url: "<http|https>://<.*>/users/<[^/]+><.*>"
     methods:
       - GET
       - POST
       - PUT
       - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+
+# Products API Rule
+- id: "app-products-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/products/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - DELETE
+      - PUT
       - PATCH
   authenticators:
     - handler: cookie_session
@@ -23,42 +110,8 @@
       payload: |
         {
           "namespace": "default",
-          "object": "user:items",
-          "relation": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
-          "subject_id": "{{ print .Subject }}"
-        }
-  mutators:
-    - handler: header
-      config:
-        headers:
-          X-User-Id: "{{ .Subject }}"
-          X-Tenant-Id: "{{ index .MatchContext.RegexpCaptureGroups 0 }}"
-          X-User-Email: "{{ .Extra.identity.traits.email }}"
-          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
-
-# Products API Rule
-- id: "app-products-rule"
-  upstream:
-    url: "http://multi-tenancy-demo:9000"
-    preserve_path: true
-  match:
-    url: "http://localhost:4455/products/<[^/]+><.*>"
-    methods:
-      - GET
-      - POST
-      - DELETE
-  authenticators:
-    - handler: cookie_session
-    - handler: bearer_token
-  authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "default",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -74,11 +127,13 @@
     url: "http://multi-tenancy-demo:9000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/categories/<[^/]+><.*>"
+    url: "<http|https>://<.*>/categories/<[^/]+><.*>"
     methods:
       - GET
       - POST
       - PUT
+      - PATCH
+      - DELETE
   authenticators:
     - handler: cookie_session
     - handler: bearer_token
@@ -90,7 +145,7 @@
         {
           "namespace": "default",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -104,7 +159,7 @@
   upstream:
     url: "http://multi-tenancy-demo:9000"
   match:
-    url: "http://localhost:4455/health"
+    url: "<http|https>://<.*>/health"
     methods:
       - GET
   authenticators:
