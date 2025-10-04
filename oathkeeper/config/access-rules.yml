@@ -17,16 +17,7 @@
     - handler: cookie_session
     - handler: bearer_token
   authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "default",
-          "object": "user:items",
-          "relation": "{{ index .MatchContext.RegexpCaptureGroups 2 }}",
-          "subject_id": "{{ print .Subject }}"
-        }
+    handler: allow
   mutators:
     - handler: header
       config:

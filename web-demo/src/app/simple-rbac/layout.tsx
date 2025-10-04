@@ -8,7 +8,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { TenantSelector } from '@/components/features/TenantSelector';
 import {
   LayoutDashboard,
   Users,
@@ -108,25 +107,22 @@ export default function SimpleRBACLayout({
       <div className="flex min-h-screen flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-30 border-b bg-white shadow-sm">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <h1 className="text-xl font-semibold">
-                {sidebarItems.find(item =>
-                  item.exact
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href) && item.href !== '/simple-rbac'
-                )?.label || 'Simple RBAC'}
-              </h1>
-            </div>
-            <TenantSelector />
+          <div className="flex items-center gap-4 p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-semibold">
+              {sidebarItems.find(item =>
+                item.exact
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href) && item.href !== '/simple-rbac'
+              )?.label || 'Simple RBAC'}
+            </h1>
           </div>
         </header>
 
