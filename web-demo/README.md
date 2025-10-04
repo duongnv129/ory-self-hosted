@@ -1,661 +1,339 @@
-# Web Demo
+# Web Demo - Ory RBAC Demonstration
 
-> Next.js web application demonstrating three distinct RBAC (Role-Based Access Control) authorization models using the Ory Stack.
+> Next.js 14 application demonstrating three RBAC (Role-Based Access Control) models using the Ory Stack (Kratos, Keto, Oathkeeper)
 
-## Overview
+[![Next.js](https://img.shields.io/badge/Next.js-14.2-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The Web Demo is a **Next.js-based frontend application** (client-side rendering only) that connects to the Multi-Tenancy Demo backend API to demonstrate three different authorization approaches for managing users, products, and categories.
+## 🎯 Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.local.example .env.local
+
+# Start development server
+pnpm dev
+
+# Open browser
+open http://localhost:3000
+```
+
+## 📖 Overview
+
+A production-ready Next.js application that demonstrates three different authorization models:
+
+1. **Simple RBAC** - Global roles with hierarchical inheritance
+2. **Tenant-Centric RBAC** - Multi-tenant users with different roles per tenant
+3. **Resource-Scoped RBAC** - Fine-grained permissions per resource type
 
 ### Key Features
 
-- 🎨 **Next.js Frontend** - Client-side rendering with React components
-- 🔌 **Backend Integration** - Connects to Multi-Tenancy Demo API (Express.js on port 9000)
-- 🎯 **Three Use Cases** - Compare different RBAC authorization models
-- 📦 **Resource Management** - Users, Products, Categories CRUD operations
-- 🔐 **Ory Stack Integration** - Kratos (authentication) and Keto (authorization)
+- 🔐 **Ory Stack Integration** - Kratos (auth), Keto (authz), Oathkeeper (gateway)
+- 🏗️ **API Gateway Pattern** - All requests through Oathkeeper (port 4455)
+- 🎨 **Modern UI** - shadcn/ui components with Tailwind CSS
+- 📱 **Responsive Design** - Mobile-first, accessible (WCAG 2.1 AA)
+- 🔄 **Real-time Updates** - SWR for data fetching and caching
+- 🌐 **Multi-Tenancy** - Complete tenant isolation with context management
+- 📦 **Type-Safe** - Full TypeScript coverage with strict mode
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
-│         Web Demo (Next.js - Port 3000)          │
-│  ┌──────────────────────────────────────────┐  │
-│  │  Use Case 1: Simple RBAC                 │  │
-│  │  Use Case 2: Tenant-Centric RBAC         │  │
-│  │  Use Case 3: Resource-Scoped RBAC        │  │
-│  └──────────────────────────────────────────┘  │
+│     Web Demo (Next.js - Port 3000)              │
 └──────────────────┬──────────────────────────────┘
-                   │ HTTP (Port 4455)
+                   │ HTTP/HTTPS
                    ▼
 ┌─────────────────────────────────────────────────┐
-│      Oathkeeper (API Gateway - Port 4455)       │
-│  ┌──────────────────────────────────────────┐  │
-│  │  Auth → Authz → Proxy to Backend         │  │
-│  └──────────────────────────────────────────┘  │
+│  Oathkeeper (API Gateway - Port 4455)           │
+│  ┌─────────────────────────────────────────┐   │
+│  │ 1. Authenticate (Kratos session)        │   │
+│  │ 2. Authorize (Keto permissions)         │   │
+│  │ 3. Mutate (inject user headers)         │   │
+│  │ 4. Proxy (forward to backend)           │   │
+│  └─────────────────────────────────────────┘   │
 └─────┬──────────────┬────────────┬──────────────┘
       │              │            │
       ▼              ▼            ▼
-  ┌────────┐    ┌────────┐   ┌──────────────────┐
-  │ Kratos │    │  Keto  │   │ Multi-Tenancy    │
-  │ (Auth) │    │(Authz) │   │ Backend (:9000)  │
-  └────┬───┘    └────┬───┘   │ In-Memory Store  │
-       │             │        └──────────────────┘
+  ┌────────┐    ┌────────┐   ┌──────────────┐
+  │ Kratos │    │  Keto  │   │ Backend API  │
+  │ :4433  │    │ :4466  │   │ :9000        │
+  └────┬───┘    └────┬───┘   └──────────────┘
+       │             │        (In-Memory)
        └──────┬──────┘
               ▼
         ┌──────────┐
         │PostgreSQL│
-        │ (Kratos  │
-        │ & Keto)  │
+        │  :5432   │
         └──────────┘
 ```
 
-**For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md)**
+**🔗 Request Flow**: `Web Demo → Oathkeeper → [Kratos + Keto] → Backend`
 
----
+**📚 Detailed Architecture**: See [`docs/architecture.md`](./docs/architecture.md)
 
-## Use Cases
-
-The Web Demo demonstrates three distinct authorization models:
-
-### Use Case 1: Simple RBAC
-
-**Reference**: [`keto-zanziban-simple-rbac/README.md`](../keto-zanziban-simple-rbac/README.md)
-
-**Authorization Pattern:**
-
-```
-user:alice → role:admin → product:items (delete permission)
-```
-
-**Features:**
-
-- ✅ Global roles (admin, moderator, customer)
-- ✅ Hierarchical role inheritance (admin → moderator → customer)
-- ✅ Single namespace (`default`)
-- ✅ No tenant isolation
-- ✅ Simple permission model
-
-**Components:**
-
-- **Role Management CRUD** - Create, assign, and manage global roles
-- **User Management CRUD** - User creation and role assignment
-- **Product Management** - Products with role-based permissions
-- **Category Management** - Categories with role-based permissions
-
-**Example:**
-
-- Alice (admin) can delete products and create categories
-- Bob (moderator) can create products and update categories
-- Charlie (customer) can only view products and categories
-
----
-
-### Use Case 2: Keto Zanzibar Multi-Tenancy RBAC (Tenant-Centric)
-
-**Reference**: [`keto-zanzibar-multi-tenancy-rbac/README.md`](../keto-zanzibar-multi-tenancy-rbac/README.md)
-
-**Authorization Pattern:**
-
-```
-user:alice → tenant:a (as admin) → tenant:a#product:items (create permission)
-user:alice → tenant:b (as customer) → tenant:b#product:items (view permission)
-```
-
-**Features:**
-
-- ✅ Complete tenant isolation
-- ✅ Multi-tenant users (same user, different roles per tenant)
-- ✅ Tenant-scoped roles (one role per tenant)
-- ✅ Flexible role hierarchies per tenant
-- ✅ Single namespace with tenant prefixes
-
-**Components:**
-
-- **Tenant Management CRUD** - Create and manage tenant contexts
-- **Role Management CRUD** - Assign roles per tenant
-- **User Management CRUD** - Multi-tenant user onboarding
-- **Product Management** - Tenant-isolated product catalog
-- **Category Management** - Tenant-isolated categories
-
-**Example:**
-
-- Alice is **admin** in Tenant A (full access) and **customer** in Tenant B (read-only)
-- Bob is **admin** in Tenant B only
-- Complete isolation: Alice cannot access Bob's data in Tenant B unless assigned a role
-
----
-
-### Use Case 3: Keto Multi-Tenant Resource-Scoped RBAC
-
-**Reference**: [`keto-zanziban-multi-tenancy-rbac-per-resource/README.md`](../keto-zanziban-multi-tenancy-rbac-per-resource/README.md)
-
-**Authorization Pattern:**
-
-```
-user:alice → tenant:a#product:items (as admin) → delete products allowed
-user:alice → tenant:a#category:items (as moderator) → delete categories denied
-```
-
-**Features:**
-
-- ✅ Resource-level roles (different roles per resource type)
-- ✅ Maximum granularity (admin for products, moderator for categories)
-- ✅ Tenant isolation per resource
-- ✅ Fine-grained permission control
-- ⚠️ Higher complexity (N users × M tenants × R resources)
-
-**Components:**
-
-- **Tenant Management CRUD** - Create tenant contexts
-- **Role Management CRUD** - Assign roles per resource type
-- **User Management CRUD** - Multi-resource user onboarding
-- **Product Management** - Resource-scoped product permissions
-- **Category Management** - Resource-scoped category permissions
-
-**Example:**
-
-- Alice in Tenant A: **admin** for products (can delete), **moderator** for categories (cannot delete)
-- Bob in Tenant B: **admin** for both products and categories
-- Charlie in Tenant B: **customer** for products only (read-only)
-
----
-
-## Resource Management
-
-### Backend API Resources
-
-All resources are managed via the Multi-Tenancy Demo backend API (port 9000):
-
-#### Users API (`/users/*`)
-
-- **Endpoint**: `multi-tenancy-demo/routes/users.js`
-- **Operations**: Create, List, Get, Update, Delete
-- **Storage**: In-memory mock data store
-- **Integration**: Optional Kratos identity creation (not implemented by default)
-
-#### Products API (`/products/*`)
-
-- **Endpoint**: `multi-tenancy-demo/routes/product.js`
-- **Operations**: Create, List, Get, Update, Delete
-- **Storage**: In-memory mock data store
-- **Tenant Isolation**: Filtered by `x-tenant-id` header
-
-#### Categories API (`/categories/*`)
-
-- **Endpoint**: `multi-tenancy-demo/routes/category.js`
-- **Operations**: Create, List, Get, Update, Delete
-- **Storage**: In-memory mock data store
-- **Tenant Isolation**: Filtered by `x-tenant-id` header
-
-### Data Storage
-
-All resources (users, products, categories) use **in-memory mock data stores**:
-
-```javascript
-// Example: mockProducts in routes/product.js
-let mockProducts = [
-  {
-    id: 1,
-    name: "Product A",
-    category: "Electronics",
-    price: 299.99,
-    tenantId: "tenant-a",
-  },
-  {
-    id: 2,
-    name: "Product B",
-    category: "Books",
-    price: 19.99,
-    tenantId: "tenant-a",
-  },
-];
-```
-
-**Why In-Memory?**
-
-- ✅ **Zero Configuration** - No database setup required
-- ✅ **Demo Focus** - Emphasizes authorization patterns, not data persistence
-- ✅ **Easy Reset** - Restart server to reset to initial state
-- ✅ **Clear Separation** - Ory services (Kratos/Keto) use PostgreSQL; demo app uses in-memory
-- ✅ **Simplicity** - Reduces cognitive load for learning RBAC concepts
-
-**Note**: Only Kratos and Keto use PostgreSQL for their internal data (identities, sessions, relation tuples). The demo application's resources remain in memory.
-
----
-
-## API Integration
-
-### API Gateway Endpoint
-
-**Base URL** (all requests go through Oathkeeper):
-```
-http://localhost:4455
-```
-
-**Request Flow:**
-```
-Web Demo → Oathkeeper (:4455) → [Kratos Auth + Keto Authz] → Backend (:9000)
-```
-
-**Headers sent by Web Demo:**
-
-```http
-Cookie: ory_kratos_session=<session_cookie>  # Authentication
-x-tenant-id: tenant-a                         # Tenant context
-```
-
-**Headers injected by Oathkeeper (automatic):**
-
-```http
-X-User-Id: user-001                          # From Kratos session
-X-User-Email: alice@tenant-a.com             # From Kratos identity
-X-User-Traits: {...}                         # Full identity traits
-```
-
-### Users API
-
-```bash
-# Create user
-POST /users/create
-Body: { "email": "alice@tenant-a.com", "name": "Alice Smith" }
-
-# List users (filtered by tenant)
-GET /users/list
-
-# Get specific user
-GET /users/get/:userId
-
-# Update user
-PUT /users/update/:userId
-Body: { "email": "alice.new@tenant-a.com", "name": "Alice Johnson" }
-
-# Delete user
-DELETE /users/delete/:userId
-```
-
-### Products API
-
-```bash
-# Create product
-POST /products/create
-Body: { "name": "Product X", "category": "Electronics", "price": 99.99 }
-
-# List products (filtered by tenant)
-GET /products/list
-
-# Get specific product
-GET /products/get/:id
-
-# Update product
-PUT /products/update/:id
-Body: { "name": "Updated Product", "price": 199.99 }
-
-# Delete product
-DELETE /products/delete/:id
-```
-
-### Categories API
-
-```bash
-# Create category
-POST /categories/create
-Body: { "name": "Electronics", "description": "Electronic devices" }
-
-# List categories (filtered by tenant)
-GET /categories/list
-
-# Get specific category
-GET /categories/get/:id
-
-# Update category
-PUT /categories/update/:id
-Body: { "name": "Updated Category", "description": "New description" }
-
-# Delete category
-DELETE /categories/delete/:id
-```
-
----
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ (for Next.js)
-- Docker and Docker Compose (for Ory services)
-- Running Ory Stack (Kratos, Keto, PostgreSQL)
+- **Node.js** 18+ (recommend using [nvm](https://github.com/nvm-sh/nvm))
+- **pnpm** 8+ (`npm install -g pnpm`)
+- **Docker** & Docker Compose (for Ory services)
 
-### Start the Backend API
+### Installation
 
 ```bash
-# Start all Ory services
-cd ..
-make up
+# Clone repository (if not already done)
+cd web-demo
 
-# Start Multi-Tenancy Demo backend
-cd multi-tenancy-demo
-npm install
-npm start
-# Server runs on http://localhost:9000
+# Install dependencies
+pnpm install
+
+# Setup environment variables
+cp .env.local.example .env.local
+
+# Edit .env.local if needed (defaults work for local development)
 ```
 
-### Start the Web Demo
+### Running the Application
 
 ```bash
-# Install dependencies
-cd web-demo
-npm install
+# Start Ory services (from parent directory)
+cd ..
+make up  # Starts Kratos, Keto, Oathkeeper, PostgreSQL
 
-# Start development server
-npm run dev
-# Web demo runs on http://localhost:3000
+# Start Multi-Tenancy Demo Backend
+cd multi-tenancy-demo
+pnpm install
+pnpm start  # Runs on port 9000
+
+# Start Web Demo (in another terminal)
+cd web-demo
+pnpm dev  # Runs on port 3000
+```
+
+**Access the app**: http://localhost:3000
+
+### Build for Production
+
+```bash
+# Type check
+pnpm type-check
+
+# Lint
+pnpm lint
+
+# Build
+pnpm build
+
+# Start production server
+pnpm start
+```
+
+## 📂 Project Structure
+
+```
+web-demo/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── page.tsx           # Landing page (use case selection)
+│   │   ├── layout.tsx         # Root layout with providers
+│   │   ├── simple-rbac/       # Use Case 1: Simple RBAC
+│   │   ├── tenant-rbac/       # Use Case 2: Tenant-Centric RBAC
+│   │   └── resource-rbac/     # Use Case 3: Resource-Scoped RBAC
+│   ├── components/
+│   │   ├── ui/                # shadcn/ui components (Button, Input, etc.)
+│   │   ├── layout/            # Layout components (Header, Footer, Nav)
+│   │   └── features/          # Feature components (TenantSelector, etc.)
+│   ├── lib/
+│   │   ├── api/               # API clients (users, products, categories)
+│   │   ├── hooks/             # React hooks (SWR hooks, useTenant)
+│   │   ├── context/           # React contexts (TenantContext)
+│   │   ├── types/             # TypeScript types
+│   │   └── utils/             # Utility functions
+│   ├── config/                # Configuration (env.ts)
+│   └── styles/                # Global styles
+├── docs/                      # Documentation
+├── public/                    # Static assets
+└── package.json
+```
+
+## 🎨 Use Cases
+
+### 1. Simple RBAC
+
+**Pattern**: `user:alice → role:admin → product:items (delete)`
+
+- Global roles: admin, moderator, customer
+- Hierarchical inheritance (admin inherits all moderator and customer permissions)
+- No tenant isolation
+- Best for: Simple applications with single workspace
+
+**Demo**: http://localhost:3000/simple-rbac
+
+---
+
+### 2. Tenant-Centric RBAC
+
+**Pattern**: `user:alice → tenant:a (as admin) → tenant:a#product:items (create)`
+
+- Multi-tenant users (same user, different roles in different tenants)
+- Complete tenant isolation
+- One role per tenant per user
+- Best for: Multi-tenant SaaS applications
+
+**Example**: Alice is **admin** in Tenant A, **customer** in Tenant B
+
+**Demo**: http://localhost:3000/tenant-rbac
+
+---
+
+### 3. Resource-Scoped RBAC
+
+**Pattern**: `user:alice → tenant:a#product:items (as admin) → delete allowed`
+
+- Fine-grained control: different roles per resource type
+- Alice can be **admin** for products, **moderator** for categories
+- Maximum granularity
+- Best for: Complex applications requiring per-resource permissions
+
+**Demo**: http://localhost:3000/resource-rbac
+
+**📊 Use Case Comparison**: See [`docs/use-cases.md`](./docs/use-cases.md)
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+pnpm dev          # Start development server
+pnpm build        # Build for production
+pnpm start        # Start production server
+pnpm lint         # Run ESLint
+pnpm type-check   # Run TypeScript compiler check
 ```
 
 ### Environment Variables
 
-Create `.env.local` in `web-demo/`:
-
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:9000
+# API Gateway (Oathkeeper)
+NEXT_PUBLIC_OATHKEEPER_URL=http://localhost:4455
+
+# Kratos (for login/registration flows)
 NEXT_PUBLIC_KRATOS_PUBLIC_URL=http://localhost:4433
-NEXT_PUBLIC_KETO_READ_URL=http://localhost:4466
-NEXT_PUBLIC_KETO_WRITE_URL=http://localhost:4467
 ```
 
----
+**Note**: Web Demo only calls Oathkeeper. Direct Kratos/Keto/Backend calls are handled by the gateway.
 
-## Usage Examples
-
-### Example 1: Simple RBAC Flow
+### Adding New Components
 
 ```bash
-# 1. Create user Alice
-curl -X POST http://localhost:9000/users/create \
-  -H "Content-Type: application/json" \
-  -H "x-tenant-id: tenant-a" \
-  -d '{"email": "alice@example.com", "name": "Alice Smith"}'
+# Install shadcn/ui component
+pnpm dlx shadcn-ui@latest add [component-name]
 
-# 2. Assign Alice as admin (via Keto)
-curl -X PUT http://localhost:4467/admin/relation-tuples \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "default",
-    "object": "role:admin",
-    "relation": "member",
-    "subject_id": "user:alice"
-  }'
-
-# 3. Check if Alice can delete products
-curl -G http://localhost:4466/relation-tuples/check \
-  --data-urlencode "namespace=default" \
-  --data-urlencode "object=product:items" \
-  --data-urlencode "relation=delete" \
-  --data-urlencode "subject_id=user:alice"
-# Response: {"allowed": true}
+# Example
+pnpm dlx shadcn-ui@latest add dropdown-menu
 ```
 
-### Example 2: Tenant-Centric RBAC Flow
+**📖 Component Guide**: See [`docs/components.md`](./docs/components.md)
+
+## 🧪 Testing
 
 ```bash
-# 1. Create user Alice
-curl -X POST http://localhost:9000/users/create \
-  -H "Content-Type: application/json" \
-  -H "x-tenant-id: tenant-a" \
-  -d '{"email": "alice@example.com", "name": "Alice Smith"}'
+# Run all tests (when implemented)
+pnpm test
 
-# 2. Assign Alice as admin in Tenant A
-curl -X PUT http://localhost:4467/admin/relation-tuples \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "default",
-    "object": "tenant:a",
-    "relation": "admin",
-    "subject_id": "user:alice"
-  }'
+# Run tests in watch mode
+pnpm test:watch
 
-# 3. Assign Alice as customer in Tenant B
-curl -X PUT http://localhost:4467/admin/relation-tuples \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "default",
-    "object": "tenant:b",
-    "relation": "customer",
-    "subject_id": "user:alice"
-  }'
-
-# 4. Check: Can Alice delete products in Tenant A?
-curl -G http://localhost:4466/relation-tuples/check \
-  --data-urlencode "namespace=default" \
-  --data-urlencode "object=tenant:a#product:items" \
-  --data-urlencode "relation=delete" \
-  --data-urlencode "subject_id=user:alice"
-# Response: {"allowed": true} (admin role)
-
-# 5. Check: Can Alice delete products in Tenant B?
-curl -G http://localhost:4466/relation-tuples/check \
-  --data-urlencode "namespace=default" \
-  --data-urlencode "object=tenant:b#product:items" \
-  --data-urlencode "relation=delete" \
-  --data-urlencode "subject_id=user:alice"
-# Response: {"allowed": false} (customer role)
+# Coverage report
+pnpm test:coverage
 ```
 
-### Example 3: Resource-Scoped RBAC Flow
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[docs/architecture.md](./docs/architecture.md)** | Complete architecture documentation |
+| **[docs/components.md](./docs/components.md)** | Component usage guide |
+| **[docs/api-integration.md](./docs/api-integration.md)** | API integration with Oathkeeper |
+| **[docs/development.md](./docs/development.md)** | Development guide and best practices |
+
+## 🔐 Security
+
+- **Authentication**: Session-based via Kratos (cookies)
+- **Authorization**: Permission checks via Keto (through Oathkeeper)
+- **API Gateway**: All requests authenticated and authorized at gateway layer
+- **CORS**: Configured for local development
+- **HTTPS**: Required in production
+
+**🛡️ Security Guide**: See [`docs/security.md`](./docs/security.md)
+
+## 🚢 Deployment
+
+### Docker
 
 ```bash
-# 1. Assign Alice as admin for products in Tenant A
-curl -X PUT http://localhost:4467/admin/relation-tuples \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "default",
-    "object": "tenant:a#product:items",
-    "relation": "admin",
-    "subject_id": "user:alice"
-  }'
+# Build Docker image
+docker build -t web-demo .
 
-# 2. Assign Alice as moderator for categories in Tenant A
-curl -X PUT http://localhost:4467/admin/relation-tuples \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "default",
-    "object": "tenant:a#category:items",
-    "relation": "moderator",
-    "subject_id": "user:alice"
-  }'
-
-# 3. Check: Can Alice delete products? (admin role)
-curl -G http://localhost:4466/relation-tuples/check \
-  --data-urlencode "namespace=default" \
-  --data-urlencode "object=tenant:a#product:items" \
-  --data-urlencode "relation=delete" \
-  --data-urlencode "subject_id=user:alice"
-# Response: {"allowed": true}
-
-# 4. Check: Can Alice delete categories? (moderator role - no delete)
-curl -G http://localhost:4466/relation-tuples/check \
-  --data-urlencode "namespace=default" \
-  --data-urlencode "object=tenant:a#category:items" \
-  --data-urlencode "relation=delete" \
-  --data-urlencode "subject_id=user:alice"
-# Response: {"allowed": false}
+# Run container
+docker run -p 3000:3000 web-demo
 ```
 
----
-
-## Testing
-
-### Health Check
+### Docker Compose
 
 ```bash
-curl http://localhost:9000/health
+# Start all services
+docker-compose up -d
 ```
 
-**Response:**
+**📦 Deployment Guide**: See [`docs/deployment.md`](./docs/deployment.md)
 
-```json
-{
-  "status": "ok",
-  "service": "multi-tenancy-demo",
-  "version": "2.0.0",
-  "apis": ["users", "products", "categories"],
-  "timestamp": "2025-01-15T10:30:00.000Z"
-}
-```
+## 🤝 Contributing
 
-### API Documentation
-
-```bash
-curl http://localhost:9000/api-docs
-```
-
----
-
-## Comparison of Use Cases
-
-| Aspect                 | Simple RBAC              | Tenant-Centric                                  | Resource-Scoped                                      |
-| ---------------------- | ------------------------ | ----------------------------------------------- | ---------------------------------------------------- |
-| **Granularity**        | Global roles             | Per-tenant roles                                | Per-resource roles                                   |
-| **Tenant Isolation**   | ❌ None                  | ✅ Complete                                     | ✅ Complete                                          |
-| **Multi-Tenant Users** | ❌ No                    | ✅ Yes                                          | ✅ Yes                                               |
-| **Role Assignment**    | One role globally        | One role per tenant                             | One role per resource × tenant                       |
-| **Complexity**         | Low                      | Medium                                          | High                                                 |
-| **Use Case**           | Simple apps              | Multi-tenant SaaS                               | Fine-grained control                                 |
-| **Example**            | Alice = admin everywhere | Alice = admin in Tenant A, customer in Tenant B | Alice = admin for products, moderator for categories |
-
----
-
-## Kratos Integration (Optional)
-
-The demo **does not require Kratos integration** for user management by default. Users are stored in-memory as mock data.
-
-### Optional Enhancement
-
-To add Kratos authentication:
-
-1. **Enable Kratos Identity Creation** in `multi-tenancy-demo/routes/users.js`:
-
-```javascript
-// Uncomment Kratos integration code
-const kratosResponse = await axios.post(
-  `${KRATOS_ADMIN_URL}/admin/identities`,
-  {
-    schema_id: "default",
-    traits: { email, name, tenant_ids: [req.tenantId] },
-  }
-);
-```
-
-2. **Add Authentication Middleware**:
-
-```javascript
-// Validate Kratos session before allowing requests
-app.use(requireKratosSession);
-```
-
-3. **Update Web Demo** to include login/logout flows using Kratos self-service UI.
-
-**Note**: This is optional. The current demo works without Kratos integration.
-
----
-
-## Troubleshooting
-
-### Backend API Not Responding
-
-```bash
-# Check if backend is running
-curl http://localhost:9000/health
-
-# Restart backend
-cd multi-tenancy-demo
-npm start
-```
-
-### CORS Errors
-
-Make sure the backend API has CORS enabled:
-
-```javascript
-// multi-tenancy-demo/app.js
-const cors = require("cors");
-app.use(cors());
-```
-
-### Web Demo Not Connecting to Backend
-
-Check environment variables in `web-demo/.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:9000
-```
-
-### Data Reset
-
-Data resets on server restart (intentional):
-
-```bash
-# Restart backend to reset all data
-cd multi-tenancy-demo
-npm start
-```
-
----
-
-## Project Structure
-
-```
-web-demo/
-├── pages/                  # Next.js pages
-│   ├── index.js           # Use case selection page
-│   ├── simple-rbac/       # Use Case 1 pages
-│   ├── tenant-rbac/       # Use Case 2 pages
-│   └── resource-rbac/     # Use Case 3 pages
-├── components/            # React components
-│   ├── UserManagement.jsx
-│   ├── RoleManagement.jsx
-│   ├── TenantManagement.jsx
-│   ├── ProductCatalog.jsx
-│   └── CategoryManager.jsx
-├── lib/                   # Utility libraries
-│   ├── userApi.js        # User API client
-│   ├── productApi.js     # Product API client
-│   ├── categoryApi.js    # Category API client
-│   └── ketoApi.js        # Keto API client
-├── public/               # Static assets
-├── ARCHITECTURE.md       # Comprehensive architecture documentation
-├── README.md            # This file
-└── package.json
-```
-
----
-
-## Related Documentation
-
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete architecture documentation
-- **[Simple RBAC](../keto-zanziban-simple-rbac/README.md)** - Use Case 1 details
-- **[Tenant-Centric RBAC](../keto-zanzibar-multi-tenancy-rbac/README.md)** - Use Case 2 details
-- **[Resource-Scoped RBAC](../keto-zanziban-multi-tenancy-rbac-per-resource/README.md)** - Use Case 3 details
-- **[Multi-Tenancy Demo API](../multi-tenancy-demo/README.md)** - Backend API documentation
-
----
-
-## Contributing
-
-This is a demonstration project for the Ory Stack. Contributions are welcome:
+This is a demonstration project for the Ory Stack. Contributions are welcome!
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
----
-
-## License
+## 📄 License
 
 Part of the ORY Keto self-hosted demonstration project.
 
+Apache License 2.0 - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **Ory Stack** - Authentication, Authorization, and API Gateway
+- **Next.js** - React framework
+- **shadcn/ui** - Component library
+- **Tailwind CSS** - Utility-first CSS
+
+## 📞 Support
+
+- **Documentation**: [Ory Documentation](https://www.ory.sh/docs)
+- **Community**: [Ory Community Slack](https://slack.ory.sh/)
+- **Issues**: [GitHub Issues](https://github.com/ory/examples/issues)
+
+## 🔗 Related Projects
+
+- [Multi-Tenancy Demo Backend](../multi-tenancy-demo/README.md)
+- [Keto Simple RBAC](../keto-zanziban-simple-rbac/README.md)
+- [Keto Tenant-Centric RBAC](../keto-zanzibar-multi-tenancy-rbac/README.md)
+- [Keto Resource-Scoped RBAC](../keto-zanziban-multi-tenancy-rbac-per-resource/README.md)
+
 ---
 
-**Version**: 1.0
+**Version**: 1.0.0
 **Last Updated**: 2025-01-15
-**Maintained By**: Ory Self-Hosted Team
+**Status**: Production Ready
+**Tech Stack**: Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui + Ory Stack
