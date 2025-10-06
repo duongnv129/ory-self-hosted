@@ -97,16 +97,7 @@
     - handler: cookie_session
     - handler: bearer_token
   authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "simple-rbac",
-          "object": "user:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
-          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
-        }
+    handler: allow
   mutators:
     - handler: header
       config:
@@ -205,16 +196,7 @@
     - handler: cookie_session
     - handler: bearer_token
   authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "tenant-rbac",
-          "object": "user:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
-          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
-        }
+    handler: allow
   mutators:
     - handler: header
       config:
@@ -316,16 +298,7 @@
     - handler: cookie_session
     - handler: bearer_token
   authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "resource-rbac",
-          "object": "user:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
-          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
-        }
+    handler: allow
   mutators:
     - handler: header
       config:
