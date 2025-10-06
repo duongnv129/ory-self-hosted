@@ -105,6 +105,7 @@
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Keto-Namespace: "simple-rbac"
 
 # Simple RBAC - Products API
 - id: "simple-rbac-products-rule"
@@ -139,6 +140,7 @@
         headers:
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Keto-Namespace: "simple-rbac"
 
 # Simple RBAC - Categories API
 - id: "simple-rbac-categories-rule"
@@ -173,6 +175,7 @@
         headers:
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Keto-Namespace: "simple-rbac"
 
 # =============================================================================
 # Use Case 2: Tenant-Centric RBAC (Multi-Tenant Role-Based Access Control)
@@ -205,6 +208,7 @@
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
 
 # Tenant RBAC - Products API
 - id: "tenant-rbac-products-rule"
@@ -240,6 +244,7 @@
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
 
 # Tenant RBAC - Categories API
 - id: "tenant-rbac-categories-rule"
@@ -275,6 +280,7 @@
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
 
 # =============================================================================
 # Use Case 3: Resource-Scoped RBAC (Fine-Grained Permissions)
@@ -307,6 +313,7 @@
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
 
 # Resource RBAC - Products API
 - id: "resource-rbac-products-rule"
@@ -342,6 +349,7 @@
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "resource-rbac"
 
 # Resource RBAC - Categories API
 - id: "resource-rbac-categories-rule"
@@ -377,3 +385,4 @@
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "resource-rbac"

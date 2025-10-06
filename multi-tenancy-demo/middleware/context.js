@@ -8,6 +8,8 @@ const contextMiddleware = (req, res, next) => {
     tenant_ids: req.tenantId ? [req.tenantId] : [],
     email: req.userEmail
   };
+  req.ketoNamespace = req.headers['x-keto-namespace'] || 'simple-rbac'; // Default to simple-rbac if not provided
+  console.log(`Context Middleware: tenantId=${req.tenantId}, userId=${req.userId}, ketoNamespace=${req.ketoNamespace}`);
   next();
 };
 
