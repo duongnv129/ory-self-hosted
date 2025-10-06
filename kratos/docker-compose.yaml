@@ -10,20 +10,6 @@ services:
     networks:
       - ory
 
-  kratos-selfservice-ui-node:
-    image: oryd/kratos-selfservice-ui-node:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - KRATOS_PUBLIC_URL=http://kratos:4433/
-      - KRATOS_BROWSER_URL=http://127.0.0.1:4433/
-      - COOKIE_SECRET=changeme
-      - CSRF_COOKIE_NAME=ory_csrf_ui
-      - CSRF_COOKIE_SECRET=changeme
-    restart: on-failure
-    networks:
-      - ory
-
   kratos:
     depends_on:
       - kratos-migrate

@@ -59,7 +59,9 @@ export class ApiClient {
    * Setup request and response interceptors
    */
   private setupInterceptors() {
-    // Request interceptor: Add tenant header
+    // Request interceptor: Conditionally add x-tenant-id header based on context
+    // - Simple RBAC: tenantId is null (cleared by layout), NO header added -> global operations
+    // - Tenant/Resource RBAC: tenantId is set, header IS added -> tenant-scoped operations
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
         if (this.tenantId) {

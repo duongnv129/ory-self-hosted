@@ -1,6 +1,12 @@
 /**
  * Categories Data Hooks
  * SWR-based hooks for fetching and mutating category data
+ *
+ * Context-Aware Behavior (managed by layout, not by these hooks):
+ * - Simple RBAC: Simple RBAC layout clears tenant context -> API requests WITHOUT x-tenant-id -> global categories
+ * - Tenant/Resource RBAC: Tenant context is set -> API requests WITH x-tenant-id -> tenant-scoped categories
+ *
+ * Note: The returned tenantId field indicates which tenant the data belongs to (null for global scope)
  */
 
 import useSWR from 'swr';
@@ -9,7 +15,10 @@ import { Category } from '@/lib/types/models';
 import { CreateCategoryRequest, UpdateCategoryRequest } from '@/lib/types/api';
 
 /**
- * Hook to fetch all categories for the current tenant
+ * Hook to fetch all categories
+ * Behavior is determined by tenant context (set/cleared by layout):
+ * - No tenant context: Returns all categories globally (Simple RBAC)
+ * - With tenant context: Returns tenant-scoped categories (Tenant/Resource RBAC)
  */
 export function useCategories() {
   const { data, error, isLoading, mutate } = useSWR(

@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import { useCategories, useCategoryMutations } from '@/lib/hooks/useCategories';
 import { useProducts } from '@/lib/hooks/useProducts';
-import { useTenant } from '@/lib/hooks/useTenant';
 import {
   Card,
   CardContent,
@@ -42,7 +41,6 @@ import { toast } from 'sonner';
 type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export default function CategoriesPage() {
-  const { currentTenant } = useTenant();
   const { categories, isLoading: categoriesLoading, isError, error, mutate } = useCategories();
   const { products, isLoading: productsLoading } = useProducts();
   const { createCategory, updateCategory, deleteCategory } = useCategoryMutations();
@@ -169,16 +167,7 @@ export default function CategoriesPage() {
     }
   };
 
-  if (!currentTenant) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Please select a tenant from the dropdown above to manage categories.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Simple RBAC: Global authorization model - no tenant isolation required
 
   if (isError) {
     return (

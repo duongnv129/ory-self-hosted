@@ -6,7 +6,6 @@
 'use client';
 
 import { useUsers } from '@/lib/hooks/useUsers';
-import { useTenant } from '@/lib/hooks/useTenant';
 import {
   Card,
   CardContent,
@@ -75,7 +74,6 @@ const ROLES = [
 ];
 
 export default function RolesPage() {
-  const { currentTenant } = useTenant();
   const { users, isLoading } = useUsers();
 
   // Group users by role
@@ -83,16 +81,7 @@ export default function RolesPage() {
     return users.filter(user => user.tenant_ids.includes(roleId));
   };
 
-  if (!currentTenant) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Please select a tenant from the dropdown above to view roles.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Simple RBAC: Global authorization model - no tenant isolation required
 
   if (isLoading) {
     return <CardSkeleton count={4} />;

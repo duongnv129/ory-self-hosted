@@ -61,6 +61,20 @@
 # API Routes (Multi-Tenancy Demo)
 # =============================================================================
 
+- id: "health-check-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+  match:
+    url: "<http|https>://<.*>/health"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
 # Users API Rule
 - id: "app-users-rule"
   upstream:
@@ -154,17 +168,3 @@
         headers:
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
-
-- id: "health-check-rule"
-  upstream:
-    url: "http://multi-tenancy-demo:9000"
-  match:
-    url: "<http|https>://<.*>/health"
-    methods:
-      - GET
-  authenticators:
-    - handler: anonymous
-  authorizer:
-    handler: allow
-  mutators:
-    - handler: noop

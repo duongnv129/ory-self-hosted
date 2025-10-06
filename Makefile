@@ -104,9 +104,6 @@ logs-keto: ## Show logs for Keto service only
 logs-oathkeeper: ## Show logs for Oathkeeper service only
 	@cd $(OATHKEEPER_PATH) && docker-compose logs -f oathkeeper
 
-logs-ui: ## Show logs for UI service only
-	@cd $(KRATOS_PATH) && docker-compose logs -f kratos-selfservice-ui-node
-
 logs-postgres: ## Show PostgreSQL logs
 	@cd $(POSTGRES_PATH) && docker-compose logs -f postgres
 

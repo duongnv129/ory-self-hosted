@@ -1,6 +1,6 @@
 /**
  * Header Component
- * Site header with navigation and tenant selector
+ * Site header with navigation and user authentication controls
  */
 
 'use client';
@@ -9,7 +9,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, LogOut, User } from 'lucide-react';
 import { Navigation } from './Navigation';
-import { TenantSelector } from '@/components/features/TenantSelector';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks';
@@ -34,11 +33,8 @@ export function Header() {
           <Navigation />
         </div>
 
-        {/* Tenant Selector, User Info & Mobile Menu Button */}
+        {/* User Info & Mobile Menu Button */}
         <div className="flex items-center gap-4">
-          <div className="hidden md:block">
-            <TenantSelector />
-          </div>
           {isAuthenticated && identity && (
             <div className="hidden md:flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm">
@@ -81,9 +77,6 @@ export function Header() {
       >
         <div className="border-t px-4 py-4">
           <Navigation onNavigate={() => setMobileMenuOpen(false)} />
-          <div className="mt-4 border-t pt-4">
-            <TenantSelector />
-          </div>
           {isAuthenticated && identity && (
             <div className="mt-4 border-t pt-4 space-y-2">
               <div className="flex items-center gap-2 text-sm px-3 py-2">

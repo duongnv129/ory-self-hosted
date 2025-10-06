@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import { useProducts, useProductMutations } from '@/lib/hooks/useProducts';
 import { useCategories } from '@/lib/hooks/useCategories';
-import { useTenant } from '@/lib/hooks/useTenant';
 import {
   Card,
   CardContent,
@@ -47,7 +46,6 @@ import { toast } from 'sonner';
 type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export default function ProductsPage() {
-  const { currentTenant } = useTenant();
   const { products, isLoading: productsLoading, isError, error, mutate } = useProducts();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { createProduct, updateProduct, deleteProduct } = useProductMutations();
@@ -186,16 +184,7 @@ export default function ProductsPage() {
     }).format(price);
   };
 
-  if (!currentTenant) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Please select a tenant from the dropdown above to manage products.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Simple RBAC: Global authorization model - no tenant isolation required
 
   if (isError) {
     return (

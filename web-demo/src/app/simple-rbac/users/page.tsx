@@ -7,7 +7,6 @@
 
 import { useState } from 'react';
 import { useUsers, useUserMutations } from '@/lib/hooks/useUsers';
-import { useTenant } from '@/lib/hooks/useTenant';
 import {
   Card,
   CardContent,
@@ -52,7 +51,6 @@ const ROLES = [
 ];
 
 export default function UsersPage() {
-  const { currentTenant } = useTenant();
   const { users, isLoading, isError, error, mutate } = useUsers();
   const { createUser, updateUser, deleteUser } = useUserMutations();
 
@@ -183,16 +181,7 @@ export default function UsersPage() {
     );
   };
 
-  if (!currentTenant) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Please select a tenant from the dropdown above to manage users.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Simple RBAC: Global authorization model - no tenant isolation required
 
   if (isError) {
     return (

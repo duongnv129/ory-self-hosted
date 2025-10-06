@@ -66,7 +66,7 @@ router.post('/create', (req, res) => {
     id: Math.max(...mockCategories.map(c => c.id), 0) + 1,
     name: name,
     description: description || 'No description provided',
-    tenantId: req.tenantId || 'default-tenant',
+    tenantId: req.tenantId || null, // null for Simple RBAC (global), specific ID for Tenant RBAC
     createdAt: new Date().toISOString()
   };
 

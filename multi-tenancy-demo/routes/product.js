@@ -67,7 +67,7 @@ router.post('/create', (req, res) => {
     name: name,
     category: category || 'General',
     price: price || 0,
-    tenantId: req.tenantId || 'default-tenant',
+    tenantId: req.tenantId || null, // null for Simple RBAC (global), specific ID for Tenant RBAC
     createdAt: new Date().toISOString()
   };
 

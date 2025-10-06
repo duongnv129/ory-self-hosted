@@ -1,6 +1,9 @@
 /**
  * Simple RBAC Layout
  * Nested layout with sidebar navigation for Simple RBAC section
+ *
+ * Note: Simple RBAC is a global authorization model that doesn't require tenant context.
+ * This layout ensures tenant context is cleared when entering this section.
  */
 
 'use client';
@@ -20,6 +23,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/hooks';
+import { useTenant } from '@/lib/hooks/useTenant';
 import { FullPageLoading } from '@/components/ui/loading';
 
 const sidebarItems = [
@@ -39,6 +43,13 @@ export default function SimpleRBACLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
+  const { clearTenant } = useTenant();
+
+  // Clear tenant context for Simple RBAC (global authorization model)
+  // This ensures API requests do NOT include x-tenant-id header, enabling global operations
+  useEffect(() => {
+    clearTenant();
+  }, [clearTenant]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

@@ -1,6 +1,10 @@
 /**
  * Categories API Client
  * Handles all category-related API operations through Oathkeeper
+ *
+ * Context-Aware Behavior:
+ * - Simple RBAC: Layout automatically clears tenant context, requests are sent WITHOUT x-tenant-id header (global scope)
+ * - Tenant/Resource RBAC: Tenant context is set, requests include x-tenant-id header (tenant-scoped)
  */
 
 import { ApiClient } from './client';

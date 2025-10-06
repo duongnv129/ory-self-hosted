@@ -1,16 +1,37 @@
+/**
+ * Tenant-Centric RBAC Page
+ * Multi-tenant role-based access control with tenant isolation
+ */
+
+'use client';
+
+import { TenantSelector } from '@/components/features/TenantSelector';
+
 export default function TenantRBACPage() {
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="container mx-auto">
-        <h1 className="mb-6 text-4xl font-bold text-gray-900">Use Case 2: Tenant-Centric RBAC</h1>
-        <div className="rounded-lg bg-white p-8 shadow">
-          <p className="text-gray-600">
-            This page will demonstrate multi-tenant role-based access control with tenant isolation.
-          </p>
-          <p className="mt-4 text-sm text-gray-500">
-            Implementation in progress...
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Use Case 2: Tenant-Centric RBAC</h1>
+        <p className="mt-2 text-muted-foreground">
+          Multi-tenant role-based access control with tenant isolation
+        </p>
+      </div>
+
+      {/* Tenant Selector Section */}
+      <div className="rounded-lg border bg-card p-4">
+        <label className="mb-2 block text-sm font-medium">Select Tenant</label>
+        <TenantSelector />
+      </div>
+
+      {/* Content Section */}
+      <div className="rounded-lg border bg-card p-8">
+        <p className="text-muted-foreground">
+          This page will demonstrate multi-tenant role-based access control with tenant isolation.
+        </p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Implementation in progress...
+        </p>
       </div>
     </div>
   );

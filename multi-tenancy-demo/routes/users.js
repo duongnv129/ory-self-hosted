@@ -44,7 +44,7 @@ router.post('/create', async (req, res) => {
         first: name.split(' ')[0] || name,
         last: name.split(' ').slice(1).join(' ') || ''
       },
-      tenant_ids: [req.tenantId],
+      tenant_ids: req.tenantId ? [req.tenantId] : [], // Empty array for Simple RBAC (global)
       created_at: new Date().toISOString()
     };
 
@@ -65,13 +65,16 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// Get all users for a specific tenant (mock implementation)
+// Get all users (globally or for a specific tenant)
 router.get('/list', async (req, res) => {
   try {
-    // Filter mock users by tenant ID
-    const tenantUsers = mockUsers.filter(user =>
-      user.tenant_ids && user.tenant_ids.includes(req.tenantId)
-    );
+    // Filter by tenant if specified (Tenant/Resource RBAC)
+    // Otherwise return all users (Simple RBAC - global operations)
+    const tenantUsers = req.tenantId ?
+      mockUsers.filter(user =>
+        user.tenant_ids && user.tenant_ids.includes(req.tenantId)
+      ) :
+      mockUsers;
 
     res.json({
       message: 'Users retrieved successfully (mock)',

@@ -1,6 +1,12 @@
 /**
  * Users Data Hooks
  * SWR-based hooks for fetching and mutating user data
+ *
+ * Context-Aware Behavior (managed by layout, not by these hooks):
+ * - Simple RBAC: Simple RBAC layout clears tenant context -> API requests WITHOUT x-tenant-id -> global users
+ * - Tenant/Resource RBAC: Tenant context is set -> API requests WITH x-tenant-id -> tenant-scoped users
+ *
+ * Note: The returned tenantId field indicates which tenant the data belongs to (null for global scope)
  */
 
 import useSWR from 'swr';
@@ -9,7 +15,10 @@ import { User } from '@/lib/types/models';
 import { CreateUserRequest, UpdateUserRequest } from '@/lib/types/api';
 
 /**
- * Hook to fetch all users for the current tenant
+ * Hook to fetch all users
+ * Behavior is determined by tenant context (set/cleared by layout):
+ * - No tenant context: Returns all users globally (Simple RBAC)
+ * - With tenant context: Returns tenant-scoped users (Tenant/Resource RBAC)
  */
 export function useUsers() {
   const { data, error, isLoading, mutate } = useSWR(

@@ -1,6 +1,11 @@
 /**
  * Simple RBAC Overview Page
  * Dashboard showing role hierarchy, stats, and quick navigation
+ *
+ * Note: Simple RBAC is a global authorization model that operates across
+ * the entire application without tenant isolation. Users, products, and
+ * categories are managed globally with role-based permissions (admin,
+ * moderator, customer) rather than tenant-specific access control.
  */
 
 'use client';
@@ -10,13 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useProducts } from '@/lib/hooks/useProducts';
 import { useCategories } from '@/lib/hooks/useCategories';
-import { useTenant } from '@/lib/hooks/useTenant';
-import { Shield, ShieldCheck, User, Package, FolderOpen, ArrowRight, AlertCircle } from 'lucide-react';
+import { Shield, ShieldCheck, User, Package, FolderOpen, ArrowRight } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/loading';
-import { Alert, AlertDescription } from '@/components/ui';
 
 export default function SimpleRBACOverviewPage() {
-  const { currentTenant } = useTenant();
   const { users, isLoading: usersLoading } = useUsers();
   const { products, isLoading: productsLoading } = useProducts();
   const { categories, isLoading: categoriesLoading } = useCategories();
@@ -27,19 +29,6 @@ export default function SimpleRBACOverviewPage() {
   const customerCount = users.filter(u => u.tenant_ids.includes('customer')).length;
 
   const isLoading = usersLoading || productsLoading || categoriesLoading;
-
-  if (!currentTenant) {
-    return (
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Please select a tenant from the dropdown above to view Simple RBAC data.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return <CardSkeleton count={6} />;
