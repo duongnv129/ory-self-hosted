@@ -25,6 +25,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/hooks';
 import { useTenant } from '@/lib/hooks/useTenant';
 import { FullPageLoading } from '@/components/ui/loading';
+import { apiClient } from '@/lib/api/client';
 
 const sidebarItems = [
   { href: '/simple-rbac', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -49,6 +50,8 @@ export default function SimpleRBACLayout({
   // This ensures API requests do NOT include x-tenant-id header, enabling global operations
   useEffect(() => {
     clearTenant();
+    // Set use case context to prefix API calls with /api/simple-rbac
+    apiClient.setUseCaseContext('simple-rbac');
   }, [clearTenant]);
 
   useEffect(() => {

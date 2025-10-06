@@ -20,6 +20,7 @@ export class ApiError extends Error {
 export class ApiClient {
   private client: AxiosInstance;
   private tenantId?: string;
+  private useCasePrefix?: string;
 
   constructor(baseURL: string = env.oathkeeperUrl) {
     this.client = axios.create({
@@ -53,6 +54,52 @@ export class ApiClient {
    */
   clearTenantContext() {
     this.tenantId = undefined;
+  }
+
+  /**
+   * Set use case context for API routing
+   * Automatically detects use case from current pathname
+   */
+  setUseCaseContext(useCase?: 'simple-rbac' | 'tenant-rbac' | 'resource-rbac') {
+    if (useCase) {
+      this.useCasePrefix = `/api/${useCase}`;
+    } else if (typeof window !== 'undefined') {
+      // Auto-detect from pathname
+      const pathname = window.location.pathname;
+      if (pathname.includes('/simple-rbac')) {
+        this.useCasePrefix = '/api/simple-rbac';
+      } else if (pathname.includes('/tenant-rbac')) {
+        this.useCasePrefix = '/api/tenant-rbac';
+      } else if (pathname.includes('/resource-rbac')) {
+        this.useCasePrefix = '/api/resource-rbac';
+      } else {
+        this.useCasePrefix = undefined;
+      }
+    }
+  }
+
+  /**
+   * Get current use case prefix
+   */
+  getUseCasePrefix(): string | undefined {
+    return this.useCasePrefix;
+  }
+
+  /**
+   * Clear use case context
+   */
+  clearUseCaseContext() {
+    this.useCasePrefix = undefined;
+  }
+
+  /**
+   * Build full URL with use case prefix
+   */
+  private buildUrl(url: string): string {
+    if (this.useCasePrefix) {
+      return `${this.useCasePrefix}${url}`;
+    }
+    return url;
   }
 
   /**
@@ -155,7 +202,8 @@ export class ApiClient {
    * HTTP GET request
    */
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-    const response = await this.client.get<T>(url, { params });
+    const fullUrl = this.buildUrl(url);
+    const response = await this.client.get<T>(fullUrl, { params });
     return response.data;
   }
 
@@ -163,7 +211,8 @@ export class ApiClient {
    * HTTP POST request
    */
   async post<T>(url: string, data?: unknown): Promise<T> {
-    const response = await this.client.post<T>(url, data);
+    const fullUrl = this.buildUrl(url);
+    const response = await this.client.post<T>(fullUrl, data);
     return response.data;
   }
 
@@ -171,7 +220,8 @@ export class ApiClient {
    * HTTP PUT request
    */
   async put<T>(url: string, data?: unknown): Promise<T> {
-    const response = await this.client.put<T>(url, data);
+    const fullUrl = this.buildUrl(url);
+    const response = await this.client.put<T>(fullUrl, data);
     return response.data;
   }
 
@@ -179,7 +229,8 @@ export class ApiClient {
    * HTTP DELETE request
    */
   async delete<T>(url: string): Promise<T> {
-    const response = await this.client.delete<T>(url);
+    const fullUrl = this.buildUrl(url);
+    const response = await this.client.delete<T>(fullUrl);
     return response.data;
   }
 }

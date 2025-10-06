@@ -5,9 +5,16 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { TenantSelector } from '@/components/features/TenantSelector';
+import { apiClient } from '@/lib/api/client';
 
 export default function ResourceRBACPage() {
+  // Set use case context to prefix API calls with /api/resource-rbac
+  useEffect(() => {
+    apiClient.setUseCaseContext('resource-rbac');
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
