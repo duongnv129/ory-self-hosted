@@ -130,7 +130,7 @@
         {
           "namespace": "simple-rbac",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -164,7 +164,7 @@
         {
           "namespace": "simple-rbac",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -230,7 +230,7 @@
         {
           "namespace": "tenant-rbac",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -265,7 +265,7 @@
         {
           "namespace": "tenant-rbac",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -332,7 +332,7 @@
         {
           "namespace": "resource-rbac",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -367,7 +367,7 @@
         {
           "namespace": "resource-rbac",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:

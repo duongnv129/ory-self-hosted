@@ -204,6 +204,39 @@ create-admin: ## Create Kratos admin user (username: admin, email: admin@example
 	@echo "  Password: admin"
 	@echo "  Tenants:  tenant-a, tenant-b, tenant-c"
 
+create-test-users: ## Create test Kratos accounts (alice, bob, charlie)
+	@echo "Creating test users in Kratos..."
+	@echo ""
+	@echo "1️⃣  Creating Alice..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"alice@example.com","name":{"first":"Alice","last":"Admin"}},"credentials":{"password":{"config":{"password":"alice123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "2️⃣  Creating Bob..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"bob@example.com","name":{"first":"Bob","last":"Moderator"}},"credentials":{"password":{"config":{"password":"bob123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "3️⃣  Creating Charlie..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"charlie@example.com","name":{"first":"Charlie","last":"Customer"}},"credentials":{"password":{"config":{"password":"charlie123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════"
+	@echo "✅ Test users created successfully!"
+	@echo ""
+	@echo "Login Credentials:"
+	@echo "  Alice:   alice@example.com   / alice123"
+	@echo "  Bob:     bob@example.com     / bob123"
+	@echo "  Charlie: charlie@example.com / charlie123"
+	@echo ""
+	@echo "💡 Next: Run Keto setup script to grant permissions"
+	@echo "   cd keto-zanziban-simple-rbac && ./auto-test-postman-collection.sh"
+	@echo "═══════════════════════════════════════════════════════"
+
 reset: clean network up ## Full reset: clean everything and start fresh
 
 # Development URLs
