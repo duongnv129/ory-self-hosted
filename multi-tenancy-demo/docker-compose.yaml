@@ -2,12 +2,14 @@ version: "3.8"
 
 services:
   multi-tenancy-demo:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: multi-tenancy-demo
     ports:
       - "9000:9000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=9000
       - KRATOS_PUBLIC_URL=http://kratos:4433
       - KRATOS_ADMIN_URL=http://kratos:4434

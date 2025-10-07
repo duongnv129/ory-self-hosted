@@ -1,11 +1,16 @@
 {
   "name": "multi-tenancy-demo",
   "version": "2.0.0",
-  "description": "Simple multi-tenancy demo with 3 core APIs: users, products, categories",
-  "main": "app.js",
+  "description": "Simple multi-tenancy demo with TypeScript support: users, products, categories, roles",
+  "main": "dist/app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "dev": "ts-node src/app.ts",
+    "dev:watch": "nodemon --exec ts-node src/app.ts",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "type-check": "tsc --noEmit",
     "test": "node simple-test.js"
   },
   "dependencies": {
@@ -13,13 +18,23 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   },
   "keywords": [
     "multi-tenancy",
     "api",
     "express",
     "rest",
-    "demo"
-  ]
+    "demo",
+    "typescript",
+    "ory-kratos",
+    "ory-keto"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
