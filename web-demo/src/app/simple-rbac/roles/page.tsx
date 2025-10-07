@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useUsers } from '@/lib/hooks/useUsers';
-import { useRoles, useRoleMutations } from '@/lib/hooks/useRoles';
+import { useRoles, useRoleMutations, useRole } from '@/lib/hooks/useRoles';
 import {
   Card,
   CardContent,
@@ -119,6 +119,70 @@ const getRoleDisplayInfo = (roleName: string): RoleDisplayInfo => {
   };
 };
 
+/**
+ * Component to fetch and display permissions for a specific role
+ */
+function RolePermissionsCard({ role, icon: Icon }: { role: Role; icon: typeof ShieldCheck }) {
+  const { permissions, isLoading, isError, error } = useRole(role.name);
+
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[RolePermissionsCard] ${role.name}:`, { permissions, isLoading, isError });
+  }
+
+  // Group permissions by resource
+  const groupedPermissions = permissions.reduce((acc, perm) => {
+    if (!acc[perm.resource]) {
+      acc[perm.resource] = [];
+    }
+    acc[perm.resource].push(perm.action);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Icon className="h-5 w-5" />
+        <h4 className="font-semibold">{role.name}</h4>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <div className="h-6 animate-pulse rounded bg-muted" />
+          <div className="h-6 animate-pulse rounded bg-muted" />
+        </div>
+      ) : isError ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            Failed to load permissions: {error instanceof Error ? error.message : 'Unknown error'}
+          </AlertDescription>
+        </Alert>
+      ) : permissions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No permissions found in Keto</p>
+      ) : (
+        <div className="space-y-3">
+          {Object.entries(groupedPermissions).map(([resource, actions]) => (
+            <div key={resource} className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">{resource}</p>
+              <div className="flex flex-wrap gap-1">
+                {actions.map((action) => (
+                  <Badge key={action} variant="secondary" className="text-xs">
+                    {action}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="pt-2 text-xs text-muted-foreground">
+            {permissions.length} permission{permissions.length !== 1 ? 's' : ''} total
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RolesPage() {
   const { users, isLoading: usersLoading } = useUsers();
   const { roles, isLoading: rolesLoading, error: rolesError, mutate } = useRoles();
@@ -129,6 +193,7 @@ export default function RolesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    inheritsFrom: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -149,7 +214,7 @@ export default function RolesPage() {
   });
 
   const openCreateDialog = () => {
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', inheritsFrom: [] });
     setSelectedRole(null);
     setDialogMode('create');
   };
@@ -158,6 +223,7 @@ export default function RolesPage() {
     setFormData({
       name: role.name,
       description: role.description,
+      inheritsFrom: role.inheritsFrom || [],
     });
     setSelectedRole(role);
     setDialogMode('edit');
@@ -171,7 +237,7 @@ export default function RolesPage() {
   const closeDialog = () => {
     setDialogMode(null);
     setSelectedRole(null);
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', inheritsFrom: [] });
   };
 
   const handleCreate = async () => {
@@ -190,6 +256,7 @@ export default function RolesPage() {
       await createRole({
         name: formData.name.trim(),
         description: formData.description.trim(),
+        inheritsFrom: formData.inheritsFrom,
       });
 
       await mutate();
@@ -221,6 +288,7 @@ export default function RolesPage() {
     try {
       await updateRole(selectedRole.name, {
         description: formData.description.trim(),
+        inheritsFrom: formData.inheritsFrom,
       });
 
       await mutate();
@@ -425,9 +493,9 @@ export default function RolesPage() {
                       </div>
 
                       {/* Inheritance Info */}
-                      {role.displayInfo.inheritsFrom.length > 0 && (
+                      {role.inheritsFrom && role.inheritsFrom.length > 0 && (
                         <p className="mt-3 text-xs text-muted-foreground">
-                          Inherits permissions from: {role.displayInfo.inheritsFrom.join(', ')}
+                          Inherits permissions from: {role.inheritsFrom.join(', ')}
                         </p>
                       )}
 
@@ -540,6 +608,31 @@ export default function RolesPage() {
         </CardContent>
       </Card>
 
+      {/* Keto Permissions (Live from API) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Keto Permissions (Live Data)</CardTitle>
+          <CardDescription>
+            Actual permissions stored in Keto authorization service
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            {enrichedRoles.map((role) => {
+              const Icon = role.displayInfo.icon;
+
+              return (
+                <RolePermissionsCard
+                  key={role.id}
+                  role={role}
+                  icon={Icon}
+                />
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* User Assignments by Role */}
       <div className="grid gap-6 md:grid-cols-3">
         {enrichedRoles.map((role) => {
@@ -622,6 +715,50 @@ export default function RolesPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Inherits From (Parent Roles)</Label>
+              <div className="rounded-lg border p-4 space-y-2">
+                {roles.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No roles available</p>
+                ) : (
+                  roles
+                    .filter((role) => role.name !== formData.name) // Don't show current role
+                    .map((role) => (
+                      <div key={role.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`inherit-${role.name}`}
+                          checked={formData.inheritsFrom.includes(role.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                inheritsFrom: [...formData.inheritsFrom, role.name],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                inheritsFrom: formData.inheritsFrom.filter((r) => r !== role.name),
+                              });
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <label
+                          htmlFor={`inherit-${role.name}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {role.name} - {role.description}
+                        </label>
+                      </div>
+                    ))
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select parent roles that this role should inherit permissions from
+              </p>
             </div>
           </div>
 

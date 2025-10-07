@@ -68,11 +68,20 @@ export interface ProductResponse extends SuccessResponse<Product> {}
 export interface CategoryResponse extends SuccessResponse<Category> {}
 
 /**
+ * Permission model representing a resource-action pair from Keto
+ */
+export interface Permission {
+  resource: string;
+  action: string;
+}
+
+/**
  * Role responses
  */
 export interface RoleResponse {
   message: string;
   role: Role;
+  permissions?: Permission[];
   namespace: string;
   context?: ResponseContext;
 }

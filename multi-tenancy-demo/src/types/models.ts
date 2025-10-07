@@ -70,7 +70,7 @@ export interface Category {
 }
 
 /**
- * Role model
+ * Role model with hierarchy support
  */
 export interface Role {
   id: number;
@@ -78,6 +78,7 @@ export interface Role {
   description: string;
   namespace: string;
   tenantId?: string;
+  inheritsFrom?: string[]; // Array of role names that this role inherits from
   createdAt: string;
   updatedAt?: string;
 }
@@ -140,6 +141,7 @@ export interface UpdateCategoryRequest {
 export interface CreateRoleRequest {
   name: string;
   description?: string;
+  inheritsFrom?: string[]; // Array of parent role names
 }
 
 /**
@@ -148,4 +150,5 @@ export interface CreateRoleRequest {
 export interface UpdateRoleRequest {
   name?: string;
   description?: string;
+  inheritsFrom?: string[]; // Array of parent role names
 }

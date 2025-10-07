@@ -31,7 +31,7 @@ export function useRoles() {
   );
 
   return {
-    roles: data?.data || [],
+    roles: data?.roles || [],
     count: data?.count || 0,
     tenantId: data?.tenantId,
     isLoading,
@@ -54,7 +54,8 @@ export function useRole(roleName: string | null) {
   );
 
   return {
-    role: data?.data,
+    role: data?.role,
+    permissions: data?.permissions || [],
     isLoading,
     isError: !!error,
     error,

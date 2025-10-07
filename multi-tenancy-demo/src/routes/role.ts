@@ -1,14 +1,17 @@
 /**
- * Role routes - In-memory role management
+ * Role routes - In-memory role management with Keto permissions
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { StorageService } from '../services/storage.service';
+import { KetoService } from '../services/keto.service';
 import { CreateRoleRequest, UpdateRoleRequest } from '../types/models';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../types/errors';
+import { Permission } from '../types/responses';
 
 const router: Router = Router();
 const storage = new StorageService();
+const ketoService = new KetoService();
 
 /**
  * Helper function to check tenant access for role
@@ -45,9 +48,9 @@ router.get('/list', (req: Request, res: Response, next: NextFunction) => {
 });
 
 /**
- * Get specific role by name from memory
+ * Get specific role by name from memory with permissions from Keto
  */
-router.get('/get/:roleName', (req: Request, res: Response, next: NextFunction) => {
+router.get('/get/:roleName', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const roleName = req.params.roleName!;
     const namespace = req.ketoNamespace!;
@@ -60,9 +63,23 @@ router.get('/get/:roleName', (req: Request, res: Response, next: NextFunction) =
 
     checkRoleTenantAccess(role.tenantId, req.tenantId);
 
+    // Fetch permissions from Keto
+    let permissions: Permission[] = [];
+    try {
+      permissions = await ketoService.getPermissionsForRole(namespace, roleName);
+    } catch (error) {
+      // Log warning but don't fail the request if Keto is unavailable
+      console.warn(
+        `⚠️  Failed to fetch permissions from Keto for role ${roleName}:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      console.warn('   → Returning role without permissions');
+    }
+
     res.json({
       message: `Role ${roleName} retrieved successfully (mock)`,
       role,
+      permissions,
       namespace,
       context: {
         userId: req.userId,
@@ -80,7 +97,7 @@ router.get('/get/:roleName', (req: Request, res: Response, next: NextFunction) =
  */
 router.post('/create', (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description } = req.body as CreateRoleRequest;
+    const { name, description, inheritsFrom } = req.body as CreateRoleRequest;
 
     if (!name) {
       throw new ValidationError('Role name is required');
@@ -94,7 +111,7 @@ router.post('/create', (req: Request, res: Response, next: NextFunction) => {
       throw new ConflictError('Role already exists', `Role ${name} in namespace ${namespace}`);
     }
 
-    const role = storage.createRole(namespace, name, description || '', req.tenantId);
+    const role = storage.createRole(namespace, name, description || '', req.tenantId, inheritsFrom);
 
     res.status(201).json({
       message: 'Role created successfully (mock)',
@@ -117,7 +134,7 @@ router.post('/create', (req: Request, res: Response, next: NextFunction) => {
 router.put('/update/:roleName', (req: Request, res: Response, next: NextFunction) => {
   try {
     const roleName = req.params.roleName!;
-    const { name, description } = req.body as UpdateRoleRequest;
+    const { name, description, inheritsFrom } = req.body as UpdateRoleRequest;
     const namespace = req.ketoNamespace!;
 
     const existingRole = storage.getRoleByName(namespace, roleName);
@@ -128,7 +145,7 @@ router.put('/update/:roleName', (req: Request, res: Response, next: NextFunction
 
     checkRoleTenantAccess(existingRole.tenantId, req.tenantId);
 
-    const role = storage.updateRole(namespace!, roleName!, { name, description });
+    const role = storage.updateRole(namespace!, roleName!, { name, description, inheritsFrom });
 
     if (!role) {
       throw new NotFoundError('Role', roleName);

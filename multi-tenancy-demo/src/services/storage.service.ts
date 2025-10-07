@@ -27,6 +27,7 @@ export class StorageService {
         name: 'admin',
         description: 'Administrator with full access',
         namespace: 'simple-rbac',
+        inheritsFrom: ['moderator'], // Admin inherits from moderator
         createdAt: '2025-01-01T00:00:00Z',
       },
       {
@@ -34,6 +35,7 @@ export class StorageService {
         name: 'moderator',
         description: 'Moderator with limited access',
         namespace: 'simple-rbac',
+        inheritsFrom: ['customer'], // Moderator inherits from customer
         createdAt: '2025-01-01T00:00:00Z',
       },
       {
@@ -41,6 +43,7 @@ export class StorageService {
         name: 'customer',
         description: 'Customer with view-only access',
         namespace: 'simple-rbac',
+        inheritsFrom: [], // Customer has no inheritance
         createdAt: '2025-01-01T00:00:00Z',
       },
     ],
@@ -258,7 +261,8 @@ export class StorageService {
     namespace: string,
     name: string,
     description: string,
-    tenantId?: string
+    tenantId?: string,
+    inheritsFrom?: string[]
   ): Role {
     if (!this.rolesByNamespace[namespace]) {
       this.rolesByNamespace[namespace] = [];
@@ -270,6 +274,7 @@ export class StorageService {
       description,
       namespace,
       tenantId,
+      inheritsFrom: inheritsFrom || [],
       createdAt: new Date().toISOString(),
     };
 
@@ -283,7 +288,7 @@ export class StorageService {
   updateRole(
     namespace: string,
     roleName: string,
-    updates: { name?: string; description?: string }
+    updates: { name?: string; description?: string; inheritsFrom?: string[] }
   ): Role | undefined {
     const roles = this.rolesByNamespace[namespace];
     if (!roles) {
@@ -305,6 +310,8 @@ export class StorageService {
       name: updates.name !== undefined ? updates.name : existing.name,
       description:
         updates.description !== undefined ? updates.description : existing.description,
+      inheritsFrom:
+        updates.inheritsFrom !== undefined ? updates.inheritsFrom : existing.inheritsFrom,
       updatedAt: new Date().toISOString(),
     };
 
