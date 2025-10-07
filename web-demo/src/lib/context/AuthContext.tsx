@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sessionData = await kratosClient.getSession();
       setSession(sessionData);
     } catch (error) {
+      console.error('Failed to refresh session:', error);
       setSession(null);
     }
   };

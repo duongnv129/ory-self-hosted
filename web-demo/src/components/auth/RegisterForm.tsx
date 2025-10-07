@@ -109,6 +109,7 @@ export function RegisterForm({ onError }: RegisterFormProps) {
         const registrationFlow = await kratosClient.createRegistrationFlow();
         setFlow(registrationFlow);
       } catch (flowError) {
+        console.error('Failed to reinitialize registration flow:', flowError);
         onError?.('Failed to reinitialize registration. Please refresh the page.');
       }
     } finally {

@@ -95,6 +95,7 @@ export function LoginForm({ returnTo, onError }: LoginFormProps) {
         const loginFlow = await kratosClient.createLoginFlow(returnTo);
         setFlow(loginFlow);
       } catch (flowError) {
+        console.error('Failed to reinitialize login flow:', flowError);
         onError?.('Failed to reinitialize login. Please refresh the page.');
       }
     } finally {
