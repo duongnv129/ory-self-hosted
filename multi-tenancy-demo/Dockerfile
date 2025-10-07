@@ -1,25 +1,20 @@
-FROM node:24-alpine
+# Build stage
+FROM node:24-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
-
-# Copy package files first for better caching
+# Copy package files
 COPY package.json pnpm-lock.yaml* package-lock.json* ./
 
-# Install pnpm if lock file exists, otherwise use npm
+# Install dependencies (including devDependencies for build)
 RUN if [ -f pnpm-lock.yaml ]; then \
   npm install -g pnpm && pnpm install --no-frozen-lockfile; \
   else \
   npm ci; \
   fi
 
-# Copy TypeScript configuration
+# Copy TypeScript configuration and source code
 COPY tsconfig.json ./
-
-# Copy source code
 COPY src/ ./src/
 
 # Build the TypeScript application
@@ -29,13 +24,23 @@ RUN if [ -f pnpm-lock.yaml ]; then \
   npm run build; \
   fi
 
-# Remove dev dependencies and source files to reduce image size
+# Production stage
+FROM node:24-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* package-lock.json* ./
+
+# Install only production dependencies
 RUN if [ -f pnpm-lock.yaml ]; then \
-  pnpm prune --prod; \
+  npm install -g pnpm && pnpm install --prod --no-frozen-lockfile; \
   else \
-  npm prune --production; \
-  fi && \
-  rm -rf src/ tsconfig.json
+  npm ci --only=production; \
+  fi
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

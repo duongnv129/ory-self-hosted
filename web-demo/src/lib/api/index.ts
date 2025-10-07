@@ -21,3 +21,4 @@ export { UsersApi } from './users';
 export { ProductsApi } from './products';
 export { CategoriesApi } from './categories';
 export { RolesApi } from './roles';
+export { metadataApi } from './metadata';

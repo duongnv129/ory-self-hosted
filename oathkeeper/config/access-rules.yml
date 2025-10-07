@@ -80,6 +80,22 @@
 # Path: /api/simple-rbac/* -> strips prefix to /*
 # =============================================================================
 
+# Simple RBAC - Metadata API
+- id: "simple-rbac-metadata-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/simple-rbac"
+  match:
+    url: "<http|https>://<.*>/api/simple-rbac/metadata/list"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
 # Simple RBAC - Users API
 - id: "simple-rbac-users-rule"
   upstream:
@@ -208,6 +224,22 @@
 # Use Case 2: Tenant-Centric RBAC (Multi-Tenant Role-Based Access Control)
 # Path: /api/tenant-rbac/* -> strips prefix to /*
 # =============================================================================
+
+# Tenant RBAC - Metadata API
+- id: "tenant-rbac-metadata-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
+  match:
+    url: "<http|https>://<.*>/api/tenant-rbac/metadata/list"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
 
 # Tenant RBAC - Users API
 - id: "tenant-rbac-users-rule"
@@ -341,6 +373,22 @@
 # Use Case 3: Resource-Scoped RBAC (Fine-Grained Permissions)
 # Path: /api/resource-rbac/* -> strips prefix to /*
 # =============================================================================
+
+# Resource RBAC - Metadata API
+- id: "resource-rbac-metadata-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/metadata/list"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
 
 # Resource RBAC - Users API
 - id: "resource-rbac-users-rule"

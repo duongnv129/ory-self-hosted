@@ -1,17 +1,17 @@
 /**
  * Permission Matrix Component
  * Interactive matrix for visualizing and editing role permissions
- * Shows roles vs resources/actions with live Keto data integration
+ * Shows roles vs resources/actions with metadata-driven configuration
  *
  * @remarks
  * This component supports both read-only and editable modes.
  * In editable mode, users can click on permission cells to toggle access.
- * Supports inheritance visualization and live Keto data integration.
+ * Supports inheritance visualization and dynamic permission loading from backend.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -42,15 +42,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Role } from '@/lib/types/models';
-import { useKetoRolePermissions } from '@/lib/hooks/useKetoPermissions';
+import { useMetadata } from '@/lib/context/MetadataContext';
 import { cn } from '@/lib/utils';
 
-// Define resources and actions as const assertions for better type safety
-const RESOURCES = ['users', 'products', 'categories', 'roles'] as const;
-const ACTIONS = ['view', 'create', 'update', 'delete'] as const;
-
-type Resource = typeof RESOURCES[number];
-type Action = typeof ACTIONS[number];
+// Resources and actions are now dynamically loaded from metadata
+type Resource = string;
+type Action = string;
 
 /**
  * Represents a permission with inheritance information
@@ -76,7 +73,12 @@ interface PermissionMatrixProps {
   /** Whether to show inheritance indicators */
   showInheritance?: boolean;
   /** Callback when a permission is toggled */
-  onPermissionChange?: (roleName: string, resource: Resource, action: Action, granted: boolean) => void;
+  onPermissionChange?: (
+    roleName: string,
+    resource: Resource,
+    action: Action,
+    granted: boolean
+  ) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -85,7 +87,7 @@ interface PermissionMatrixProps {
  * Base permissions configuration for mock data
  * In production, this would be replaced by Keto queries
  */
-const BASE_ROLE_PERMISSIONS: Record<string, Partial<Record<Resource, readonly Action[]>>> = {
+const BASE_ROLE_PERMISSIONS: Record<string, Partial<Record<string, string[]>>> = {
   admin: {
     users: ['view', 'create', 'update', 'delete'],
     products: ['view', 'create', 'update', 'delete'],
@@ -104,16 +106,23 @@ const BASE_ROLE_PERMISSIONS: Record<string, Partial<Record<Resource, readonly Ac
     categories: ['view'],
     roles: [],
   },
-} as const;
+};
 
 /**
  * Calculate permissions for a role, including inheritance
  *
  * @param role - The role to calculate permissions for
  * @param allRoles - All available roles for inheritance calculation
+ * @param resources - Available resources from metadata
+ * @param actions - Available actions from metadata
  * @returns Array of permissions with inheritance information
  */
-const getRolePermissions = (role: Role, allRoles: Role[]): Permission[] => {
+const getRolePermissions = (
+  role: Role,
+  allRoles: Role[],
+  resources: string[],
+  actions: string[]
+): Permission[] => {
   const permissions: Permission[] = [];
 
   /**
@@ -131,15 +140,15 @@ const getRolePermissions = (role: Role, allRoles: Role[]): Permission[] => {
     visited.add(roleName);
 
     const inheritedPerms: Permission[] = [];
-    const parentRole = allRoles.find(r => r.name === roleName);
+    const parentRole = allRoles.find((r) => r.name === roleName);
 
     if (parentRole?.inheritsFrom) {
       for (const parentName of parentRole.inheritsFrom) {
         const parentPerms = BASE_ROLE_PERMISSIONS[parentName] || {};
 
-        for (const resource of RESOURCES) {
-          const actions = parentPerms[resource] || [];
-          for (const action of actions) {
+        for (const resource of resources) {
+          const resourceActions = parentPerms[resource] || [];
+          for (const action of resourceActions) {
             inheritedPerms.push({
               resource,
               action,
@@ -163,19 +172,19 @@ const getRolePermissions = (role: Role, allRoles: Role[]): Permission[] => {
   const inheritedPerms = getInheritedPermissions(role.name);
 
   // Build complete permission matrix
-  for (const resource of RESOURCES) {
-    for (const action of ACTIONS) {
+  for (const resource of resources) {
+    for (const action of actions) {
       // Check if permission is directly granted
       const directlyGranted = (directPerms[resource] || []).includes(action);
 
       // Check if permission is inherited
       const inheritedPerm = inheritedPerms.find(
-        p => p.resource === resource && p.action === action
+        (p) => p.resource === resource && p.action === action
       );
 
       // Check if permission is explicitly set in role.permissions
       const explicitPerm = role.permissions?.find(
-        p => p.resource === resource && p.action === action
+        (p) => p.resource === resource && p.action === action
       );
 
       permissions.push({
@@ -240,40 +249,35 @@ export function PermissionMatrix({
   const [rolePermissions, setRolePermissions] = useState<Map<string, Permission[]>>(new Map());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Fetch live Keto permissions for all roles
+  // Get dynamic metadata for resources and permissions
   const {
-    rolePermissions: ketoPermissions,
-    isLoading: ketoLoading,
-    isError: ketoError
-  } = useKetoRolePermissions(
-    roles.map(r => r.name),
-    { namespace: 'simple-rbac', enabled: roles.length > 0 }
+    resources: metadataResources,
+    isLoading: metadataLoading,
+    error: metadataError,
+  } = useMetadata();
+
+  // Extract all unique resources and actions from metadata - memoized to prevent infinite loops
+  const allResources = useMemo(() => metadataResources.map((r) => r.resource), [metadataResources]);
+
+  const allActions = useMemo(
+    () => Array.from(new Set(metadataResources.flatMap((r) => r.permissions))),
+    [metadataResources]
   );
 
-  // Calculate permissions for all roles (combining inheritance + live Keto data)
+  // Calculate permissions for all roles (combining inheritance + role.permissions data)
   useEffect(() => {
+    // Wait for metadata to load
+    if (metadataLoading || allResources.length === 0 || allActions.length === 0) {
+      return;
+    }
+
     try {
       const permissionsMap = new Map<string, Permission[]>();
 
-      roles.forEach(role => {
+      roles.forEach((role) => {
         try {
-          const mockPermissions = getRolePermissions(role, roles);
-          const livePermissions = ketoPermissions[role.name] || [];
-
-          // Merge mock permissions with live Keto data
-          const mergedPermissions = mockPermissions.map(mockPerm => {
-            const livePerm = livePermissions.find(
-              kp => kp.resource === mockPerm.resource && kp.action === mockPerm.action
-            );
-
-            // If we have live data, use it; otherwise fall back to mock data
-            return {
-              ...mockPerm,
-              granted: livePerm ? true : mockPerm.granted,
-            };
-          });
-
-          permissionsMap.set(role.name, mergedPermissions);
+          const permissions = getRolePermissions(role, roles, allResources, allActions);
+          permissionsMap.set(role.name, permissions);
         } catch (error) {
           console.error(`Failed to calculate permissions for role ${role.name}:`, error);
           // Set empty permissions array as fallback
@@ -286,7 +290,7 @@ export function PermissionMatrix({
       console.error('Failed to calculate role permissions:', error);
       setRolePermissions(new Map());
     }
-  }, [roles, ketoPermissions]);
+  }, [roles, metadataLoading, allResources, allActions]);
 
   /**
    * Handle permission toggle in editable mode
@@ -295,7 +299,12 @@ export function PermissionMatrix({
    * @param action - Action being toggled
    * @param granted - New granted state
    */
-  const handlePermissionToggle = (roleName: string, resource: Resource, action: Action, granted: boolean) => {
+  const handlePermissionToggle = (
+    roleName: string,
+    resource: Resource,
+    action: Action,
+    granted: boolean
+  ) => {
     if (!editable || !onPermissionChange) {
       console.warn('Permission toggle attempted in non-editable mode or without change handler');
       return;
@@ -306,10 +315,10 @@ export function PermissionMatrix({
       setHasUnsavedChanges(true);
 
       // Update local state
-      setRolePermissions(prev => {
+      setRolePermissions((prev) => {
         const newMap = new Map(prev);
         const permissions = newMap.get(roleName) || [];
-        const updatedPermissions = permissions.map(p =>
+        const updatedPermissions = permissions.map((p) =>
           p.resource === resource && p.action === action
             ? { ...p, granted, inherited: false, inheritedFrom: undefined }
             : p
@@ -324,6 +333,37 @@ export function PermissionMatrix({
 
   const displayRoles = selectedRole ? [selectedRole] : roles;
 
+  // Show loading state while metadata is being fetched
+  if (metadataLoading) {
+    return (
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading system configuration...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state if metadata failed to load
+  if (metadataError) {
+    return (
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <Alert variant="destructive">
+            <AlertDescription>
+              Failed to load system configuration. Please refresh the page.
+              <br />
+              <span className="text-sm">{metadataError.message}</span>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Matrix Table */}
@@ -332,25 +372,17 @@ export function PermissionMatrix({
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Permission Matrix
-            {selectedRole && (
-              <Badge variant="outline">{selectedRole.name}</Badge>
-            )}
-            {ketoLoading && (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            )}
+            {selectedRole && <Badge variant="outline">{selectedRole.name}</Badge>}
           </CardTitle>
           <CardDescription>
             {editable
               ? 'Click on permissions to grant or revoke access'
-              : 'Overview of permissions by role and resource'
-            }
+              : 'Overview of permissions by role and resource'}
             {showInheritance && ' • Inherited permissions are shown with transparency'}
-            {ketoLoading && ' • Loading live Keto data...'}
-            {ketoError && ' • Failed to load live data, showing cached permissions'}
             {hasUnsavedChanges && editable && (
               <>
                 {' • '}
-                <span className="text-amber-600 font-medium">Unsaved changes</span>
+                <span className="font-medium text-amber-600">Unsaved changes</span>
               </>
             )}
           </CardDescription>
@@ -361,19 +393,14 @@ export function PermissionMatrix({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[150px]">Role</TableHead>
-                  {RESOURCES.map(resource => (
-                    <TableHead key={resource} className="text-center min-w-[120px]">
+                  {allResources.map((resource) => (
+                    <TableHead key={resource} className="min-w-[120px] text-center">
                       <div className="flex flex-col items-center">
                         <span className="font-semibold capitalize">{resource}</span>
-                        <div className="flex gap-1 mt-1">
-                          {ACTIONS.map(action => {
+                        <div className="mt-1 flex gap-1">
+                          {allActions.map((action) => {
                             const Icon = getActionIcon(action);
-                            return (
-                              <Icon
-                                key={action}
-                                className="h-3 w-3 text-muted-foreground"
-                              />
-                            );
+                            return <Icon key={action} className="h-3 w-3 text-muted-foreground" />;
                           })}
                         </div>
                       </div>
@@ -382,7 +409,7 @@ export function PermissionMatrix({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayRoles.map(role => {
+                {displayRoles.map((role) => {
                   const Icon = getRoleIcon(role.name);
                   const permissions = rolePermissions.get(role.name) || [];
 
@@ -394,12 +421,12 @@ export function PermissionMatrix({
                           <span>{role.name}</span>
                         </div>
                       </TableCell>
-                      {RESOURCES.map(resource => (
+                      {allResources.map((resource) => (
                         <TableCell key={resource} className="text-center">
-                          <div className="grid grid-cols-2 gap-2 max-w-[120px] mx-auto">
-                            {ACTIONS.map(action => {
+                          <div className="mx-auto grid max-w-[120px] grid-cols-2 gap-2">
+                            {allActions.map((action) => {
                               const permission = permissions.find(
-                                p => p.resource === resource && p.action === action
+                                (p) => p.resource === resource && p.action === action
                               );
                               const isGranted = permission?.granted || false;
                               const isInherited = permission?.inherited || false;
@@ -408,8 +435,15 @@ export function PermissionMatrix({
                                 return (
                                   <div
                                     key={action}
-                                    className="flex items-center justify-center cursor-pointer hover:bg-muted rounded p-1"
-                                    onClick={() => handlePermissionToggle(role.name, resource, action, !isGranted)}
+                                    className="flex cursor-pointer items-center justify-center rounded p-1 hover:bg-muted"
+                                    onClick={() =>
+                                      handlePermissionToggle(
+                                        role.name,
+                                        resource,
+                                        action,
+                                        !isGranted
+                                      )
+                                    }
                                     title={`${action} ${resource}${isInherited && permission?.inheritedFrom ? ` (inherited from ${permission.inheritedFrom})` : ''}`}
                                   >
                                     {isGranted ? (
@@ -457,16 +491,6 @@ export function PermissionMatrix({
         </CardContent>
       </Card>
 
-      {/* Keto Error Alert */}
-      {ketoError && (
-        <Alert variant="destructive">
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Failed to load live permission data from Keto. Displaying cached/mock permissions instead.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Unsaved Changes Alert */}
       {hasUnsavedChanges && editable && (
         <Alert>
@@ -475,7 +499,7 @@ export function PermissionMatrix({
             <span>You have unsaved permission changes.</span>
             <div className="flex gap-2">
               <button
-                className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
                   // In real app, this would save changes to Keto
                   setHasUnsavedChanges(false);
@@ -484,14 +508,14 @@ export function PermissionMatrix({
                 Save Changes
               </button>
               <button
-                className="px-3 py-1 text-xs border rounded hover:bg-muted"
+                className="rounded border px-3 py-1 text-xs hover:bg-muted"
                 onClick={() => {
                   // Reset to original state
                   setHasUnsavedChanges(false);
                   // Recalculate permissions from original data
                   const permissionsMap = new Map<string, Permission[]>();
-                  roles.forEach(role => {
-                    const permissions = getRolePermissions(role, roles);
+                  roles.forEach((role) => {
+                    const permissions = getRolePermissions(role, roles, allResources, allActions);
                     permissionsMap.set(role.name, permissions);
                   });
                   setRolePermissions(permissionsMap);
@@ -515,13 +539,14 @@ export function PermissionMatrix({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {RESOURCES.map(resource => {
-                const resourcePermissions = (rolePermissions.get(selectedRole.name) || [])
-                  .filter(p => p.resource === resource && p.granted);
+              {allResources.map((resource) => {
+                const resourcePermissions = (rolePermissions.get(selectedRole.name) || []).filter(
+                  (p) => p.resource === resource && p.granted
+                );
 
                 if (resourcePermissions.length === 0) {
                   return (
-                    <div key={resource} className="flex items-center justify-between py-2 border-b">
+                    <div key={resource} className="flex items-center justify-between border-b py-2">
                       <span className="font-medium capitalize">{resource}</span>
                       <Badge variant="outline">No permissions</Badge>
                     </div>
@@ -529,20 +554,18 @@ export function PermissionMatrix({
                 }
 
                 return (
-                  <div key={resource} className="flex items-center justify-between py-2 border-b">
+                  <div key={resource} className="flex items-center justify-between border-b py-2">
                     <span className="font-medium capitalize">{resource}</span>
                     <div className="flex gap-1">
-                      {resourcePermissions.map(permission => (
+                      {resourcePermissions.map((permission) => (
                         <Badge
                           key={permission.action}
-                          variant={permission.inherited ? "secondary" : "default"}
-                          className={cn(permission.inherited && "opacity-70")}
+                          variant={permission.inherited ? 'secondary' : 'default'}
+                          className={cn(permission.inherited && 'opacity-70')}
                         >
                           {permission.action}
                           {permission.inherited && permission.inheritedFrom && (
-                            <span className="ml-1 text-xs">
-                              (from {permission.inheritedFrom})
-                            </span>
+                            <span className="ml-1 text-xs">(from {permission.inheritedFrom})</span>
                           )}
                         </Badge>
                       ))}

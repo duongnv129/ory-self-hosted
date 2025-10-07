@@ -21,25 +21,14 @@ import {
   Button,
   Label,
 } from '@/components/ui';
-import {
-  Eye,
-  Plus,
-  Edit,
-  Trash2,
-  Shield,
-  Check,
-  X,
-  Info,
-} from 'lucide-react';
+import { Eye, Plus, Edit, Trash2, Shield, Check, X, Loader2 } from 'lucide-react';
 import { Permission } from '@/lib/types/models';
+import { useMetadata } from '@/lib/context/MetadataContext';
 import { cn } from '@/lib/utils';
 
-// Define available resources and actions as const assertions for type safety
-const RESOURCES = ['users', 'products', 'categories', 'roles'] as const;
-const ACTIONS = ['view', 'create', 'update', 'delete'] as const;
-
-type Resource = typeof RESOURCES[number];
-type Action = typeof ACTIONS[number];
+// Resources and actions are now dynamically loaded from metadata
+type Resource = string;
+type Action = string;
 
 /**
  * Props for the PermissionSelector component
@@ -104,7 +93,18 @@ export function PermissionSelector({
   className,
   disabled = false,
 }: PermissionSelectorProps) {
-  const [expandedResources, setExpandedResources] = useState<Set<Resource>>(new Set(RESOURCES));
+  // Get dynamic metadata for resources and permissions
+  const {
+    resources: metadataResources,
+    isLoading: metadataLoading,
+    error: metadataError,
+  } = useMetadata();
+
+  // Extract all unique resources and actions from metadata
+  const RESOURCES = metadataResources.map((r) => r.resource);
+  const ACTIONS = Array.from(new Set(metadataResources.flatMap((r) => r.permissions)));
+
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set(RESOURCES));
 
   /**
    * Check if a specific permission is currently selected
@@ -113,7 +113,7 @@ export function PermissionSelector({
    * @returns True if permission is selected
    */
   const isPermissionSelected = (resource: Resource, action: Action): boolean => {
-    return selectedPermissions.some(p => p.resource === resource && p.action === action);
+    return selectedPermissions.some((p) => p.resource === resource && p.action === action);
   };
 
   /**
@@ -123,7 +123,7 @@ export function PermissionSelector({
    * @returns True if permission is inherited
    */
   const isPermissionInherited = (resource: Resource, action: Action): boolean => {
-    return inheritedPermissions.some(p => p.resource === resource && p.action === action);
+    return inheritedPermissions.some((p) => p.resource === resource && p.action === action);
   };
 
   /**
@@ -143,7 +143,7 @@ export function PermissionSelector({
       if (isSelected) {
         // Remove permission
         const updated = selectedPermissions.filter(
-          p => !(p.resource === resource && p.action === action)
+          (p) => !(p.resource === resource && p.action === action)
         );
         onPermissionChange(updated);
       } else {
@@ -170,18 +170,18 @@ export function PermissionSelector({
     }
 
     try {
-      const resourcePermissions = ACTIONS.filter(action =>
+      const resourcePermissions = ACTIONS.filter((action) =>
         isPermissionSelected(resource, action)
       );
 
       if (resourcePermissions.length === ACTIONS.length) {
         // All actions are selected, remove all
-        const updated = selectedPermissions.filter(p => p.resource !== resource);
+        const updated = selectedPermissions.filter((p) => p.resource !== resource);
         onPermissionChange(updated);
       } else {
         // Not all actions are selected, add all
-        const updated = selectedPermissions.filter(p => p.resource !== resource);
-        const newPermissions = ACTIONS.map(action => ({
+        const updated = selectedPermissions.filter((p) => p.resource !== resource);
+        const newPermissions = ACTIONS.map((action) => ({
           resource,
           action,
         }));
@@ -198,7 +198,7 @@ export function PermissionSelector({
    */
   const toggleResourceExpansion = (resource: Resource) => {
     try {
-      setExpandedResources(prev => {
+      setExpandedResources((prev) => {
         const newExpanded = new Set(prev);
         if (newExpanded.has(resource)) {
           newExpanded.delete(resource);
@@ -216,6 +216,35 @@ export function PermissionSelector({
   const selectedCount = selectedPermissions.length;
   const inheritedCount = inheritedPermissions.length;
 
+  // Show loading state while metadata is being fetched
+  if (metadataLoading) {
+    return (
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading permissions...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state if metadata failed to load
+  if (metadataError) {
+    return (
+      <Card className={className}>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <X className="mb-4 h-12 w-12 text-destructive" />
+            <p className="font-medium text-destructive">Failed to load permissions</p>
+            <p className="mt-2 text-sm text-muted-foreground">{metadataError.message}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className={cn('space-y-4', className)}>
       <Card>
@@ -226,46 +255,38 @@ export function PermissionSelector({
                 <Shield className="h-5 w-5" />
                 Select Permissions
               </CardTitle>
-              <CardDescription>
-                Choose specific permissions for this role
-              </CardDescription>
+              <CardDescription>Choose specific permissions for this role</CardDescription>
             </div>
             <div className="flex gap-2 text-sm">
-              <Badge variant="default">
-                {selectedCount} selected
-              </Badge>
-              {inheritedCount > 0 && (
-                <Badge variant="secondary">
-                  {inheritedCount} inherited
-                </Badge>
-              )}
+              <Badge variant="default">{selectedCount} selected</Badge>
+              {inheritedCount > 0 && <Badge variant="secondary">{inheritedCount} inherited</Badge>}
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {RESOURCES.map(resource => {
+            {RESOURCES.map((resource) => {
               const isExpanded = expandedResources.has(resource);
-              const selectedActionsForResource = ACTIONS.filter(action =>
+              const selectedActionsForResource = ACTIONS.filter((action) =>
                 isPermissionSelected(resource, action)
               );
-              const inheritedActionsForResource = ACTIONS.filter(action =>
+              const inheritedActionsForResource = ACTIONS.filter((action) =>
                 isPermissionInherited(resource, action)
               );
               const allSelected = selectedActionsForResource.length === ACTIONS.length;
               const someSelected = selectedActionsForResource.length > 0 && !allSelected;
 
               return (
-                <div key={resource} className="border rounded-lg">
+                <div key={resource} className="rounded-lg border">
                   {/* Resource Header */}
                   <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                    className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/50"
                     onClick={() => toggleResourceExpansion(resource)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <Button
-                          variant={allSelected ? "default" : someSelected ? "outline" : "ghost"}
+                          variant={allSelected ? 'default' : someSelected ? 'outline' : 'ghost'}
                           size="sm"
                           onClick={() => toggleAllActionsForResource(resource)}
                           disabled={disabled}
@@ -279,9 +300,7 @@ export function PermissionSelector({
                             <Plus className="h-3 w-3" />
                           )}
                         </Button>
-                        <Label className="font-medium capitalize cursor-pointer">
-                          {resource}
-                        </Label>
+                        <Label className="cursor-pointer font-medium capitalize">{resource}</Label>
                       </div>
                       <div className="flex gap-1">
                         {selectedActionsForResource.length > 0 && (
@@ -296,16 +315,8 @@ export function PermissionSelector({
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                    >
-                      {isExpanded ? (
-                        <X className="h-4 w-4" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      {isExpanded ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   </div>
 
@@ -313,7 +324,7 @@ export function PermissionSelector({
                   {isExpanded && (
                     <div className="px-4 pb-4">
                       <div className="grid grid-cols-2 gap-2">
-                        {ACTIONS.map(action => {
+                        {ACTIONS.map((action) => {
                           const ActionIcon = getActionIcon(action);
                           const isSelected = isPermissionSelected(resource, action);
                           const isInherited = isPermissionInherited(resource, action);
@@ -323,16 +334,16 @@ export function PermissionSelector({
                             <div
                               key={action}
                               className={cn(
-                                'flex items-center gap-2 p-3 border rounded cursor-pointer transition-colors',
+                                'flex cursor-pointer items-center gap-2 rounded border p-3 transition-colors',
                                 disabled && 'cursor-not-allowed opacity-50',
-                                isSelected && 'bg-primary/10 border-primary',
+                                isSelected && 'border-primary bg-primary/10',
                                 !isSelected && 'hover:bg-muted/50',
                                 isInherited && 'bg-secondary/50'
                               )}
                               onClick={() => togglePermission(resource, action)}
                             >
                               <Button
-                                variant={isSelected ? "default" : "ghost"}
+                                variant={isSelected ? 'default' : 'ghost'}
                                 size="sm"
                                 disabled={disabled}
                                 className="h-6 w-6 p-0"
@@ -345,7 +356,7 @@ export function PermissionSelector({
                               </Button>
                               <ActionIcon className={cn('h-4 w-4', actionColor)} />
                               <div className="flex-1">
-                                <Label className="text-sm font-medium capitalize cursor-pointer">
+                                <Label className="cursor-pointer text-sm font-medium capitalize">
                                   {action}
                                 </Label>
                                 {isInherited && (
@@ -354,9 +365,7 @@ export function PermissionSelector({
                                   </p>
                                 )}
                               </div>
-                              {isSelected && (
-                                <Check className="h-4 w-4 text-green-600" />
-                              )}
+                              {isSelected && <Check className="h-4 w-4 text-green-600" />}
                             </div>
                           );
                         })}
@@ -369,13 +378,13 @@ export function PermissionSelector({
           </div>
 
           {/* Quick Actions */}
-          <div className="flex gap-2 pt-4 border-t">
+          <div className="flex gap-2 border-t pt-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                const allPermissions = RESOURCES.flatMap(resource =>
-                  ACTIONS.map(action => ({ resource, action }))
+                const allPermissions = RESOURCES.flatMap((resource) =>
+                  ACTIONS.map((action) => ({ resource, action }))
                 );
                 onPermissionChange(allPermissions);
               }}
@@ -395,7 +404,7 @@ export function PermissionSelector({
               variant="outline"
               size="sm"
               onClick={() => {
-                const viewPermissions = RESOURCES.map(resource => ({
+                const viewPermissions = RESOURCES.map((resource) => ({
                   resource,
                   action: 'view' as Action,
                 }));
@@ -408,39 +417,6 @@ export function PermissionSelector({
           </div>
         </CardContent>
       </Card>
-
-      {/* Permission Summary */}
-      {selectedPermissions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Selected Permissions Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {RESOURCES.map(resource => {
-                const resourcePermissions = selectedPermissions.filter(p => p.resource === resource);
-                if (resourcePermissions.length === 0) return null;
-
-                return (
-                  <div key={resource} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                    <span className="font-medium capitalize">{resource}</span>
-                    <div className="flex gap-1">
-                      {resourcePermissions.map(permission => (
-                        <Badge key={permission.action} variant="default" className="text-xs">
-                          {permission.action}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

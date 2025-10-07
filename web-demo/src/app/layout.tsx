@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import { env } from '@/config/env';
 import { TenantProvider } from '@/lib/context/TenantContext';
 import { AuthProvider } from '@/lib/context/AuthContext';
+import { MetadataProvider } from '@/lib/context/MetadataContext';
 import { Header, Footer } from '@/components/layout';
 import { Toaster } from 'sonner';
 
@@ -34,16 +35,18 @@ export default function RootLayout({
       <body className={inter.className}>
         <TenantProvider>
           <AuthProvider>
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">
-                <div className="container mx-auto px-4 py-8">
-                  {children}
-                </div>
-              </main>
-              <Footer />
-            </div>
-            <Toaster position="top-right" richColors closeButton />
+            <MetadataProvider>
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1">
+                  <div className="container mx-auto px-4 py-8">
+                    {children}
+                  </div>
+                </main>
+                <Footer />
+              </div>
+              <Toaster position="top-right" richColors closeButton />
+            </MetadataProvider>
           </AuthProvider>
         </TenantProvider>
       </body>

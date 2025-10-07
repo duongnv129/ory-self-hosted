@@ -136,12 +136,21 @@ export interface UpdateCategoryRequest {
 }
 
 /**
+ * Permission specification for role creation/update
+ */
+export interface RolePermission {
+  resource: string; // e.g., "product", "category"
+  action: string; // e.g., "view", "create", "update", "delete"
+}
+
+/**
  * Create role request body
  */
 export interface CreateRoleRequest {
   name: string;
   description?: string;
   inheritsFrom?: string[]; // Array of parent role names
+  permissions?: RolePermission[]; // Array of resource permissions
 }
 
 /**
@@ -151,4 +160,5 @@ export interface UpdateRoleRequest {
   name?: string;
   description?: string;
   inheritsFrom?: string[]; // Array of parent role names
+  permissions?: RolePermission[]; // Array of resource permissions
 }

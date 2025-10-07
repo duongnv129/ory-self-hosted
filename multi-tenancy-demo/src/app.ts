@@ -7,6 +7,7 @@ import userRouter from './routes/user';
 import categoryRouter from './routes/category';
 import productRouter from './routes/product';
 import roleRouter from './routes/role';
+import metadataRouter from './routes/metadata';
 import { contextMiddleware } from './middleware/context';
 import { errorHandler } from './middleware/error-handler';
 import { HealthResponse } from './types/responses';
@@ -38,6 +39,9 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // ==================== API ROUTES ====================
+
+// Metadata endpoint (no auth required - public metadata)
+app.use('/metadata', metadataRouter);
 
 app.use('/users', contextMiddleware, userRouter);
 app.use('/products', contextMiddleware, productRouter);
