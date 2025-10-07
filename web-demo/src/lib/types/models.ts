@@ -42,10 +42,13 @@ export interface Tenant {
 }
 
 export interface Role {
-  id: string;
-  name: 'admin' | 'moderator' | 'customer';
+  id: number;
+  name: string;
   description: string;
-  permissions: Permission[];
+  namespace: string;
+  tenantId?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Permission {

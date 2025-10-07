@@ -3,7 +3,7 @@
  * Types for API communication layer
  */
 
-import { User, Product, Category } from './models';
+import { User, Product, Category, Role } from './models';
 
 // Generic API Response wrapper
 export interface ApiResponse<T = unknown> {
@@ -122,5 +122,39 @@ export interface UpdateCategoryResponse extends ApiResponse {
 }
 
 export interface DeleteCategoryResponse extends ApiResponse {
+  message: string;
+}
+
+// Roles API
+export interface CreateRoleRequest {
+  name: string;
+  description?: string;
+}
+
+export interface CreateRoleResponse extends ApiResponse {
+  data: Role;
+}
+
+export interface ListRolesResponse extends ApiResponse {
+  data: Role[];
+  count: number;
+  tenantId?: string;
+  namespace: string;
+}
+
+export interface GetRoleResponse extends ApiResponse {
+  data: Role;
+}
+
+export interface UpdateRoleRequest {
+  name?: string;
+  description?: string;
+}
+
+export interface UpdateRoleResponse extends ApiResponse {
+  data: Role;
+}
+
+export interface DeleteRoleResponse extends ApiResponse {
   message: string;
 }

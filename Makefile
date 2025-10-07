@@ -6,8 +6,9 @@ KRATOS_PATH = kratos
 KETO_PATH = keto
 OATHKEEPER_PATH = oathkeeper
 DEMO_PATH = multi-tenancy-demo
+WEB_DEMO_PATH = web-demo
 
-.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo migrate shell network
+.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo web-demo migrate shell network
 
 # Default target
 help: ## Show this help message
@@ -90,6 +91,26 @@ demo-shell: ## Get shell access to demo container
 
 demo-restart: ## Restart demo container
 	@cd $(DEMO_PATH) && docker-compose restart multi-tenancy-demo
+
+web-demo: ## Start web-demo development server (Next.js on port 3000)
+	@echo "Starting web-demo development server..."
+	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm dev
+
+web-demo-build: ## Build web-demo for production
+	@echo "Building web-demo for production..."
+	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm build
+
+web-demo-start: ## Start web-demo production server
+	@echo "Starting web-demo production server..."
+	@cd $(WEB_DEMO_PATH) && pnpm start
+
+web-demo-lint: ## Lint web-demo code
+	@echo "Linting web-demo code..."
+	@cd $(WEB_DEMO_PATH) && pnpm lint
+
+web-demo-type-check: ## Type check web-demo code
+	@echo "Type checking web-demo code..."
+	@cd $(WEB_DEMO_PATH) && pnpm type-check
 
 # Logs and Monitoring
 logs: ## Show logs for all Kratos services
@@ -260,7 +281,10 @@ urls: ## Show all service URLs
 	@echo "Supporting Services:"
 	@echo "  Mailslurper:        http://127.0.0.1:4436"
 	@echo "  PostgreSQL:         localhost:5432 (postgres/postgres)"
-	@echo "  Multi-Tenancy Demo: http://localhost:9000"
+	@echo ""
+	@echo "Demo Applications:"
+	@echo "  Web Demo:           http://localhost:3000"
+	@echo "  Multi-Tenancy API:  http://localhost:9000"
 	@echo ""
 
 # Quick development workflows
