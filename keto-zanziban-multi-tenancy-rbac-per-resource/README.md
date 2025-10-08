@@ -111,7 +111,7 @@ user:alice
 ```json
 // User role assignment per resource
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:{tenant_id}#{resource_type}",
   "relation": "{role}",
   "subject_id": "user:{user_id}"
@@ -119,11 +119,11 @@ user:alice
 
 // Permission grant
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:{tenant_id}#{resource_type}",
   "relation": "{action}",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:{tenant_id}#{resource_type}",
     "relation": "{role}"
   }
@@ -292,7 +292,7 @@ Would need to make her admin (too much access) or moderator (not enough for prod
 ### Alice creates product in Tenant A
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -302,7 +302,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ### Alice updates category in Tenant A
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=update" \
   --data-urlencode "subject_id=user:alice"
@@ -312,7 +312,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ### Alice creates category in Tenant A (DENIED)
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -322,7 +322,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ### Alice creates product in Tenant B
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"

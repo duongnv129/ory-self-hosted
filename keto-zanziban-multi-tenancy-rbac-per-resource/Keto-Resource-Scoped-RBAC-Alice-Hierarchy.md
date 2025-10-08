@@ -48,7 +48,7 @@ Role Hierarchy & Permissions:
 **Direct Assignment:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -85,7 +85,7 @@ tenant:a#product:items#customer
 **Direct Assignment:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "moderator",
   "subject_id": "user:alice"
@@ -119,7 +119,7 @@ tenant:a#category:items#customer
 **Direct Assignment:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -185,7 +185,7 @@ tenant:b#product:items#customer
 **Request:**
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -223,7 +223,7 @@ tenant:a#product:items#create ✅
 **Request:**
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=update" \
   --data-urlencode "subject_id=user:alice"
@@ -258,7 +258,7 @@ tenant:a#category:items#update ✅
 **Request:**
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -293,7 +293,7 @@ tenant:b#product:items#create ❌
 **Request:**
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:alice"
@@ -328,7 +328,7 @@ tenant:b#product:items#view ✅
 ```json
 // 1. Product admin in Tenant A
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -336,7 +336,7 @@ tenant:b#product:items#view ✅
 
 // 2. Category moderator in Tenant A
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "moderator",
   "subject_id": "user:alice"
@@ -344,7 +344,7 @@ tenant:b#product:items#view ✅
 
 // 3. Product customer in Tenant B
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -506,7 +506,7 @@ This is exactly how the resource-scoped authorization works!
 ```bash
 # Tenant A - Product create (should succeed)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -514,7 +514,7 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant A - Category update (should succeed)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=update" \
   --data-urlencode "subject_id=user:alice"
@@ -522,7 +522,7 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant A - Category create (should fail - Alice is moderator, not admin)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:a#category:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -530,7 +530,7 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant B - Product view (should succeed)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:alice"
@@ -538,7 +538,7 @@ curl -s -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant B - Product create (should fail)
 curl -s -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=resource-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"

@@ -7,7 +7,7 @@ set -e
 
 KETO_READ_URL="http://localhost:4466"
 KETO_WRITE_URL="http://localhost:4467"
-NAMESPACE="default"
+NAMESPACE="tenant-rbac"
 
 # Colors for output
 RED='\033[0;31m'
