@@ -245,11 +245,11 @@ export class KetoService {
     try {
       await axios.put(`${this.writeUrl}/admin/relation-tuples`, {
         namespace,
-        object: `role:${parentRole}`,
+        object: `role:${childRole}`,
         relation: 'member',
         subject_set: {
           namespace,
-          object: `role:${childRole}`,
+          object: `role:${parentRole}`,
           relation: 'member',
         },
       });
