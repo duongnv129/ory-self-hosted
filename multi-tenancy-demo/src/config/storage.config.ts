@@ -17,18 +17,53 @@ export const DEFAULT_STORAGE_CONFIG: PersistenceConfig = {
 };
 
 /**
- * Create storage configuration from environment variables
+ * Create storage configuration from environment variables with enhanced validation
  */
 export function createStorageConfig(): PersistenceConfig {
   const dataDir = process.env.STORAGE_DATA_DIR || path.join(process.cwd(), 'data');
 
-  return {
-    dataFilePath: process.env.STORAGE_FILE_PATH || path.join(dataDir, 'storage.json'),
-    backupDir: process.env.STORAGE_BACKUP_DIR || path.join(dataDir, 'backups'),
-    maxBackups: parseInt(process.env.STORAGE_MAX_BACKUPS || '10', 10),
-    autoSaveInterval: parseInt(process.env.STORAGE_AUTO_SAVE_INTERVAL || '30000', 10),
+  // Validate and normalize paths
+  const dataFilePath = process.env.STORAGE_FILE_PATH || path.join(dataDir, 'storage.json');
+  const backupDir = process.env.STORAGE_BACKUP_DIR || path.join(dataDir, 'backups');
+
+  // Validate numeric values
+  const maxBackups = validatePositiveInteger(process.env.STORAGE_MAX_BACKUPS, 10, 'STORAGE_MAX_BACKUPS');
+  const autoSaveInterval = validatePositiveInteger(process.env.STORAGE_AUTO_SAVE_INTERVAL, 30000, 'STORAGE_AUTO_SAVE_INTERVAL');
+
+  const config: PersistenceConfig = {
+    dataFilePath: path.resolve(dataFilePath),
+    backupDir: path.resolve(backupDir),
+    maxBackups,
+    autoSaveInterval,
     compression: process.env.STORAGE_COMPRESSION === 'true',
   };
+
+  // Log configuration for debugging
+  console.log('📁 Storage Configuration:');
+  console.log(`  Data File: ${config.dataFilePath}`);
+  console.log(`  Backup Dir: ${config.backupDir}`);
+  console.log(`  Max Backups: ${config.maxBackups}`);
+  console.log(`  Auto-save: ${config.autoSaveInterval}ms`);
+  console.log(`  Compression: ${config.compression}`);
+
+  return config;
+}
+
+/**
+ * Validate and parse positive integer from environment variable
+ */
+function validatePositiveInteger(value: string | undefined, defaultValue: number, envVarName: string): number {
+  if (!value) {
+    return defaultValue;
+  }
+
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed < 0) {
+    console.warn(`⚠️  Invalid ${envVarName}: ${value}, using default: ${defaultValue}`);
+    return defaultValue;
+  }
+
+  return parsed;
 }
 
 /**

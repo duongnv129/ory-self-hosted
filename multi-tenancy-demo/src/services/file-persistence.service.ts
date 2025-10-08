@@ -32,31 +32,55 @@ export class FilePersistenceManager {
    * Initialize persistence manager and setup auto-save if configured
    */
   async initialize(): Promise<void> {
+    console.log('🔧 Initializing FilePersistenceManager...');
+    console.log(`  Data file: ${this.config.dataFilePath}`);
+    console.log(`  Backup dir: ${this.config.backupDir}`);
+
     await this.ensureDirectoriesExist();
+
+    // Verify directory permissions
+    await this.verifyPermissions();
 
     if (this.config.autoSaveInterval > 0) {
       this.startAutoSave();
+      console.log(`✅ Auto-save enabled: ${this.config.autoSaveInterval}ms`);
+    } else {
+      console.log('📝 Auto-save disabled (manual persistence only)');
     }
+
+    console.log('✅ FilePersistenceManager initialized successfully');
   }
 
   /**
    * Load storage data from file
    */
   async loadData(): Promise<StorageData> {
+    console.log(`📖 Loading data from: ${this.config.dataFilePath}`);
+
     try {
       const exists = await this.fileExists(this.config.dataFilePath);
       if (!exists) {
+        console.log('📄 No existing data file found, creating empty storage');
         return this.createEmptyStorageData();
       }
 
       const rawData = await fs.readFile(this.config.dataFilePath, 'utf-8');
+      console.log(`📊 Loaded ${rawData.length} bytes from storage file`);
+
       const data = JSON.parse(rawData) as StorageData;
 
       // Validate data structure
       this.validateStorageData(data);
 
+      console.log('✅ Storage data loaded and validated successfully');
+      console.log(`  Products: ${data.products.length}`);
+      console.log(`  Categories: ${data.categories.length}`);
+      console.log(`  Roles: ${Object.values(data.rolesByNamespace).reduce((sum, roles) => sum + roles.length, 0)}`);
+
       return data;
     } catch (error) {
+      console.error('❌ Failed to load storage data:', error);
+
       if (error instanceof SyntaxError) {
         throw new StorageError(
           StorageErrorType.CORRUPTION_DETECTED,
@@ -66,6 +90,7 @@ export class FilePersistenceManager {
       }
 
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.log('📄 Data file not found, using empty storage');
         return this.createEmptyStorageData();
       }
 
@@ -89,6 +114,8 @@ export class FilePersistenceManager {
    * Save storage data to file with atomic write and backup
    */
   async saveData(data: StorageData): Promise<StorageOperationResult> {
+    console.log(`💾 Saving data to: ${this.config.dataFilePath}`);
+
     try {
       // Update metadata
       data.metadata = {
@@ -96,11 +123,20 @@ export class FilePersistenceManager {
         lastModified: new Date().toISOString(),
       };
 
+      console.log('📊 Data to save:');
+      console.log(`  Products: ${data.products.length}`);
+      console.log(`  Categories: ${data.categories.length}`);
+      console.log(`  Roles: ${Object.values(data.rolesByNamespace).reduce((sum, roles) => sum + roles.length, 0)}`);
+
       // Create backup before writing
       const backupPath = await this.createBackup();
+      if (backupPath) {
+        console.log(`💾 Backup created: ${backupPath}`);
+      }
 
       // Perform atomic write
       await this.atomicWrite(data);
+      console.log('✅ Data saved successfully');
 
       // Clean old backups
       await this.cleanOldBackups();
@@ -112,6 +148,7 @@ export class FilePersistenceManager {
         backupCreated: backupPath,
       };
     } catch (error) {
+      console.error('❌ Failed to save storage data:', error);
       throw new StorageError(
         StorageErrorType.UNKNOWN_ERROR,
         'Failed to save storage data',
@@ -162,22 +199,29 @@ export class FilePersistenceManager {
    */
   private async atomicWrite(data: StorageData): Promise<void> {
     const tempPath = `${this.config.dataFilePath}.tmp`;
+    console.log(`📝 Writing to temporary file: ${tempPath}`);
 
     try {
       // Serialize data
       const serializedData = JSON.stringify(data, null, 2);
+      console.log(`📊 Serialized ${serializedData.length} bytes`);
 
       // Write to temporary file
       await fs.writeFile(tempPath, serializedData, 'utf-8');
+      console.log(`✅ Temporary file written successfully`);
 
       // Atomic rename
       await fs.rename(tempPath, this.config.dataFilePath);
+      console.log(`✅ Atomic rename completed: ${this.config.dataFilePath}`);
     } catch (error) {
+      console.error('❌ Atomic write failed:', error);
+
       // Clean up temporary file if it exists
       try {
         await fs.unlink(tempPath);
-      } catch {
-        // Ignore cleanup errors
+        console.log('🧹 Cleaned up temporary file');
+      } catch (cleanupError) {
+        console.warn('⚠️  Failed to cleanup temporary file:', cleanupError);
       }
 
       if (error instanceof TypeError) {
@@ -310,12 +354,49 @@ export class FilePersistenceManager {
    */
   private async ensureDirectoriesExist(): Promise<void> {
     try {
-      await fs.mkdir(path.dirname(this.config.dataFilePath), { recursive: true });
+      const dataFileDir = path.dirname(this.config.dataFilePath);
+
+      console.log(`📁 Creating directories if needed:`);
+      console.log(`  Data dir: ${dataFileDir}`);
+      console.log(`  Backup dir: ${this.config.backupDir}`);
+
+      await fs.mkdir(dataFileDir, { recursive: true });
       await fs.mkdir(this.config.backupDir, { recursive: true });
+
+      console.log('✅ Directories created successfully');
     } catch (error) {
+      console.error('❌ Failed to create storage directories:', error);
       throw new StorageError(
         StorageErrorType.PERMISSION_DENIED,
         'Failed to create storage directories',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * Verify directory and file permissions
+   */
+  private async verifyPermissions(): Promise<void> {
+    try {
+      const dataFileDir = path.dirname(this.config.dataFilePath);
+
+      // Test write permission to data directory
+      const testFile = path.join(dataFileDir, '.write-test');
+      await fs.writeFile(testFile, 'test', 'utf-8');
+      await fs.unlink(testFile);
+
+      // Test write permission to backup directory
+      const backupTestFile = path.join(this.config.backupDir, '.write-test');
+      await fs.writeFile(backupTestFile, 'test', 'utf-8');
+      await fs.unlink(backupTestFile);
+
+      console.log('✅ Directory permissions verified');
+    } catch (error) {
+      console.error('❌ Permission verification failed:', error);
+      throw new StorageError(
+        StorageErrorType.PERMISSION_DENIED,
+        'Insufficient permissions for storage directories',
         error as Error
       );
     }

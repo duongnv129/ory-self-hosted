@@ -8,7 +8,6 @@ import categoryRouter from './routes/category';
 import productRouter from './routes/product';
 import roleRouter from './routes/role';
 import metadataRouter from './routes/metadata';
-import storageRouter from './routes/storage';
 import { contextMiddleware } from './middleware/context';
 import { errorHandler } from './middleware/error-handler';
 import { HealthResponse } from './types/responses';
@@ -79,9 +78,6 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // Metadata endpoint (no auth required - public metadata)
 app.use('/metadata', metadataRouter);
-
-// Storage admin endpoints (no auth required for demo purposes)
-app.use('/storage', storageRouter);
 
 app.use('/users', contextMiddleware, userRouter);
 app.use('/products', contextMiddleware, productRouter);

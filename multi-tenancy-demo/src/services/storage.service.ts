@@ -49,22 +49,39 @@ export class StorageService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
+      console.log('⚠️  Storage service already initialized');
       return;
     }
 
+    console.log('🔧 Initializing Storage Service...');
+
     if (this.persistenceManager) {
       try {
+        console.log('📁 File persistence enabled, initializing...');
         await this.persistenceManager.initialize();
+
+        console.log('📖 Loading persisted data...');
         const data = await this.persistenceManager.loadData();
         this.loadFromStorageData(data);
+
         console.log('✅ Storage service initialized with file persistence');
+        console.log(`📊 Loaded: ${this.products.length} products, ${this.categories.length} categories`);
+
+        // Test persistence by saving current state
+        console.log('🧪 Testing persistence by saving current state...');
+        await this.persist();
+
       } catch (error) {
-        console.warn('Warning: Failed to load persisted data, using defaults:', error);
-        // Continue with default in-memory data
+        console.error('❌ Failed to initialize file persistence:', error);
+        console.warn('🔄 Falling back to in-memory storage');
+        this.persistenceManager = null;
       }
+    } else {
+      console.log('💾 File persistence disabled, using in-memory storage');
     }
 
     this.isInitialized = true;
+    console.log('✅ Storage service initialization complete');
   }
 
   /**
@@ -121,8 +138,70 @@ export class StorageService {
   }
 
   /**
-   * Cleanup resources
+   * Test persistence functionality
    */
+  async testPersistence(): Promise<{
+    success: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+  }> {
+    if (!this.persistenceManager) {
+      return {
+        success: false,
+        message: 'Persistence is not enabled',
+      };
+    }
+
+    try {
+      console.log('🧪 Testing persistence functionality...');
+
+      // Save current state
+      const saveResult = await this.persist();
+      console.log('✅ Save test passed');
+
+      // Try to load the data back
+      const loadedData = await this.persistenceManager.loadData();
+      console.log('✅ Load test passed');
+
+      // Verify data integrity
+      const currentData = this.createStorageData();
+      const dataMatches = JSON.stringify(currentData) === JSON.stringify(loadedData);
+
+      if (!dataMatches) {
+        return {
+          success: false,
+          message: 'Data integrity check failed - loaded data does not match current state',
+          details: {
+            currentProducts: currentData.products.length,
+            loadedProducts: loadedData.products.length,
+            currentCategories: currentData.categories.length,
+            loadedCategories: loadedData.categories.length,
+          },
+        };
+      }
+
+      console.log('✅ Data integrity check passed');
+
+      return {
+        success: true,
+        message: 'Persistence test completed successfully',
+        details: {
+          saveResult,
+          dataIntegrityCheck: 'passed',
+          persistenceEnabled: true,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Persistence test failed:', error);
+      return {
+        success: false,
+        message: `Persistence test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
   async dispose(): Promise<void> {
     if (this.persistenceManager) {
       // Save current state before disposal
