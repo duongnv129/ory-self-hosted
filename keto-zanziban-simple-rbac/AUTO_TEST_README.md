@@ -108,7 +108,7 @@ The script executes in 5 phases, exactly matching the Postman collection structu
 ```bash
 🚀 Keto Zanzibar Postman Collection Auto-Test
 ==============================================
-📝 Namespace: default
+📝 Namespace: simple-rbac
 🔗 Keto Read URL: http://localhost:4466
 🔗 Keto Write URL: http://localhost:4467
 
@@ -127,7 +127,7 @@ The script executes in 5 phases, exactly matching the Postman collection structu
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🧹 Clean Namespace
-   Cleaning all relations in namespace: default
+   Cleaning all relations in namespace: simple-rbac
    ✅ Namespace cleaned
 
 🏗️ Role Hierarchy Setup
@@ -187,10 +187,10 @@ cd ../keto && docker-compose up -d
 
 ```bash
 # Check existing relations
-curl "http://localhost:4466/relation-tuples?namespace=default" | jq
+curl "http://localhost:4466/relation-tuples?namespace=simple-rbac" | jq
 
 # Verify role hierarchy
-curl "http://localhost:4466/relation-tuples/expand?namespace=default&object=role:admin&relation=member&max-depth=3" | jq
+curl "http://localhost:4466/relation-tuples/expand?namespace=simple-rbac&object=role:admin&relation=member&max-depth=3" | jq
 ```
 
 #### Setup Operations Failing
@@ -206,14 +206,14 @@ You can run individual test components manually:
 ```bash
 # Test single authorization
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=simple-rbac" \
   --data-urlencode "object=product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
 
 # Expand role hierarchy
 curl -G "http://localhost:4466/relation-tuples/expand" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=simple-rbac" \
   --data-urlencode "object=role:admin" \
   --data-urlencode "relation=member" \
   --data-urlencode "max-depth=5"

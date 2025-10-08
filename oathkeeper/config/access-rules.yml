@@ -1,12 +1,162 @@
 # access-rules.yml
 
-# Users API Rule
-- id: "app-users-rule"
+# =============================================================================
+# Authentication Routes (Next.js Web App)
+# =============================================================================
+
+# Allow anonymous access to auth pages (login, register)
+- id: "auth-pages"
   upstream:
-    url: "http://multi-tenancy-demo:9000"
+    url: "http://host.docker.internal:3000"
     preserve_path: true
   match:
-    url: "http://localhost:4455/users/<[^/]+>/<.*>"
+    url: "<http|https>://<.*>/(login|register)"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos self-service flows (login, registration, etc)
+- id: "kratos-self-service"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/self-service/<.*>"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Proxy Kratos session endpoint (requires authentication)
+- id: "kratos-session"
+  upstream:
+    url: "http://kratos:4433"
+    preserve_path: true
+  match:
+    url: "<http|https>://<.*>/sessions/whoami"
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+
+# =============================================================================
+# API Routes (Multi-Tenancy Demo)
+# =============================================================================
+
+- id: "health-check-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+  match:
+    url: "<http|https>://<.*>/health"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# =============================================================================
+# Use Case 1: Simple RBAC (Global Role-Based Access Control)
+# Path: /api/simple-rbac/* -> strips prefix to /*
+# =============================================================================
+
+# Simple RBAC - Metadata API
+- id: "simple-rbac-metadata-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/simple-rbac"
+  match:
+    url: "<http|https>://<.*>/api/simple-rbac/metadata/list"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Simple RBAC - Users API
+- id: "simple-rbac-users-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/simple-rbac"
+  match:
+    url: "<http|https>://<.*>/api/simple-rbac/users/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Keto-Namespace: "simple-rbac"
+
+# Simple RBAC - Roles API
+- id: "simple-rbac-roles-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/simple-rbac"
+  match:
+    url: "<http|https>://<.*>/api/simple-rbac/roles/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Keto-Namespace: "simple-rbac"
+
+# Simple RBAC - Products API
+- id: "simple-rbac-products-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/simple-rbac"
+  match:
+    url: "<http|https>://<.*>/api/simple-rbac/products/<[^/]+><.*>"
     methods:
       - GET
       - POST
@@ -22,43 +172,9 @@
       remote: "http://keto:4466/relation-tuples/check"
       payload: |
         {
-          "namespace": "default",
-          "object": "user:items",
-          "relation": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
-          "subject_id": "{{ print .Subject }}"
-        }
-  mutators:
-    - handler: header
-      config:
-        headers:
-          X-User-Id: "{{ .Subject }}"
-          X-Tenant-Id: "{{ index .MatchContext.RegexpCaptureGroups 0 }}"
-          X-User-Email: "{{ .Extra.identity.traits.email }}"
-          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
-
-# Products API Rule
-- id: "app-products-rule"
-  upstream:
-    url: "http://multi-tenancy-demo:9000"
-    preserve_path: true
-  match:
-    url: "http://localhost:4455/products/<[^/]+><.*>"
-    methods:
-      - GET
-      - POST
-      - DELETE
-  authenticators:
-    - handler: cookie_session
-    - handler: bearer_token
-  authorizer:
-    handler: remote_json
-    config:
-      remote: "http://keto:4466/relation-tuples/check"
-      payload: |
-        {
-          "namespace": "default",
+          "namespace": "simple-rbac",
           "object": "product:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -67,18 +183,21 @@
         headers:
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Keto-Namespace: "simple-rbac"
 
-# Categories API Rule
-- id: "app-categories-rule"
+# Simple RBAC - Categories API
+- id: "simple-rbac-categories-rule"
   upstream:
     url: "http://multi-tenancy-demo:9000"
-    preserve_path: true
+    strip_path: "/api/simple-rbac"
   match:
-    url: "http://localhost:4455/categories/<[^/]+><.*>"
+    url: "<http|https>://<.*>/api/simple-rbac/categories/<[^/]+><.*>"
     methods:
       - GET
       - POST
       - PUT
+      - DELETE
+      - PATCH
   authenticators:
     - handler: cookie_session
     - handler: bearer_token
@@ -88,9 +207,9 @@
       remote: "http://keto:4466/relation-tuples/check"
       payload: |
         {
-          "namespace": "default",
+          "namespace": "simple-rbac",
           "object": "category:items",
-          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 0) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 0 }}{{ end }}",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
           "subject_id": "user:{{ print .Extra.identity.traits.email }}"
         }
   mutators:
@@ -99,12 +218,20 @@
         headers:
           X-User-Id: "{{ .Subject }}"
           X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Keto-Namespace: "simple-rbac"
 
-- id: "health-check-rule"
+# =============================================================================
+# Use Case 2: Tenant-Centric RBAC (Multi-Tenant Role-Based Access Control)
+# Path: /api/tenant-rbac/* -> strips prefix to /*
+# =============================================================================
+
+# Tenant RBAC - Metadata API
+- id: "tenant-rbac-metadata-rule"
   upstream:
     url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
   match:
-    url: "http://localhost:4455/health"
+    url: "<http|https>://<.*>/api/tenant-rbac/metadata/list"
     methods:
       - GET
   authenticators:
@@ -113,3 +240,280 @@
     handler: allow
   mutators:
     - handler: noop
+
+# Tenant RBAC - Users API
+- id: "tenant-rbac-users-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
+  match:
+    url: "<http|https>://<.*>/api/tenant-rbac/users/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# Tenant RBAC - Roles API
+- id: "tenant-rbac-roles-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
+  match:
+    url: "<http|https>://<.*>/api/tenant-rbac/roles/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# Tenant RBAC - Products API
+- id: "tenant-rbac-products-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
+  match:
+    url: "<http|https>://<.*>/api/tenant-rbac/products/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://keto:4466/relation-tuples/check"
+      payload: |
+        {
+          "namespace": "tenant-rbac",
+          "object": "product:items",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
+          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# Tenant RBAC - Categories API
+- id: "tenant-rbac-categories-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/tenant-rbac"
+  match:
+    url: "<http|https>://<.*>/api/tenant-rbac/categories/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://keto:4466/relation-tuples/check"
+      payload: |
+        {
+          "namespace": "tenant-rbac",
+          "object": "category:items",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
+          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# =============================================================================
+# Use Case 3: Resource-Scoped RBAC (Fine-Grained Permissions)
+# Path: /api/resource-rbac/* -> strips prefix to /*
+# =============================================================================
+
+# Resource RBAC - Metadata API
+- id: "resource-rbac-metadata-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/metadata/list"
+    methods:
+      - GET
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# Resource RBAC - Users API
+- id: "resource-rbac-users-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/users/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# Resource RBAC - Roles API
+- id: "resource-rbac-roles-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/roles/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "tenant-rbac"
+
+# Resource RBAC - Products API
+- id: "resource-rbac-products-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/products/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://keto:4466/relation-tuples/check"
+      payload: |
+        {
+          "namespace": "resource-rbac",
+          "object": "product:items",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
+          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "resource-rbac"
+
+# Resource RBAC - Categories API
+- id: "resource-rbac-categories-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/resource-rbac"
+  match:
+    url: "<http|https>://<.*>/api/resource-rbac/categories/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://keto:4466/relation-tuples/check"
+      payload: |
+        {
+          "namespace": "resource-rbac",
+          "object": "category:items",
+          "relation": "{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}{{ index .MatchContext.RegexpCaptureGroups 2 }}{{ end }}",
+          "subject_id": "user:{{ print .Extra.identity.traits.email }}"
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "resource-rbac"

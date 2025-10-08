@@ -159,7 +159,7 @@ The collection uses these environment variables:
 ```
 keto_read_url: http://localhost:4466
 keto_write_url: http://localhost:4467
-namespace: default
+namespace: simple-rbac
 ```
 
 ## API Endpoints Tested
@@ -205,18 +205,18 @@ The collection includes some test cases referencing tenant scenarios and eKYC pr
 
 ```bash
 # Check if relations were created
-curl "http://localhost:4466/relation-tuples?namespace=default" | jq
+curl "http://localhost:4466/relation-tuples?namespace=simple-rbac" | jq
 
 # Manual authorization test
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=simple-rbac" \
   --data-urlencode "object=product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
 
 # Check role expansion
 curl -G "http://localhost:4466/relation-tuples/expand" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=simple-rbac" \
   --data-urlencode "object=role:admin" \
   --data-urlencode "relation=member" \
   --data-urlencode "max-depth=3"

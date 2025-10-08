@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # These are the default values for local development
+      # In production, you would point to your actual Ory services
+      - NEXT_PUBLIC_OATHKEEPER_URL=http://localhost:4455
+      - NEXT_PUBLIC_KRATOS_PUBLIC_URL=http://localhost:4433
+    restart: unless-stopped

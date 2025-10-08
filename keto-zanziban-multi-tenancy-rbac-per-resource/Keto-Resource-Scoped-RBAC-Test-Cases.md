@@ -358,7 +358,7 @@ All tests must pass with:
 
 If tests fail, verify:
 1. Keto is running on ports 4466 (read) and 4467 (write)
-2. Namespace "default" is configured in Keto
+2. Namespace "resource-rbac" is configured in Keto
 3. Tuples are created with correct scope (tenant:a#resource:type)
 4. Permission grants reference correct resource-scoped objects
 5. Role hierarchy is defined per resource, not globally

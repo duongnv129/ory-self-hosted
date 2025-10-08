@@ -18,7 +18,7 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Alice is admin in Tenant A
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -26,7 +26,7 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Bob is moderator in Tenant A
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "moderator",
   "subject_id": "user:bob"
@@ -38,11 +38,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Admin inherits moderator permissions
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "moderator",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "admin"
   }
@@ -50,11 +50,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Moderator inherits customer permissions
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "moderator"
   }
@@ -66,11 +66,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Customers can view products
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#product:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "customer"
   }
@@ -78,11 +78,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Moderators can create products
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#product:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "moderator"
   }
@@ -90,11 +90,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can delete products
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#product:items",
   "relation": "delete",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "admin"
   }
@@ -106,11 +106,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Customers can view categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#category:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "customer"
   }
@@ -118,11 +118,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Moderators can update categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#category:items",
   "relation": "update",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "moderator"
   }
@@ -130,11 +130,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can create categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a#category:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:a",
     "relation": "admin"
   }
@@ -146,7 +146,7 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Alice is customer in Tenant B (different role than in Tenant A!)
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -154,7 +154,7 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Charlie is customer in Tenant B
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_id": "user:charlie"
@@ -167,11 +167,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 // Tenant B has simplified hierarchy: only admin and customer (no moderator)
 // Admin inherits customer permissions
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "admin"
   }
@@ -183,11 +183,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Customers can view products
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#product:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "customer"
   }
@@ -195,11 +195,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can create products (Tenant B has no moderator role)
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#product:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "admin"
   }
@@ -207,11 +207,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can delete products
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#product:items",
   "relation": "delete",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "admin"
   }
@@ -223,11 +223,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```json
 // Customers can view categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#category:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "customer"
   }
@@ -235,11 +235,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can update categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#category:items",
   "relation": "update",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "admin"
   }
@@ -247,11 +247,11 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 
 // Admins can create categories
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b#category:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "tenant-rbac",
     "object": "tenant:b",
     "relation": "admin"
   }
@@ -265,7 +265,7 @@ This demonstrates **multi-tenant user membership**: Alice has admin privileges i
 ```bash
 # ✅ Alice (admin in Tenant A) can view products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:alice"
@@ -273,7 +273,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ✅ Alice (admin in Tenant A) can create products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -281,7 +281,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ✅ Alice (admin in Tenant A) can delete products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=delete" \
   --data-urlencode "subject_id=user:alice"
@@ -289,7 +289,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ✅ Alice (customer in Tenant B) can view products in Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:alice"
@@ -297,7 +297,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Alice (customer in Tenant B) CANNOT create products in Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -305,7 +305,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Alice (customer in Tenant B) CANNOT delete products in Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=delete" \
   --data-urlencode "subject_id=user:alice"
@@ -317,7 +317,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ```bash
 # ✅ Bob (moderator) can view products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:bob"
@@ -325,7 +325,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ✅ Bob (moderator) can create products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:bob"
@@ -333,7 +333,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Bob (moderator) CANNOT delete products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=delete" \
   --data-urlencode "subject_id=user:bob"
@@ -341,7 +341,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Bob (no role in Tenant B) CANNOT access Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:bob"
@@ -353,7 +353,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ```bash
 # ✅ Charlie (customer) can view products in Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:charlie"
@@ -361,7 +361,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Charlie (customer) CANNOT create products in Tenant B
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:charlie"
@@ -369,7 +369,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # ❌ Charlie (no role in Tenant A) CANNOT access Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:charlie"
@@ -403,7 +403,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ```bash
 # Is Alice an admin in Tenant A?
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a" \
   --data-urlencode "relation=admin" \
   --data-urlencode "subject_id=user:alice"
@@ -411,7 +411,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # Is Alice an admin in Tenant B?
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b" \
   --data-urlencode "relation=admin" \
   --data-urlencode "subject_id=user:alice"
@@ -419,7 +419,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # Is Alice a customer in Tenant B?
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b" \
   --data-urlencode "relation=customer" \
   --data-urlencode "subject_id=user:alice"
@@ -427,7 +427,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # Is Bob a moderator in Tenant A?
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a" \
   --data-urlencode "relation=moderator" \
   --data-urlencode "subject_id=user:bob"
@@ -439,7 +439,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ```bash
 # Expand admin role in Tenant A to see inherited permissions
 curl -G "http://localhost:4466/relation-tuples/expand" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a" \
   --data-urlencode "relation=admin" \
   --data-urlencode "max-depth=5"
@@ -450,11 +450,11 @@ curl -G "http://localhost:4466/relation-tuples/expand" \
 ```bash
 # List all tuples for Tenant A
 curl -G "http://localhost:4466/relation-tuples" \
-  --data-urlencode "namespace=default" | jq '.relation_tuples[] | select(.object | startswith("tenant:a"))'
+  --data-urlencode "namespace=tenant-rbac" | jq '.relation_tuples[] | select(.object | startswith("tenant:a"))'
 
 # List all tuples for Tenant B
 curl -G "http://localhost:4466/relation-tuples" \
-  --data-urlencode "namespace=default" | jq '.relation_tuples[] | select(.object | startswith("tenant:b"))'
+  --data-urlencode "namespace=tenant-rbac" | jq '.relation_tuples[] | select(.object | startswith("tenant:b"))'
 ```
 
 ### List All User's Tenant Memberships
@@ -462,7 +462,7 @@ curl -G "http://localhost:4466/relation-tuples" \
 ```bash
 # List all relations where Alice is the subject
 curl -G "http://localhost:4466/relation-tuples" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "subject_id=user:alice"
 # Shows both: tenant:a#admin and tenant:b#customer
 ```
@@ -483,7 +483,7 @@ class KetoTenantAuth {
     const response = await fetch(
       `${this.ketoReadUrl}/relation-tuples/check?` +
       new URLSearchParams({
-        namespace: 'default',
+        namespace: 'tenant-rbac',
         object: scopedResource,
         relation: action,
         subject_id: userId
@@ -502,7 +502,7 @@ class KetoTenantAuth {
       const response = await fetch(
         `${this.ketoReadUrl}/relation-tuples/check?` +
         new URLSearchParams({
-          namespace: 'default',
+          namespace: 'tenant-rbac',
           object: `tenant:${tenantId}`,
           relation: role,
           subject_id: userId
@@ -523,7 +523,7 @@ class KetoTenantAuth {
     const response = await fetch(
       `${this.ketoReadUrl}/relation-tuples?` +
       new URLSearchParams({
-        namespace: 'default',
+        namespace: 'tenant-rbac',
         subject_id: userId
       })
     );

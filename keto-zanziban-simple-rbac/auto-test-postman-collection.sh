@@ -9,7 +9,7 @@ set -e
 # Configuration
 KETO_READ_URL="http://localhost:4466"
 KETO_WRITE_URL="http://localhost:4467"
-NAMESPACE="default"
+NAMESPACE="simple-rbac"
 
 # Colors for output
 RED='\033[0;31m'
@@ -296,13 +296,13 @@ echo -e "${PURPLE}👥 User Role Assignments${NC}"
 echo "========================"
 
 # Grant Roles to Users
-create_relation_subject_id "$NAMESPACE" "role:customer" "member" "user:charlie" \
+create_relation_subject_id "$NAMESPACE" "role:customer" "member" "user:charlie@example.com" \
     "Create Employment - Charlie Customer"
 
-create_relation_subject_id "$NAMESPACE" "role:moderator" "member" "user:bob" \
+create_relation_subject_id "$NAMESPACE" "role:moderator" "member" "user:bob@example.com" \
     "Create Employment - Bob Moderator"
 
-create_relation_subject_id "$NAMESPACE" "role:admin" "member" "user:alice" \
+create_relation_subject_id "$NAMESPACE" "role:admin" "member" "user:alice@example.com" \
     "Create Employment - Alice Admin"
 
 echo ""
@@ -319,12 +319,12 @@ echo "Alice should have ALL permissions due to role inheritance"
 echo ""
 
 # Alice Tests - All should pass
-run_auth_test "user:alice" "product:items" "create" "true" "✅ Alice CAN create Product"
-run_auth_test "user:alice" "product:items" "delete" "true" "✅ Alice CAN delete Product"
-run_auth_test "user:alice" "product:items" "view" "true" "✅ Alice CAN view Product"
-run_auth_test "user:alice" "category:items" "create" "true" "✅ Alice CAN create Category"
-run_auth_test "user:alice" "category:items" "update" "true" "✅ Alice CAN update Category"
-run_auth_test "user:alice" "category:items" "view" "true" "✅ Alice CAN view Category"
+run_auth_test "user:alice@example.com" "product:items" "create" "true" "✅ Alice CAN create Product"
+run_auth_test "user:alice@example.com" "product:items" "delete" "true" "✅ Alice CAN delete Product"
+run_auth_test "user:alice@example.com" "product:items" "view" "true" "✅ Alice CAN view Product"
+run_auth_test "user:alice@example.com" "category:items" "create" "true" "✅ Alice CAN create Category"
+run_auth_test "user:alice@example.com" "category:items" "update" "true" "✅ Alice CAN update Category"
+run_auth_test "user:alice@example.com" "category:items" "view" "true" "✅ Alice CAN view Category"
 
 echo -e "${PURPLE}🛡️ Authorization Tests - Bob (Moderator)${NC}"
 echo "=========================================="
@@ -332,12 +332,12 @@ echo "Bob should have mixed permissions based on moderator role"
 echo ""
 
 # Bob Tests - Mixed results
-run_auth_test "user:bob" "product:items" "create" "true" "✅ Bob CAN create Product"
-run_auth_test "user:bob" "product:items" "delete" "false" "❌ Bob CANNOT delete Product"
-run_auth_test "user:bob" "product:items" "view" "true" "✅ Bob CAN view Product"
-run_auth_test "user:bob" "category:items" "create" "false" "❌ Bob CANNOT create Category"
-run_auth_test "user:bob" "category:items" "update" "true" "✅ Bob CAN update Category"
-run_auth_test "user:bob" "category:items" "view" "true" "✅ Bob CAN view Category"
+run_auth_test "user:bob@example.com" "product:items" "create" "true" "✅ Bob CAN create Product"
+run_auth_test "user:bob@example.com" "product:items" "delete" "false" "❌ Bob CANNOT delete Product"
+run_auth_test "user:bob@example.com" "product:items" "view" "true" "✅ Bob CAN view Product"
+run_auth_test "user:bob@example.com" "category:items" "create" "false" "❌ Bob CANNOT create Category"
+run_auth_test "user:bob@example.com" "category:items" "update" "true" "✅ Bob CAN update Category"
+run_auth_test "user:bob@example.com" "category:items" "view" "true" "✅ Bob CAN view Category"
 
 echo -e "${PURPLE}👤 Authorization Tests - Charlie (Customer)${NC}"
 echo "============================================"
@@ -345,12 +345,12 @@ echo "Charlie should only have view permissions"
 echo ""
 
 # Charlie Tests - Only view permissions
-run_auth_test "user:charlie" "product:items" "view" "true" "✅ Charlie CAN view Product"
-run_auth_test "user:charlie" "category:items" "view" "true" "✅ Charlie CAN view Category"
-run_auth_test "user:charlie" "product:items" "create" "false" "❌ Charlie CANNOT create Product"
-run_auth_test "user:charlie" "product:items" "delete" "false" "❌ Charlie CANNOT delete Product"
-run_auth_test "user:charlie" "category:items" "create" "false" "❌ Charlie CANNOT create Category"
-run_auth_test "user:charlie" "category:items" "update" "false" "❌ Charlie CANNOT update Category"
+run_auth_test "user:charlie@example.com" "product:items" "view" "true" "✅ Charlie CAN view Product"
+run_auth_test "user:charlie@example.com" "category:items" "view" "true" "✅ Charlie CAN view Category"
+run_auth_test "user:charlie@example.com" "product:items" "create" "false" "❌ Charlie CANNOT create Product"
+run_auth_test "user:charlie@example.com" "product:items" "delete" "false" "❌ Charlie CANNOT delete Product"
+run_auth_test "user:charlie@example.com" "category:items" "create" "false" "❌ Charlie CANNOT create Category"
+run_auth_test "user:charlie@example.com" "category:items" "update" "false" "❌ Charlie CANNOT update Category"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -369,7 +369,7 @@ run_debug_query "expand" "role:moderator" "member" "Debug - Moderator Role hiera
 run_debug_query "expand" "role:customer" "member" "Debug - Customer Role hierarchies"
 
 # Debug - User Role Verification
-run_debug_query "check" "role:admin" "member" "user:alice" "Debug - Is Alice Admin?"
+run_debug_query "check" "role:admin" "member" "user:alice@example.com" "Debug - Is Alice Admin?"
 
 # Debug - Permission Expansion
 run_debug_query "expand" "product:items" "view" "Debug - Expand Product View Relations"

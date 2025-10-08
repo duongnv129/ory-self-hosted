@@ -8,6 +8,18 @@ namespaces:
   - id: 0
     name: default
 
+  # Use Case 1: Simple RBAC - Global role-based access control
+  - id: 1
+    name: simple-rbac
+
+  # Use Case 2: Tenant-Centric RBAC - Multi-tenant role-based access control with tenant isolation
+  - id: 2
+    name: tenant-rbac
+
+  # Use Case 3: Resource-Scoped RBAC - Fine-grained resource-scoped permissions
+  - id: 3
+    name: resource-rbac
+
 serve:
   read:
     host: 0.0.0.0

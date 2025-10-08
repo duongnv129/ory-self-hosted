@@ -22,7 +22,7 @@ This implementation demonstrates a **tenant-centric multi-tenancy RBAC model** u
 
 ### Key Characteristics
 
-- ✅ **Single namespace** (`default`) for all tenants
+- ✅ **Single namespace** (`tenant-rbac`) for all tenants
 - ✅ **Hierarchical role inheritance** via subject sets
 - ✅ **Complete tenant isolation** - no cross-tenant access
 - ✅ **Multi-tenant user support** - same user, different roles per tenant
@@ -39,7 +39,7 @@ Each tenant operates independently with its own role assignments and permissions
 
 | Feature | Tenant A | Tenant B |
 |---------|----------|----------|
-| **Namespace** | `default` | `default` |
+| **Namespace** | `tenant-rbac` | `tenant-rbac` |
 | **Tenant ID** | `tenant:a` | `tenant:b` |
 | **Role Hierarchy** | admin → moderator → customer | admin → customer |
 | **Isolation** | ✅ Complete | ✅ Complete |
@@ -79,7 +79,7 @@ Total:  39
 ```bash
 # Check if Alice can create products in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -91,7 +91,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ```bash
 # Check Alice's role in Tenant A
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a" \
   --data-urlencode "relation=admin" \
   --data-urlencode "subject_id=user:alice"
@@ -105,7 +105,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 ### Namespace Structure
 
 ```
-Namespace: default
+Namespace: tenant-rbac
 ├── Tenant A (tenant:a)
 │   ├── Users: Alice (admin), Bob (moderator)
 │   ├── Roles: admin → moderator → customer

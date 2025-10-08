@@ -6,8 +6,9 @@ KRATOS_PATH = kratos
 KETO_PATH = keto
 OATHKEEPER_PATH = oathkeeper
 DEMO_PATH = multi-tenancy-demo
+WEB_DEMO_PATH = web-demo
 
-.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo migrate shell network
+.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo web-demo migrate shell network
 
 # Default target
 help: ## Show this help message
@@ -23,7 +24,7 @@ network: ## Create Docker network (ory-network)
 		echo "✓ Network ory-network already exists"
 
 # Service Management
-up: network ## Start all services (postgres + kratos + keto)
+up-core: network ## Start core services only (postgres + kratos + keto)
 	@echo "Starting PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose up -d
 	@echo "Starting Kratos stack..."
@@ -32,7 +33,7 @@ up: network ## Start all services (postgres + kratos + keto)
 	@cd $(KETO_PATH) && docker-compose up -d
 	@echo "✓ Core services started"
 
-up-all: network ## Start all services including Oathkeeper and demo
+up: network ## Start all services including Oathkeeper, demo, and web-demo
 	@echo "Starting PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose up -d
 	@echo "Starting Kratos stack..."
@@ -43,6 +44,8 @@ up-all: network ## Start all services including Oathkeeper and demo
 	@cd $(OATHKEEPER_PATH) && docker-compose up -d
 	@echo "Starting Multi-Tenancy Demo..."
 	@cd $(DEMO_PATH) && docker-compose up -d --build
+	@echo "Starting Web Demo..."
+	@cd $(WEB_DEMO_PATH) && docker-compose up -d --build
 	@echo "✓ All services started"
 
 down: ## Stop all services
@@ -91,6 +94,26 @@ demo-shell: ## Get shell access to demo container
 demo-restart: ## Restart demo container
 	@cd $(DEMO_PATH) && docker-compose restart multi-tenancy-demo
 
+web-demo: ## Start web-demo development server (Next.js on port 3000)
+	@echo "Starting web-demo development server..."
+	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm dev
+
+web-demo-build: ## Build web-demo for production
+	@echo "Building web-demo for production..."
+	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm build
+
+web-demo-start: ## Start web-demo production server
+	@echo "Starting web-demo production server..."
+	@cd $(WEB_DEMO_PATH) && pnpm start
+
+web-demo-lint: ## Lint web-demo code
+	@echo "Linting web-demo code..."
+	@cd $(WEB_DEMO_PATH) && pnpm lint
+
+web-demo-type-check: ## Type check web-demo code
+	@echo "Type checking web-demo code..."
+	@cd $(WEB_DEMO_PATH) && pnpm type-check
+
 # Logs and Monitoring
 logs: ## Show logs for all Kratos services
 	@cd $(KRATOS_PATH) && docker-compose logs -f
@@ -103,9 +126,6 @@ logs-keto: ## Show logs for Keto service only
 
 logs-oathkeeper: ## Show logs for Oathkeeper service only
 	@cd $(OATHKEEPER_PATH) && docker-compose logs -f oathkeeper
-
-logs-ui: ## Show logs for UI service only
-	@cd $(KRATOS_PATH) && docker-compose logs -f kratos-selfservice-ui-node
 
 logs-postgres: ## Show PostgreSQL logs
 	@cd $(POSTGRES_PATH) && docker-compose logs -f postgres
@@ -179,6 +199,67 @@ clean: ## Stop and remove all containers, networks, and volumes
 clean-identities: ## Clean up test Kratos identities
 	@./clean-kratos-identities.sh
 
+create-admin: ## Create Kratos admin user (username: admin, email: admin@example.com)
+	@echo "Creating admin user..."
+	@curl -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{ \
+			"schema_id": "default", \
+			"traits": { \
+				"email": "admin@example.com", \
+				"name": { \
+					"first": "Admin", \
+					"last": "User" \
+				}, \
+				"tenant_ids": ["tenant-a", "tenant-b", "tenant-c"] \
+			}, \
+			"credentials": { \
+				"password": { \
+					"config": { \
+						"password": "admin" \
+					} \
+				} \
+			} \
+		}' | jq '.' 2>/dev/null || echo "Failed to create admin user. Is Kratos running?"
+	@echo ""
+	@echo "✓ Admin user created:"
+	@echo "  Email:    admin@example.com"
+	@echo "  Password: admin"
+	@echo "  Tenants:  tenant-a, tenant-b, tenant-c"
+
+create-test-users: ## Create test Kratos accounts (alice, bob, charlie)
+	@echo "Creating test users in Kratos..."
+	@echo ""
+	@echo "1️⃣  Creating Alice..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"alice@example.com","name":{"first":"Alice","last":"Admin"}},"credentials":{"password":{"config":{"password":"alice123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "2️⃣  Creating Bob..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"bob@example.com","name":{"first":"Bob","last":"Moderator"}},"credentials":{"password":{"config":{"password":"bob123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "3️⃣  Creating Charlie..."
+	@curl -s -X POST http://127.0.0.1:4434/admin/identities \
+		-H "Content-Type: application/json" \
+		-d '{"schema_id":"default","traits":{"email":"charlie@example.com","name":{"first":"Charlie","last":"Customer"}},"credentials":{"password":{"config":{"password":"charlie123"}}}}' \
+		| jq -r '"  ✓ Identity created: " + .id' 2>/dev/null || echo "  ⚠ May already exist"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════"
+	@echo "✅ Test users created successfully!"
+	@echo ""
+	@echo "Login Credentials:"
+	@echo "  Alice:   alice@example.com   / alice123"
+	@echo "  Bob:     bob@example.com     / bob123"
+	@echo "  Charlie: charlie@example.com / charlie123"
+	@echo ""
+	@echo "💡 Next: Run Keto setup script to grant permissions"
+	@echo "   cd keto-zanziban-simple-rbac && ./auto-test-postman-collection.sh"
+	@echo "═══════════════════════════════════════════════════════"
+
 reset: clean network up ## Full reset: clean everything and start fresh
 
 # Development URLs
@@ -202,7 +283,10 @@ urls: ## Show all service URLs
 	@echo "Supporting Services:"
 	@echo "  Mailslurper:        http://127.0.0.1:4436"
 	@echo "  PostgreSQL:         localhost:5432 (postgres/postgres)"
-	@echo "  Multi-Tenancy Demo: http://localhost:9000"
+	@echo ""
+	@echo "Demo Applications:"
+	@echo "  Web Demo:           http://localhost:3000"
+	@echo "  Multi-Tenancy API:  http://localhost:9000"
 	@echo ""
 
 # Quick development workflows

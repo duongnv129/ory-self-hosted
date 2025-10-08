@@ -26,7 +26,7 @@ user:charlie
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:{tenant_id}#{resource_type}",
   "relation": "{role}",
   "subject_id": "user:{user_id}"
@@ -36,7 +36,7 @@ user:charlie
 **Example:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -51,11 +51,11 @@ user:charlie
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:{tenant_id}#{resource_type}",
   "relation": "{action}",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:{tenant_id}#{resource_type}",
     "relation": "{role}"
   }
@@ -65,11 +65,11 @@ user:charlie
 **Example:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "admin"
   }
@@ -84,11 +84,11 @@ user:charlie
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:{tenant_id}#{resource_type}",
   "relation": "{lower_role}",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:{tenant_id}#{resource_type}",
     "relation": "{higher_role}"
   }
@@ -98,11 +98,11 @@ user:charlie
 **Example:**
 ```json
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "moderator",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "admin"
   }
@@ -121,7 +121,7 @@ user:charlie
 ```json
 // Alice as admin
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -132,11 +132,11 @@ user:charlie
 ```json
 // Admin inherits moderator
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "moderator",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "admin"
   }
@@ -144,11 +144,11 @@ user:charlie
 
 // Moderator inherits customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "moderator"
   }
@@ -159,11 +159,11 @@ user:charlie
 ```json
 // Customers can view
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "customer"
   }
@@ -171,11 +171,11 @@ user:charlie
 
 // Moderators can create
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "moderator"
   }
@@ -183,11 +183,11 @@ user:charlie
 
 // Admins can delete
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#product:items",
   "relation": "delete",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#product:items",
     "relation": "admin"
   }
@@ -202,7 +202,7 @@ user:charlie
 ```json
 // Alice as moderator
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "moderator",
   "subject_id": "user:alice"
@@ -213,11 +213,11 @@ user:charlie
 ```json
 // Moderator inherits customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#category:items",
     "relation": "moderator"
   }
@@ -228,11 +228,11 @@ user:charlie
 ```json
 // Customers can view
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#category:items",
     "relation": "customer"
   }
@@ -240,11 +240,11 @@ user:charlie
 
 // Moderators can update
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "update",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#category:items",
     "relation": "moderator"
   }
@@ -252,11 +252,11 @@ user:charlie
 
 // Admins can create
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:a#category:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:a#category:items",
     "relation": "admin"
   }
@@ -271,7 +271,7 @@ user:charlie
 ```json
 // Bob as admin
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "admin",
   "subject_id": "user:bob"
@@ -279,7 +279,7 @@ user:charlie
 
 // Alice as customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -287,7 +287,7 @@ user:charlie
 
 // Charlie as customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "customer",
   "subject_id": "user:charlie"
@@ -298,11 +298,11 @@ user:charlie
 ```json
 // Admin inherits customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#product:items",
     "relation": "admin"
   }
@@ -313,11 +313,11 @@ user:charlie
 ```json
 // Customers can view
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#product:items",
     "relation": "customer"
   }
@@ -325,11 +325,11 @@ user:charlie
 
 // Admins can create
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#product:items",
     "relation": "admin"
   }
@@ -337,11 +337,11 @@ user:charlie
 
 // Admins can delete
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#product:items",
   "relation": "delete",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#product:items",
     "relation": "admin"
   }
@@ -356,7 +356,7 @@ user:charlie
 ```json
 // Bob as admin
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#category:items",
   "relation": "admin",
   "subject_id": "user:bob"
@@ -367,11 +367,11 @@ user:charlie
 ```json
 // Admin inherits customer
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#category:items",
   "relation": "customer",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#category:items",
     "relation": "admin"
   }
@@ -382,11 +382,11 @@ user:charlie
 ```json
 // Customers can view
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#category:items",
   "relation": "view",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#category:items",
     "relation": "customer"
   }
@@ -394,11 +394,11 @@ user:charlie
 
 // Admins can update
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#category:items",
   "relation": "update",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#category:items",
     "relation": "admin"
   }
@@ -406,11 +406,11 @@ user:charlie
 
 // Admins can create
 {
-  "namespace": "default",
+  "namespace": "resource-rbac",
   "object": "tenant:b#category:items",
   "relation": "create",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "resource-rbac",
     "object": "tenant:b#category:items",
     "relation": "admin"
   }

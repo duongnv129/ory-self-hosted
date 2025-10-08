@@ -12,14 +12,14 @@ Alice is a **multi-tenant user** with different roles in different tenants:
 
 ```json
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "admin",
   "subject_id": "user:alice"
 }
 
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -276,7 +276,7 @@ Run these commands to verify Alice's permissions:
 ```bash
 # Tenant A - Should be allowed (admin)
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:a#product:items" \
   --data-urlencode "relation=delete" \
   --data-urlencode "subject_id=user:alice"
@@ -284,7 +284,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant B - Should be denied (customer)
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=delete" \
   --data-urlencode "subject_id=user:alice"
@@ -292,7 +292,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 # Tenant B - Should be allowed (customer can view)
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=tenant-rbac" \
   --data-urlencode "object=tenant:b#product:items" \
   --data-urlencode "relation=view" \
   --data-urlencode "subject_id=user:alice"

@@ -109,7 +109,7 @@ Keto-Multi-Tenant-RBAC.postman_environment.json
 This includes:
 - ✅ `keto_read_url`: `http://localhost:4466`
 - ✅ `keto_write_url`: `http://localhost:4467`
-- ✅ `namespace`: `default`
+- ✅ `namespace`: `tenant-rbac`
 
 **Option B: Use Collection Variables**
 
@@ -119,7 +119,7 @@ The collection has built-in variables as fallback:
 |----------|-------|-------------|
 | `keto_read_url` | `http://localhost:4466` | Keto Read API endpoint |
 | `keto_write_url` | `http://localhost:4467` | Keto Write API endpoint |
-| `namespace` | `default` | Keto namespace |
+| `namespace` | `tenant-rbac` | Keto namespace |
 
 **Setting Variables:**
 1. Click on the collection name
@@ -222,7 +222,7 @@ Removes all existing relation tuples to ensure clean state.
 ```json
 // Alice as Admin
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "admin",
   "subject_id": "user:alice"
@@ -230,7 +230,7 @@ Removes all existing relation tuples to ensure clean state.
 
 // Bob as Moderator
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:a",
   "relation": "moderator",
   "subject_id": "user:bob"
@@ -241,7 +241,7 @@ Removes all existing relation tuples to ensure clean state.
 ```json
 // Alice as Customer
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_id": "user:alice"
@@ -249,7 +249,7 @@ Removes all existing relation tuples to ensure clean state.
 
 // Charlie as Customer
 {
-  "namespace": "default",
+  "namespace": "tenant-rbac",
   "object": "tenant:b",
   "relation": "customer",
   "subject_id": "user:charlie"
@@ -354,7 +354,7 @@ pm.test('Alice CANNOT create products in Tenant B', function () {
 **Run with Collection Runner:**
 1. Click "Run" button on collection
 2. Select folders to run
-3. Configure iterations (default: 1)
+3. Configure iterations (tenant-rbac: 1)
 4. Click "Run Multi-Tenant RBAC"
 5. View summary report
 
@@ -379,7 +379,7 @@ newman run Multi-Tenant-RBAC.postman_collection.json \
 newman run Multi-Tenant-RBAC.postman_collection.json \
   --env-var "keto_read_url=http://localhost:4466" \
   --env-var "keto_write_url=http://localhost:4467" \
-  --env-var "namespace=default"
+  --env-var "namespace=tenant-rbac"
 
 # Run with reporters
 newman run Multi-Tenant-RBAC.postman_collection.json \
@@ -483,7 +483,7 @@ cd keto && docker-compose up -d
 **Problem:** `404 Not Found` errors
 
 **Solution:**
-- Verify namespace variable is set to `default`
+- Verify namespace variable is set to `tenant-rbac`
 - Check Keto configuration for namespace setup
 
 ---

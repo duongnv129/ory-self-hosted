@@ -15,7 +15,7 @@ for i in {1..100000}; do
   curl --location --request PUT 'http://localhost:4467/admin/relation-tuples' \
   --header 'Content-Type: application/json' \
   --data "{
-    \"namespace\": \"default\",
+    \"namespace\": \"resource-rbac\",
     \"object\": \"tenant:a#product:items\",
     \"relation\": \"admin\",
     \"subject_id\": \"user:$USER_ID\"

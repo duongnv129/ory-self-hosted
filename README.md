@@ -113,8 +113,7 @@ Client → Oathkeeper → Kratos (Auth) → Keto (Authz) → Backend Service
 ### Service Management
 
 ```bash
-make up              # Start core services (postgres, kratos, keto)
-make up-all          # Start all services including oathkeeper and demo
+make up              # Start all services including postgres, kratos, keto, oathkeeper, demo, and web demo
 make down            # Stop all services
 make restart         # Restart all services
 make status          # Show service status

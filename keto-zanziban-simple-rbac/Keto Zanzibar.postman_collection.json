@@ -1965,7 +1965,7 @@
     },
     {
       "key": "namespace",
-      "value": "default",
+      "value": "simple-rbac",
       "type": "string"
     }
   ]

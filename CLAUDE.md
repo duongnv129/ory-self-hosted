@@ -10,7 +10,8 @@ This is a comprehensive Ory Stack self-hosted setup demonstrating identity manag
 - **Ory Keto**: Fine-grained authorization using Zanzibar-style permissions
 - **Ory Oathkeeper**: Identity and access proxy (API gateway)
 - **PostgreSQL**: Shared database for all Ory services
-- **Multi-tenancy Demo**: Express.js application demonstrating tenant isolation
+- **Web Demo**: Next.js 14 application demonstrating three RBAC models (Simple, Tenant-Centric, Resource-Scoped)
+- **Multi-tenancy Demo**: Express.js backend API demonstrating tenant isolation
 - **RBAC Test Suite**: Comprehensive Postman collection for Keto authorization testing
 
 ## Architecture
@@ -45,8 +46,11 @@ All services communicate through a shared Docker network (`ory-network`):
   - `config/oathkeeper.yml` - Authenticators, authorizers, mutators
   - `config/access-rules.yml` - Routing and access control rules
 - `postgres/` - PostgreSQL database service
-- `multi-tenancy-demo/` - Express.js demo (port 9000)
+- `web-demo/` - Next.js 14 frontend application (port 3000)
+- `multi-tenancy-demo/` - Express.js backend API (port 9000)
 - `keto-zanziban-simple-rbac/` - Postman test collection for Keto RBAC
+- `keto-zanzibar-multi-tenancy-rbac/` - Tenant-centric RBAC test collection
+- `keto-zanziban-multi-tenancy-rbac-per-resource/` - Resource-scoped RBAC test collection
 
 ## Development Commands
 

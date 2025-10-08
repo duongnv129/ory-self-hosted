@@ -8,7 +8,7 @@ This is a comprehensive test collection for Zanzibar single-query authorization 
 
 ### Namespace Structure
 
-- **Single Namespace**: `default`
+- **Single Namespace**: `simple-rbac`
 - **Hierarchical RBAC Model**: Customer ← Moderator ← Admin (inheritance via subject sets)
 - **Resources**: `product:items` and `category:items`
 
@@ -59,11 +59,11 @@ Creates inheritance relationships where higher roles inherit lower role permissi
 ```json
 // Moderator inherits Customer permissions
 {
-  "namespace": "default",
+  "namespace": "simple-rbac",
   "object": "role:customer",
   "relation": "member",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "simple-rbac",
     "object": "role:moderator",
     "relation": "member"
   }
@@ -71,11 +71,11 @@ Creates inheritance relationships where higher roles inherit lower role permissi
 
 // Admin inherits Moderator permissions
 {
-  "namespace": "default",
+  "namespace": "simple-rbac",
   "object": "role:moderator",
   "relation": "member",
   "subject_set": {
-    "namespace": "default",
+    "namespace": "simple-rbac",
     "object": "role:admin",
     "relation": "member"
   }
@@ -104,13 +104,13 @@ Direct user-to-role memberships:
 
 ```json
 // Alice as Admin
-{"namespace": "default", "object": "role:admin", "relation": "member", "subject_id": "user:alice"}
+{"namespace": "simple-rbac", "object": "role:admin", "relation": "member", "subject_id": "user:alice"}
 
 // Bob as Moderator
-{"namespace": "default", "object": "role:moderator", "relation": "member", "subject_id": "user:bob"}
+{"namespace": "simple-rbac", "object": "role:moderator", "relation": "member", "subject_id": "user:bob"}
 
 // Charlie as Customer
-{"namespace": "default", "object": "role:customer", "relation": "member", "subject_id": "user:charlie"}
+{"namespace": "simple-rbac", "object": "role:customer", "relation": "member", "subject_id": "user:charlie"}
 ```
 
 ### Authorization Test Cases
@@ -175,21 +175,21 @@ The collection includes debug functionality to inspect the authorization system:
 #### 1. Role Hierarchy Expansion
 
 ```
-GET /relation-tuples/expand?namespace=default&object=role:admin&relation=member&max-depth=10
-GET /relation-tuples/expand?namespace=default&object=role:moderator&relation=member&max-depth=10
-GET /relation-tuples/expand?namespace=default&object=role:customer&relation=member&max-depth=10
+GET /relation-tuples/expand?namespace=simple-rbac&object=role:admin&relation=member&max-depth=10
+GET /relation-tuples/expand?namespace=simple-rbac&object=role:moderator&relation=member&max-depth=10
+GET /relation-tuples/expand?namespace=simple-rbac&object=role:customer&relation=member&max-depth=10
 ```
 
 #### 2. User Role Verification
 
 ```
-GET /relation-tuples/check?namespace=default&object=role:admin&relation=member&subject_id=user:alice
+GET /relation-tuples/check?namespace=simple-rbac&object=role:admin&relation=member&subject_id=user:alice
 ```
 
 #### 3. Permission Tree Analysis
 
 ```
-GET /relation-tuples/expand?namespace=default&object=product:items&relation=view&max-depth=3
+GET /relation-tuples/expand?namespace=simple-rbac&object=product:items&relation=view&max-depth=3
 ```
 
 ### Health Checks
@@ -201,8 +201,8 @@ GET /health/ready  # Both read (4466) and write (4467) services
 ### Relation Management
 
 ```
-DELETE /admin/relation-tuples?namespace=default  # Clean namespace
-GET /relation-tuples?namespace=default          # List all relations
+DELETE /admin/relation-tuples?namespace=simple-rbac  # Clean namespace
+GET /relation-tuples?namespace=simple-rbac          # List all relations
 ```
 
 ## API Endpoints Tested
@@ -226,7 +226,7 @@ GET /relation-tuples?namespace=default          # List all relations
 
 ```bash
 curl -G "http://localhost:4466/relation-tuples/check" \
-  --data-urlencode "namespace=default" \
+  --data-urlencode "namespace=simple-rbac" \
   --data-urlencode "object=product:items" \
   --data-urlencode "relation=create" \
   --data-urlencode "subject_id=user:alice"
@@ -254,7 +254,7 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 curl -X PUT "http://localhost:4467/admin/relation-tuples" \
   -H "Content-Type: application/json" \
   -d '{
-    "namespace": "default",
+    "namespace": "simple-rbac",
     "object": "role:admin",
     "relation": "member",
     "subject_id": "user:alice"
@@ -291,7 +291,7 @@ The collection uses these variables:
 
 - `keto_read_url`: `http://localhost:4466`
 - `keto_write_url`: `http://localhost:4467`
-- `namespace`: `default`
+- `namespace`: `simple-rbac`
 
 ## Validation Criteria
 
@@ -319,7 +319,7 @@ The collection uses these variables:
 2. **Complete Test Coverage**: Both positive authorization and denial scenarios tested
 3. **Single Query Authorization**: Direct permission checks without multiple roundtrips
 4. **Proper Error Handling**: Denied permissions return `{"allowed": false}`, not HTTP errors
-5. **Namespace Isolation**: All relations within single `default` namespace
+5. **Namespace Isolation**: All relations within single `simple-rbac` namespace
 6. **Subject Set Relationships**: Indirect permissions through role membership
 7. **Resource-Action Granularity**: Fine-grained permissions per resource and action
 8. **Debug and Expansion**: Role hierarchy inspection via expand API
