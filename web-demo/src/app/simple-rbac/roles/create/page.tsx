@@ -27,6 +27,7 @@ import {
   Label,
   Alert,
   AlertDescription,
+  Badge,
 } from '@/components/ui';
 import {
   ArrowLeft,
@@ -38,6 +39,7 @@ import { Permission } from '@/lib/types/models';
 import { toast } from 'sonner';
 import { PermissionSelector } from '@/components/roles/PermissionSelector';
 import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
+import { RoleInheritanceSelector } from '@/components/roles/RoleInheritanceSelector';
 
 /**
  * Form data interface for role creation
@@ -51,7 +53,7 @@ interface CreateRoleFormData {
 
 export default function CreateRolePage() {
   const router = useRouter();
-  const { roles, isLoading: rolesLoading } = useRoles();
+  const { roles } = useRoles();
   const { createRole } = useRoleMutations();
 
   const [formData, setFormData] = useState<CreateRoleFormData>({
@@ -145,90 +147,57 @@ export default function CreateRolePage() {
   };
 
   /**
-   * Handle role inheritance toggle
-   * @param roleName - Role name to toggle inheritance for
-   * @param checked - Whether inheritance should be enabled
-   */
-  const handleInheritanceToggle = (roleName: string, checked: boolean) => {
-    const currentInheritsFrom = formData.inheritsFrom;
-
-    if (checked) {
-      if (!currentInheritsFrom.includes(roleName)) {
-        handleFieldChange('inheritsFrom', [...currentInheritsFrom, roleName]);
-      }
-    } else {
-      handleFieldChange('inheritsFrom', currentInheritsFrom.filter(r => r !== roleName));
-    }
-  };
-
-  /**
-   * Calculate inherited permissions from parent roles using role API data
-   * @returns Array of inherited permissions
+   * Calculate inherited permissions from parent roles
+   * @returns Array of inherited permissions with their source roles
    */
   const getInheritedPermissions = (): Permission[] => {
-    if (formData.inheritsFrom.length === 0) return [];
+    if (!formData.inheritsFrom?.length || !roles?.length) {
+      return [];
+    }
 
-    return formData.inheritsFrom.flatMap(parentRoleName => {
-      // Find the parent role in the roles data
-      const parentRole = roles.find(role => role.name === parentRoleName);
+    const inheritedPerms: Permission[] = [];
+    const visited = new Set<string>();
 
-      // If parent role has explicit permissions, use those
-      if (parentRole?.permissions && parentRole.permissions.length > 0) {
-        return parentRole.permissions;
+    /**
+     * Recursively collect permissions from parent roles
+     * @param roleName - Name of the role to get permissions from
+     */
+    const collectPermissions = (roleName: string) => {
+      if (visited.has(roleName)) return; // Prevent circular dependencies
+      visited.add(roleName);
+
+      const parentRole = roles.find(r => r.name === roleName);
+      if (!parentRole) return;
+
+      // Add direct permissions from this parent role
+      if (parentRole.permissions?.length) {
+        for (const perm of parentRole.permissions) {
+          const existing = inheritedPerms.find(
+            p => p.resource === perm.resource && p.action === perm.action
+          );
+          if (!existing) {
+            inheritedPerms.push({
+              resource: perm.resource,
+              action: perm.action,
+            });
+          }
+        }
       }
 
-      // Fallback to basic permissions based on role name if no explicit permissions
-      // This maintains backward compatibility during the transition to full Keto integration
-      const basicPermissions: Permission[] = [];
-
-      switch (parentRoleName.toLowerCase()) {
-        case 'admin':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'users', action: 'create' },
-            { resource: 'users', action: 'update' },
-            { resource: 'users', action: 'delete' },
-            { resource: 'products', action: 'view' },
-            { resource: 'products', action: 'create' },
-            { resource: 'products', action: 'update' },
-            { resource: 'products', action: 'delete' },
-            { resource: 'categories', action: 'view' },
-            { resource: 'categories', action: 'create' },
-            { resource: 'categories', action: 'update' },
-            { resource: 'categories', action: 'delete' },
-            { resource: 'roles', action: 'view' },
-            { resource: 'roles', action: 'create' },
-            { resource: 'roles', action: 'update' },
-            { resource: 'roles', action: 'delete' }
-          );
-          break;
-        case 'moderator':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'products', action: 'view' },
-            { resource: 'products', action: 'create' },
-            { resource: 'products', action: 'update' },
-            { resource: 'categories', action: 'view' },
-            { resource: 'categories', action: 'create' },
-            { resource: 'categories', action: 'update' },
-            { resource: 'roles', action: 'view' }
-          );
-          break;
-        case 'customer':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'products', action: 'view' },
-            { resource: 'categories', action: 'view' }
-          );
-          break;
-        default:
-          // For unknown roles, check if they have any basic view permissions
-          basicPermissions.push({ resource: 'users', action: 'view' });
-          break;
+      // Recursively collect from this role's parents
+      if (parentRole.inheritsFrom?.length) {
+        for (const grandparent of parentRole.inheritsFrom) {
+          collectPermissions(grandparent);
+        }
       }
+    };
 
-      return basicPermissions;
-    });
+    // Start collection from all direct parent roles
+    for (const parentName of formData.inheritsFrom) {
+      collectPermissions(parentName);
+    }
+
+    return inheritedPerms;
   };
 
   /**
@@ -356,47 +325,13 @@ export default function CreateRolePage() {
           </Card>
 
           {/* Role Inheritance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Role Inheritance</CardTitle>
-              <CardDescription>
-                Select parent roles that this role should inherit permissions from
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {rolesLoading ? (
-                <p className="text-sm text-muted-foreground">Loading roles...</p>
-              ) : roles.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No existing roles available</p>
-              ) : (
-                <div className="space-y-3">
-                  {roles
-                    .filter((role) => role.name !== formData.name) // Don't show current role
-                    .map((role) => (
-                      <div key={role.id} className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          id={`inherit-${role.name}`}
-                          checked={formData.inheritsFrom.includes(role.name)}
-                          onChange={(e) => handleInheritanceToggle(role.name, e.target.checked)}
-                          disabled={isSubmitting}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <label
-                          htmlFor={`inherit-${role.name}`}
-                          className="flex-1 text-sm font-medium leading-none cursor-pointer"
-                        >
-                          <div>
-                            <span className="font-semibold">{role.name}</span>
-                            <p className="text-muted-foreground text-xs">{role.description}</p>
-                          </div>
-                        </label>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <RoleInheritanceSelector
+            availableRoles={roles || []}
+            selectedInheritance={formData.inheritsFrom}
+            onInheritanceChange={(inheritance) => handleFieldChange('inheritsFrom', inheritance)}
+            currentRoleName={formData.name || '__creating__'}
+            disabled={isSubmitting}
+          />
 
           {/* Permission Selection */}
           <PermissionSelector
@@ -444,15 +379,22 @@ export default function CreateRolePage() {
                 {formData.inheritsFrom.length > 0 && (
                   <div>
                     <h4 className="font-medium text-sm mb-2">Inherits From:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.inheritsFrom.map(roleName => (
-                        <span
-                          key={roleName}
-                          className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-                        >
-                          {roleName}
-                        </span>
-                      ))}
+                    <div className="space-y-2">
+                      {formData.inheritsFrom.map(roleName => {
+                        const parentRole = roles?.find(r => r.name === roleName);
+                        return (
+                          <div key={roleName} className="flex items-center justify-between">
+                            <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
+                              {roleName}
+                            </span>
+                            {parentRole && (
+                              <span className="text-xs text-muted-foreground">
+                                {parentRole.permissions?.length || 0} permissions
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -464,8 +406,11 @@ export default function CreateRolePage() {
                     </h4>
                     <div className="text-xs text-muted-foreground space-y-1">
                       {formData.permissions.map(permission => (
-                        <div key={`${permission.resource}-${permission.action}`}>
-                          {permission.action} {permission.resource}
+                        <div key={`${permission.resource}-${permission.action}`} className="flex items-center gap-2">
+                          <Badge variant="default" className="text-xs">
+                            Direct
+                          </Badge>
+                          <span>{permission.action} {permission.resource}</span>
                         </div>
                       ))}
                     </div>
@@ -477,8 +422,27 @@ export default function CreateRolePage() {
                     <h4 className="font-medium text-sm mb-2">
                       Inherited Permissions: ({getInheritedPermissions().length})
                     </h4>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      {getInheritedPermissions().map(permission => (
+                        <div key={`inherited-${permission.resource}-${permission.action}`} className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            Inherited
+                          </Badge>
+                          <span>{permission.action} {permission.resource}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Total Permission Count */}
+                {(formData.permissions.length > 0 || getInheritedPermissions().length > 0) && (
+                  <div className="border-t pt-3">
+                    <h4 className="font-medium text-sm mb-1">
+                      Total Effective Permissions: ({formData.permissions.length + getInheritedPermissions().length})
+                    </h4>
                     <p className="text-xs text-muted-foreground">
-                      Permissions inherited from parent roles
+                      {formData.permissions.length} direct + {getInheritedPermissions().length} inherited
                     </p>
                   </div>
                 )}

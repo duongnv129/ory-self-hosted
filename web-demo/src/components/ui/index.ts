@@ -14,3 +14,4 @@ export * from './alert';
 export * from './badge';
 export * from './select';
 export * from './loading';
+export * from './checkbox';

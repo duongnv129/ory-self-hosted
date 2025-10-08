@@ -41,6 +41,7 @@ import { Permission } from '@/lib/types/models';
 import { toast } from 'sonner';
 import { PermissionSelector } from '@/components/roles/PermissionSelector';
 import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
+import { RoleInheritanceSelector } from '@/components/roles/RoleInheritanceSelector';
 import { CardSkeleton } from '@/components/ui/loading';
 
 /**
@@ -68,7 +69,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   // Fetch metadata for debugging and permission matrix
   const { resources: metadataResources } = useMetadata();
   // Fetch all roles for inheritance calculation
-  const { roles: allRoles } = useRoles();
+  const { roles: allRoles, isLoading: isRolesLoading } = useRoles();
   // Use the specific role hook to fetch detailed role data including permissions
   const { role: roleToEdit, permissions: rolePermissions, isLoading: isRoleLoading, isError: isRoleError } = useRole(params.name);
 
@@ -268,7 +269,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   };
 
   // Show loading state while fetching role data
-  if (isRoleLoading || !isInitialized) {
+  if (isRoleLoading || isRolesLoading || !isInitialized) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -411,32 +412,13 @@ export default function EditRolePage({ params }: EditRolePageProps) {
           </Card>
 
           {/* Role Inheritance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Role Inheritance</CardTitle>
-              <CardDescription>
-                Select parent roles that this role should inherit permissions from
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Role inheritance selection requires the full roles list which is not available in this view.
-                Please update inheritance settings by editing the role again after creation.
-              </p>
-              {formData.inheritsFrom.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-sm font-medium mb-2">Current inheritance:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.inheritsFrom.map(roleName => (
-                      <span key={roleName} className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
-                        {roleName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <RoleInheritanceSelector
+            availableRoles={allRoles || []}
+            selectedInheritance={formData.inheritsFrom}
+            onInheritanceChange={(inheritance) => handleFieldChange('inheritsFrom', inheritance)}
+            currentRoleName={roleToEdit.name}
+            disabled={isSubmitting}
+          />
 
           {/* Permission Selection */}
           <PermissionSelector
@@ -465,7 +447,11 @@ export default function EditRolePage({ params }: EditRolePageProps) {
                   Direct Permissions: {formData.permissions.length}<br />
                   Inherited Permissions: {getInheritedPermissions().length}<br />
                   Parent Roles: {formData.inheritsFrom.join(', ') || 'None'}<br />
-                  All Roles Loaded: {allRoles?.length || 0}
+                  All Roles Loaded: {allRoles?.length || 0}<br />
+                  Inheritance Chain: {formData.inheritsFrom.map(parent => {
+                    const parentRole = allRoles?.find(r => r.name === parent);
+                    return `${parent}(${parentRole?.inheritsFrom?.join('→') || 'root'})`;
+                  }).join(', ') || 'None'}
                 </div>
               )}
             </CardHeader>
@@ -502,15 +488,22 @@ export default function EditRolePage({ params }: EditRolePageProps) {
               {formData.inheritsFrom.length > 0 && (
                 <div>
                   <h4 className="font-medium text-sm mb-2">Inherits From:</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {formData.inheritsFrom.map(roleName => (
-                      <span
-                        key={roleName}
-                        className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-                      >
-                        {roleName}
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    {formData.inheritsFrom.map(roleName => {
+                      const parentRole = allRoles?.find(r => r.name === roleName);
+                      return (
+                        <div key={roleName} className="flex items-center justify-between">
+                          <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
+                            {roleName}
+                          </span>
+                          {parentRole && (
+                            <span className="text-xs text-muted-foreground">
+                              {parentRole.permissions?.length || 0} permissions
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
