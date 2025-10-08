@@ -80,6 +80,19 @@ export class KratosService {
   }
 
   /**
+   * Get identity by email from Kratos
+   */
+  async getIdentityByEmail(email: string): Promise<User | null> {
+    try {
+      const identities = await this.listIdentities();
+      const user = identities.find(user => user.email === email);
+      return user || null;
+    } catch (error) {
+      throw this.handleKratosError(error, 'Failed to get identity by email');
+    }
+  }
+
+  /**
    * Update identity in Kratos
    */
   async updateIdentity(

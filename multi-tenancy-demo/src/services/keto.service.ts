@@ -72,20 +72,27 @@ export class KetoService {
    *
    * This method queries Keto for all relation tuples where the subject is
    * the specified role (subject_set with relation "member"). It returns
-   * an array of permissions in the format {resource, action}.
+   * an array of permissions in the format {resource, action} and filters
+   * out role inheritance relationships (where object starts with "role:").
    *
    * @param namespace - The Keto namespace to query (e.g., "default")
    * @param roleName - The name of the role (e.g., "admin", "moderator")
-   * @returns Array of permissions with resource and action
+   * @returns Object containing permissions array and inherited roles array
    *
    * @example
-   * const permissions = await ketoService.getPermissionsForRole("default", "admin");
-   * // Returns: [
-   * //   { resource: "product:items", action: "view" },
-   * //   { resource: "product:items", action: "create" }
-   * // ]
+   * const result = await ketoService.getPermissionsForRole("default", "admin");
+   * // Returns: {
+   * //   permissions: [
+   * //     { resource: "product", action: "view" },
+   * //     { resource: "product", action: "create" }
+   * //   ],
+   * //   inheritedRoles: ["moderator", "customer"]
+   * // }
    */
-  async getPermissionsForRole(namespace: string, roleName: string): Promise<Permission[]> {
+  async getPermissionsForRole(
+    namespace: string,
+    roleName: string
+  ): Promise<{ permissions: Permission[]; inheritedRoles: string[] }> {
     try {
       // Query Keto for relation tuples where the subject is this role
       // Format: subject_set.object = "role:admin" AND subject_set.relation = "member"
@@ -101,17 +108,60 @@ export class KetoService {
         }
       );
 
-      // Transform Keto tuples to Permission format
-      // Strip ":items" suffix from resource names per TypeScript Pro guidelines
-      const permissions: Permission[] = response.data.relation_tuples.map((tuple) => ({
-        resource: tuple.object.replace(':items', ''),
-        action: tuple.relation,
-      }));
+      // Separate role inheritance from resource permissions
+      const inheritedRoles: string[] = [];
+      const permissions: Permission[] = [];
 
-      return permissions;
+      response.data.relation_tuples.forEach((tuple) => {
+        if (tuple.object.startsWith('role:')) {
+          // This is a role inheritance relationship
+          const inheritedRole = tuple.object.replace('role:', '');
+          inheritedRoles.push(inheritedRole);
+        } else {
+          // This is a resource permission
+          // Strip ":items" suffix from resource names per TypeScript Pro guidelines
+          permissions.push({
+            resource: tuple.object.replace(':items', ''),
+            action: tuple.relation,
+          });
+        }
+      });
+
+      return { permissions, inheritedRoles };
     } catch (error) {
       throw this.handleKetoError(error, 'Failed to fetch permissions from Keto');
     }
+  }
+
+  /**
+   * Get only permissions for a role (backward compatibility helper)
+   *
+   * This is a convenience method that returns only the permissions array,
+   * filtering out role inheritance. Useful when you only need permissions
+   * and not the inheritance structure.
+   *
+   * @param namespace - The Keto namespace to query
+   * @param roleName - The name of the role
+   * @returns Array of permissions only
+   */
+  async getRolePermissions(namespace: string, roleName: string): Promise<Permission[]> {
+    const result = await this.getPermissionsForRole(namespace, roleName);
+    return result.permissions;
+  }
+
+  /**
+   * Get only inherited roles for a role
+   *
+   * This method returns only the roles that the specified role inherits from,
+   * based on Keto relation tuples.
+   *
+   * @param namespace - The Keto namespace to query
+   * @param roleName - The name of the role
+   * @returns Array of inherited role names
+   */
+  async getRoleInheritance(namespace: string, roleName: string): Promise<string[]> {
+    const result = await this.getPermissionsForRole(namespace, roleName);
+    return result.inheritedRoles;
   }
 
   /**
@@ -356,6 +406,164 @@ export class KetoService {
         `⚠️  Failed to delete Keto inheritance for role ${roleName}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
+    }
+  }
+
+  /**
+   * Assign a user to a role in Keto
+   *
+   * This creates a direct user-to-role membership following the simple-rbac pattern:
+   * user:email → role:name member
+   *
+   * @param userEmail - The user's email address (e.g., "alice@example.com")
+   * @param roleName - The role name (e.g., "admin", "moderator", "customer")
+   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   *
+   * @example
+   * // Assign Alice to admin role
+   * await ketoService.assignUserToRole("alice@example.com", "admin", "simple-rbac");
+   */
+  async assignUserToRole(
+    userEmail: string,
+    roleName: string,
+    namespace: string = 'simple-rbac'
+  ): Promise<void> {
+    try {
+      await axios.put(`${this.writeUrl}/admin/relation-tuples`, {
+        namespace,
+        object: `role:${roleName}`,
+        relation: 'member',
+        subject_id: `user:${userEmail}`,
+      });
+    } catch (error) {
+      throw this.handleKetoError(
+        error,
+        `Failed to assign user ${userEmail} to role ${roleName}`
+      );
+    }
+  }
+
+  /**
+   * Remove a user from a role in Keto
+   *
+   * This removes the direct user-to-role membership.
+   *
+   * @param userEmail - The user's email address
+   * @param roleName - The role name to remove from
+   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   */
+  async removeUserFromRole(
+    userEmail: string,
+    roleName: string,
+    namespace: string = 'simple-rbac'
+  ): Promise<void> {
+    try {
+      await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
+        params: {
+          namespace,
+          object: `role:${roleName}`,
+          relation: 'member',
+          subject_id: `user:${userEmail}`,
+        },
+      });
+    } catch (error) {
+      throw this.handleKetoError(
+        error,
+        `Failed to remove user ${userEmail} from role ${roleName}`
+      );
+    }
+  }
+
+  /**
+   * Get all roles assigned to a user
+   *
+   * @param userEmail - The user's email address
+   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   * @returns Array of role names the user is assigned to
+   */
+  async getUserRoles(
+    userEmail: string,
+    namespace: string = 'simple-rbac'
+  ): Promise<string[]> {
+    try {
+      const response = await axios.get<KetoRelationTuplesResponse>(
+        `${this.readUrl}/relation-tuples`,
+        {
+          params: {
+            namespace,
+            relation: 'member',
+            subject_id: `user:${userEmail}`,
+          },
+        }
+      );
+
+      return response.data.relation_tuples
+        .filter((tuple) => tuple.object.startsWith('role:'))
+        .map((tuple) => tuple.object.replace('role:', ''));
+    } catch (error) {
+      throw this.handleKetoError(error, `Failed to get roles for user ${userEmail}`);
+    }
+  }
+
+  /**
+   * Check if a user has a specific role
+   *
+   * @param userEmail - The user's email address
+   * @param roleName - The role name to check
+   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   * @returns True if user has the role, false otherwise
+   */
+  async checkUserRole(
+    userEmail: string,
+    roleName: string,
+    namespace: string = 'simple-rbac'
+  ): Promise<boolean> {
+    try {
+      const response = await axios.get(`${this.readUrl}/relation-tuples/check`, {
+        params: {
+          namespace,
+          object: `role:${roleName}`,
+          relation: 'member',
+          subject_id: `user:${userEmail}`,
+        },
+      });
+
+      return response.data.allowed === true;
+    } catch (error) {
+      // If Keto is unavailable, default to false for safety
+      if (this.isConnectionError(error)) {
+        return false;
+      }
+      throw this.handleKetoError(error, `Failed to check role ${roleName} for user ${userEmail}`);
+    }
+  }
+
+  /**
+   * Remove all role assignments for a user
+   *
+   * This is useful when deleting a user or resetting their permissions.
+   *
+   * @param userEmail - The user's email address
+   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   */
+  async removeAllUserRoles(
+    userEmail: string,
+    namespace: string = 'simple-rbac'
+  ): Promise<void> {
+    try {
+      await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
+        params: {
+          namespace,
+          relation: 'member',
+          subject_id: `user:${userEmail}`,
+        },
+      });
+    } catch (error) {
+      console.warn(
+        `⚠️  Failed to remove all roles for user ${userEmail}:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      console.warn('   → Continuing despite Keto cleanup failure');
     }
   }
 

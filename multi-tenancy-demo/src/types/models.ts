@@ -90,6 +90,7 @@ export interface CreateUserRequest {
   email: string;
   name: UserName | string;
   tenant_ids?: string[];
+  roles?: string[]; // Array of role names to assign to user
 }
 
 /**
@@ -99,6 +100,23 @@ export interface UpdateUserRequest {
   email?: string;
   name?: UserName | string;
   tenant_ids?: string[];
+  roles?: string[]; // Array of role names to assign to user (replaces existing)
+}
+
+/**
+ * User role assignment request body
+ */
+export interface UserRoleAssignmentRequest {
+  userEmail: string;
+  roleName: string;
+}
+
+/**
+ * User role removal request body
+ */
+export interface UserRoleRemovalRequest {
+  userEmail: string;
+  roleName: string;
 }
 
 /**

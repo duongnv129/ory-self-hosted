@@ -63,10 +63,13 @@ router.get('/get/:roleName', async (req: Request, res: Response, next: NextFunct
 
     checkRoleTenantAccess(role.tenantId, req.tenantId);
 
-    // Fetch permissions from Keto
+    // Fetch permissions and inherited roles from Keto
     let permissions: Permission[] = [];
+    let inheritedRoles: string[] = [];
     try {
-      permissions = await ketoService.getPermissionsForRole(namespace, roleName);
+      const ketoResult = await ketoService.getPermissionsForRole(namespace, roleName);
+      permissions = ketoResult.permissions;
+      inheritedRoles = ketoResult.inheritedRoles;
     } catch (error) {
       // Log warning but don't fail the request if Keto is unavailable
       console.warn(
@@ -76,9 +79,15 @@ router.get('/get/:roleName', async (req: Request, res: Response, next: NextFunct
       console.warn('   → Returning role without permissions');
     }
 
+    // Update role's inherited roles with live data from Keto
+    const updatedRole = {
+      ...role,
+      inheritsFrom: inheritedRoles.length > 0 ? inheritedRoles : role.inheritsFrom,
+    };
+
     res.json({
       message: `Role ${roleName} retrieved successfully (mock)`,
-      role,
+      role: updatedRole,
       permissions,
       namespace,
       context: {
