@@ -184,7 +184,6 @@ export interface CreateRoleRequest {
  * Update role request body
  */
 export interface UpdateRoleRequest {
-  name?: string;
   description?: string;
   inheritsFrom?: string[]; // Array of parent role names
   permissions?: RolePermission[]; // Array of resource permissions

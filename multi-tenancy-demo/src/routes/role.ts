@@ -190,47 +190,54 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
  */
 router.put('/update/:roleName', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const roleName = req.params.roleName!;
-    const { name, description, inheritsFrom, permissions } = req.body as UpdateRoleRequest;
+    const name = req.params.roleName!;
+    const {  description, inheritsFrom, permissions } = req.body as UpdateRoleRequest;
     const namespace = req.ketoNamespace!;
 
-    const existingRole = storage.getRoleByName(namespace, roleName);
+    const existingRole = storage.getRoleByName(namespace, name);
 
     if (!existingRole) {
-      throw new NotFoundError('Role', roleName);
+      throw new NotFoundError('Role', name);
     }
 
     checkRoleTenantAccess(existingRole.tenantId, req.tenantId);
 
     // Update role in memory
-    const role = storage.updateRole(namespace!, roleName!, { name, description, inheritsFrom });
+    const role = storage.updateRole(namespace!, name!, { name, description, inheritsFrom });
 
     if (!role) {
-      throw new NotFoundError('Role', roleName);
+      throw new NotFoundError('Role', name);
     }
 
     // Sync to Keto - update relation tuples
     const ketoWarnings: string[] = [];
-    const updatedRoleName = name || roleName; // Use new name if provided
 
     try {
-      // 1. Delete old role inheritance tuples
+      // 1. Handle role inheritance updates ONLY if inheritsFrom is explicitly provided
       if (inheritsFrom !== undefined) {
-        try {
-          await ketoService.deleteRoleInheritance(roleName, namespace);
-        } catch (error) {
-          const errorMsg = 'Failed to delete old role inheritance';
-          console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
-          ketoWarnings.push(errorMsg);
+        // Get current inheritance relationships from storage
+        const currentInheritance = existingRole.inheritsFrom || [];
+
+        // Delete only the current role's inheritance relationships (where this role is the child)
+        // This preserves cases where other roles inherit FROM this role
+        if (currentInheritance.length > 0) {
+          try {
+            // Use surgical deletion to only remove child inheritance relationships
+            await ketoService.deleteRoleChildInheritance(name, currentInheritance, namespace);
+          } catch (error) {
+            const errorMsg = 'Failed to delete old role inheritance (child relationships only)';
+            console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
+            ketoWarnings.push(errorMsg);
+          }
         }
 
         // 2. Create new role inheritance tuples
         if (inheritsFrom && inheritsFrom.length > 0) {
           for (const parentRole of inheritsFrom) {
             try {
-              await ketoService.createRoleInheritance(updatedRoleName, parentRole, namespace);
+              await ketoService.createRoleInheritance(name, parentRole, namespace);
             } catch (error) {
-              const errorMsg = `Failed to create inheritance ${updatedRoleName} -> ${parentRole}`;
+              const errorMsg = `Failed to create inheritance ${name} -> ${parentRole}`;
               console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
               ketoWarnings.push(errorMsg);
             }
@@ -242,7 +249,7 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
       if (permissions !== undefined) {
         // Delete old permissions
         try {
-          await ketoService.deleteRolePermissions(roleName, namespace);
+          await ketoService.deleteRolePermissions(name, namespace);
         } catch (error) {
           const errorMsg = 'Failed to delete old role permissions';
           console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
@@ -257,9 +264,9 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
                 ? permission.resource
                 : `${permission.resource}:items`;
 
-              await ketoService.createResourcePermission(resource, permission.action, updatedRoleName, namespace);
+              await ketoService.createResourcePermission(resource, permission.action, name, namespace);
             } catch (error) {
-              const errorMsg = `Failed to create permission ${updatedRoleName} -> ${permission.action} on ${permission.resource}`;
+              const errorMsg = `Failed to create permission ${name} -> ${permission.action} on ${permission.resource}`;
               console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
               ketoWarnings.push(errorMsg);
             }
@@ -267,7 +274,7 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
         }
       }
 
-      console.log(`✅ Role ${roleName} updated in namespace ${namespace} with Keto sync`);
+      console.log(`✅ Role ${name} updated in namespace ${namespace} with Keto sync`);
       if (ketoWarnings.length > 0) {
         console.warn(`   → ${ketoWarnings.length} warning(s) during Keto sync`);
       }
@@ -277,7 +284,7 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
     }
 
     res.json({
-      message: `Role ${roleName} updated successfully (mock)`,
+      message: `Role ${name} updated successfully (mock)`,
       role,
       namespace,
       ketoSync: ketoWarnings.length === 0 ? 'success' : 'partial',

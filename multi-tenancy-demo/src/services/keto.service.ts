@@ -384,30 +384,41 @@ export class KetoService {
   }
 
   /**
-   * Delete role inheritance tuples for a specific role
+   * Delete ONLY the inheritance relationships where this role is a child
    *
-   * This removes all parent role relationships for the given role.
+   * This is a surgical deletion that preserves inheritance relationships
+   * where other roles inherit FROM this role, but removes relationships
+   * where this role inherits FROM other roles.
+   *
+   * Used during role updates to avoid breaking inheritance chains.
    *
    * @param roleName - The role name
+   * @param parentRoles - Array of parent role names to remove inheritance from
    * @param namespace - The Keto namespace (defaults to "simple-rbac")
    */
-  async deleteRoleInheritance(
+  async deleteRoleChildInheritance(
     roleName: string,
+    parentRoles: string[],
     namespace: string = 'simple-rbac'
   ): Promise<void> {
     try {
-      await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
-        params: {
-          namespace,
-          relation: 'member',
-          'subject_set.namespace': namespace,
-          'subject_set.object': `role:${roleName}`,
-          'subject_set.relation': 'member',
-        },
-      });
+      // Delete specific tuples where this role inherits FROM specified parent roles
+      // Format: role:parentRole member role:thisRole
+      for (const parentRole of parentRoles) {
+        await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
+          params: {
+            namespace,
+            object: `role:${parentRole}`,
+            relation: 'member',
+            'subject_set.namespace': namespace,
+            'subject_set.object': `role:${roleName}`,
+            'subject_set.relation': 'member',
+          },
+        });
+      }
     } catch (error) {
       console.warn(
-        `⚠️  Failed to delete Keto inheritance for role ${roleName}:`,
+        `⚠️  Failed to delete Keto child inheritance for role ${roleName}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
