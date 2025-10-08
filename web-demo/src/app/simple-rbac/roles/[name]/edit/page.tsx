@@ -15,7 +15,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRole, useRoleMutations } from '@/lib/hooks/useRoles';
+import { useRole, useRoleMutations, useRoles } from '@/lib/hooks/useRoles';
+import { useMetadata } from '@/lib/context/MetadataContext';
 import {
   Card,
   CardContent,
@@ -64,6 +65,10 @@ interface EditRolePageProps {
 export default function EditRolePage({ params }: EditRolePageProps) {
   const router = useRouter();
   const { updateRole } = useRoleMutations();
+  // Fetch metadata for debugging and permission matrix
+  const { resources: metadataResources } = useMetadata();
+  // Fetch all roles for inheritance calculation
+  const { roles: allRoles } = useRoles();
   // Use the specific role hook to fetch detailed role data including permissions
   const { role: roleToEdit, permissions: rolePermissions, isLoading: isRoleLoading, isError: isRoleError } = useRole(params.name);
 
@@ -164,13 +169,57 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   };
 
   /**
-   * Calculate inherited permissions from parent roles using role API data
-   * @returns Array of inherited permissions
+   * Calculate inherited permissions from parent roles
+   * @returns Array of inherited permissions with their source roles
    */
   const getInheritedPermissions = (): Permission[] => {
-    // Return empty array since we no longer have access to the roles list
-    // in this specific role view. Inheritance should be handled by the backend.
-    return [];
+    if (!formData.inheritsFrom?.length || !allRoles?.length) {
+      return [];
+    }
+
+    const inheritedPerms: Permission[] = [];
+    const visited = new Set<string>();
+
+    /**
+     * Recursively collect permissions from parent roles
+     * @param roleName - Name of the role to get permissions from
+     */
+    const collectPermissions = (roleName: string) => {
+      if (visited.has(roleName)) return; // Prevent circular dependencies
+      visited.add(roleName);
+
+      const parentRole = allRoles.find(r => r.name === roleName);
+      if (!parentRole) return;
+
+      // Add direct permissions from this parent role
+      if (parentRole.permissions?.length) {
+        for (const perm of parentRole.permissions) {
+          const existing = inheritedPerms.find(
+            p => p.resource === perm.resource && p.action === perm.action
+          );
+          if (!existing) {
+            inheritedPerms.push({
+              resource: perm.resource,
+              action: perm.action,
+            });
+          }
+        }
+      }
+
+      // Recursively collect from this role's parents
+      if (parentRole.inheritsFrom?.length) {
+        for (const grandparent of parentRole.inheritsFrom) {
+          collectPermissions(grandparent);
+        }
+      }
+    };
+
+    // Start collection from all direct parent roles
+    for (const parentName of formData.inheritsFrom) {
+      collectPermissions(parentName);
+    }
+
+    return inheritedPerms;
   };
 
   /**
@@ -407,6 +456,18 @@ export default function EditRolePage({ params }: EditRolePageProps) {
               <CardDescription>
                 Interactive preview of permissions for this role
               </CardDescription>
+              {/* Debug Info */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
+                  <strong>Debug Info:</strong><br />
+                  Resources: {metadataResources.map(r => r.resource).join(', ')} ({metadataResources.length})<br />
+                  Actions: {Array.from(new Set(metadataResources.flatMap(r => r.permissions))).join(', ')}<br />
+                  Direct Permissions: {formData.permissions.length}<br />
+                  Inherited Permissions: {getInheritedPermissions().length}<br />
+                  Parent Roles: {formData.inheritsFrom.join(', ') || 'None'}<br />
+                  All Roles Loaded: {allRoles?.length || 0}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <PermissionMatrix
@@ -461,8 +522,11 @@ export default function EditRolePage({ params }: EditRolePageProps) {
                   </h4>
                   <div className="text-xs text-muted-foreground space-y-1">
                     {formData.permissions.map(permission => (
-                      <div key={`${permission.resource}-${permission.action}`}>
-                        {permission.action} {permission.resource}
+                      <div key={`${permission.resource}-${permission.action}`} className="flex items-center gap-2">
+                        <Badge variant="default" className="text-xs">
+                          Direct
+                        </Badge>
+                        <span>{permission.action} {permission.resource}</span>
                       </div>
                     ))}
                   </div>
@@ -474,8 +538,27 @@ export default function EditRolePage({ params }: EditRolePageProps) {
                   <h4 className="font-medium text-sm mb-2">
                     Inherited Permissions: ({getInheritedPermissions().length})
                   </h4>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {getInheritedPermissions().map(permission => (
+                      <div key={`inherited-${permission.resource}-${permission.action}`} className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          Inherited
+                        </Badge>
+                        <span>{permission.action} {permission.resource}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Total Permission Count */}
+              {(formData.permissions.length > 0 || getInheritedPermissions().length > 0) && (
+                <div className="border-t pt-3">
+                  <h4 className="font-medium text-sm mb-1">
+                    Total Effective Permissions: ({formData.permissions.length + getInheritedPermissions().length})
+                  </h4>
                   <p className="text-xs text-muted-foreground">
-                    Permissions inherited from parent roles
+                    {formData.permissions.length} direct + {getInheritedPermissions().length} inherited
                   </p>
                 </div>
               )}
