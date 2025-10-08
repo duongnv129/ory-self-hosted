@@ -258,13 +258,54 @@ export function PermissionSelector({
               <CardDescription>Choose specific permissions for this role</CardDescription>
             </div>
             <div className="flex gap-2 text-sm">
-              <Badge variant="default">{selectedCount} selected</Badge>
-              {inheritedCount > 0 && <Badge variant="secondary">{inheritedCount} inherited</Badge>}
+              {selectedCount === 0 ? (
+                <Badge variant="outline" className="text-muted-foreground">
+                  No permissions selected
+                </Badge>
+              ) : (
+                <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                  {selectedCount} permission{selectedCount !== 1 ? 's' : ''} selected
+                </Badge>
+              )}
+              {inheritedCount > 0 && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                  {inheritedCount} inherited
+                </Badge>
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          {/* Empty state when no resources available */}
+          {RESOURCES.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Shield className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-medium text-lg mb-2">No Permissions Available</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                No system resources or permissions are configured at this time.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Contact your administrator to configure permissions.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Help text for empty selection */}
+              {selectedCount === 0 && inheritedCount === 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900 mb-1">Get started with permissions</p>
+                      <p className="text-blue-700">
+                        Select specific permissions below or use quick actions to assign common permission sets.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
             {RESOURCES.map((resource) => {
               const isExpanded = expandedResources.has(resource);
               const selectedActionsForResource = ACTIONS.filter((action) =>
@@ -277,10 +318,15 @@ export function PermissionSelector({
               const someSelected = selectedActionsForResource.length > 0 && !allSelected;
 
               return (
-                <div key={resource} className="rounded-lg border">
+                <div key={resource} className={cn(
+                  "rounded-lg border transition-colors",
+                  allSelected && "border-green-300 bg-green-50",
+                  someSelected && "border-yellow-300 bg-yellow-50",
+                  !someSelected && !allSelected && "border-gray-200"
+                )}>
                   {/* Resource Header */}
                   <div
-                    className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/50"
+                    className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                     onClick={() => toggleResourceExpansion(resource)}
                   >
                     <div className="flex items-center gap-3">
@@ -288,14 +334,22 @@ export function PermissionSelector({
                         <Button
                           variant={allSelected ? 'default' : someSelected ? 'outline' : 'ghost'}
                           size="sm"
-                          onClick={() => toggleAllActionsForResource(resource)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleAllActionsForResource(resource);
+                          }}
                           disabled={disabled}
-                          className="h-6 w-6 p-0"
+                          className={cn(
+                            "h-6 w-6 p-0 transition-colors",
+                            allSelected && "bg-green-600 hover:bg-green-700",
+                            someSelected && "border-yellow-400 text-yellow-700 hover:bg-yellow-100"
+                          )}
+                          title={allSelected ? "Deselect all" : someSelected ? "Select remaining" : "Select all"}
                         >
                           {allSelected ? (
-                            <Check className="h-4 w-4" />
+                            <Check className="h-3 w-3" />
                           ) : someSelected ? (
-                            <X className="h-3 w-3" />
+                            <Plus className="h-3 w-3" />
                           ) : (
                             <Plus className="h-3 w-3" />
                           )}
@@ -304,19 +358,44 @@ export function PermissionSelector({
                       </div>
                       <div className="flex gap-1">
                         {selectedActionsForResource.length > 0 && (
-                          <Badge variant="default" className="text-xs">
-                            {selectedActionsForResource.length}/{ACTIONS.length}
+                          <Badge
+                            variant={allSelected ? "default" : "outline"}
+                            className={cn(
+                              "text-xs",
+                              allSelected && "bg-green-100 text-green-800 border-green-300",
+                              someSelected && "bg-yellow-100 text-yellow-800 border-yellow-300"
+                            )}
+                          >
+                            {allSelected ? "All selected" : `${selectedActionsForResource.length}/${ACTIONS.length} selected`}
                           </Badge>
                         )}
                         {inheritedActionsForResource.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
                             +{inheritedActionsForResource.length} inherited
+                          </Badge>
+                        )}
+                        {selectedActionsForResource.length === 0 && inheritedActionsForResource.length === 0 && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            No permissions
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      {isExpanded ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? (
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
                     </Button>
                   </div>
 
@@ -334,38 +413,46 @@ export function PermissionSelector({
                             <div
                               key={action}
                               className={cn(
-                                'flex cursor-pointer items-center gap-2 rounded border p-3 transition-colors',
+                                'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all duration-200',
                                 disabled && 'cursor-not-allowed opacity-50',
-                                isSelected && 'border-primary bg-primary/10',
-                                !isSelected && 'hover:bg-muted/50',
-                                isInherited && 'bg-secondary/50'
+                                isSelected && 'border-green-300 bg-green-50 shadow-sm',
+                                !isSelected && 'border-gray-200 hover:border-gray-300 hover:bg-gray-50',
+                                isInherited && 'bg-blue-50 border-blue-200',
+                                'hover:shadow-sm'
                               )}
-                              onClick={() => togglePermission(resource, action)}
+                              onClick={() => !disabled && togglePermission(resource, action)}
+                              role="button"
+                              tabIndex={disabled ? -1 : 0}
+                              aria-label={`${isSelected ? 'Remove' : 'Add'} ${action} permission for ${resource}`}
                             >
-                              <Button
-                                variant={isSelected ? 'default' : 'ghost'}
-                                size="sm"
-                                disabled={disabled}
-                                className="h-6 w-6 p-0"
-                              >
-                                {isSelected ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Plus className="h-3 w-3" />
-                                )}
-                              </Button>
-                              <ActionIcon className={cn('h-4 w-4', actionColor)} />
-                              <div className="flex-1">
-                                <Label className="cursor-pointer text-sm font-medium capitalize">
-                                  {action}
-                                </Label>
+                              <div className={cn(
+                                "flex items-center justify-center w-6 h-6 rounded border-2 transition-colors",
+                                isSelected && "bg-green-600 border-green-600",
+                                !isSelected && "border-gray-300 hover:border-gray-400",
+                                isInherited && "bg-blue-100 border-blue-300"
+                              )}>
+                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                                {!isSelected && !isInherited && <div className="w-1 h-1" />}
+                                {isInherited && <Check className="h-3 w-3 text-blue-600" />}
+                              </div>
+                              <ActionIcon className={cn('h-4 w-4 flex-shrink-0', actionColor)} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <Label className="cursor-pointer text-sm font-medium capitalize truncate">
+                                    {action}
+                                  </Label>
+                                  {isSelected && !isInherited && (
+                                    <Badge variant="outline" className="ml-2 text-xs text-green-700 border-green-300">
+                                      Selected
+                                    </Badge>
+                                  )}
+                                </div>
                                 {isInherited && (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-blue-600 mt-1">
                                     Inherited from parent role
                                   </p>
                                 )}
                               </div>
-                              {isSelected && <Check className="h-4 w-4 text-green-600" />}
                             </div>
                           );
                         })}
@@ -415,8 +502,10 @@ export function PermissionSelector({
               View Only
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </>
+      )}
+    </CardContent>
+  </Card>
+</div>
+);
 }

@@ -102,8 +102,9 @@ export class KetoService {
       );
 
       // Transform Keto tuples to Permission format
+      // Strip ":items" suffix from resource names per TypeScript Pro guidelines
       const permissions: Permission[] = response.data.relation_tuples.map((tuple) => ({
-        resource: tuple.object,
+        resource: tuple.object.replace(':items', ''),
         action: tuple.relation,
       }));
 
