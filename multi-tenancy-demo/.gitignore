@@ -93,3 +93,6 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+storage.json
+storage-backup*
