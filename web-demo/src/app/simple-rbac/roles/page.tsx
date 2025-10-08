@@ -177,7 +177,7 @@ export default function RolesPage() {
    * @param role - Role to edit
    */
   const handleEditRole = (role: Role) => {
-    router.push(`/simple-rbac/roles/${role.id}/edit`);
+    router.push(`/simple-rbac/roles/${encodeURIComponent(role.name)}/edit`);
   };
 
   /**

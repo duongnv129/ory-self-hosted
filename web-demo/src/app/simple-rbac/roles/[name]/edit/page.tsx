@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRoles, useRoleMutations } from '@/lib/hooks/useRoles';
+import { useRole, useRoleMutations } from '@/lib/hooks/useRoles';
 import {
   Card,
   CardContent,
@@ -37,7 +37,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Permission } from '@/lib/types/models';
-import { Role } from '@/lib/types';
 import { toast } from 'sonner';
 import { PermissionSelector } from '@/components/roles/PermissionSelector';
 import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
@@ -58,16 +57,16 @@ interface EditRoleFormData {
  */
 interface EditRolePageProps {
   params: {
-    id: string;
+    name: string;
   };
 }
 
 export default function EditRolePage({ params }: EditRolePageProps) {
   const router = useRouter();
-  const { roles, isLoading: rolesLoading, error: rolesError } = useRoles();
   const { updateRole } = useRoleMutations();
+  // Use the specific role hook to fetch detailed role data including permissions
+  const { role: roleToEdit, permissions: rolePermissions, isLoading: isRoleLoading, isError: isRoleError } = useRole(params.name);
 
-  const [currentRole, setCurrentRole] = useState<Role | null>(null);
   const [formData, setFormData] = useState<EditRoleFormData>({
     name: '',
     description: '',
@@ -78,27 +77,19 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Find the role to edit by ID
+  // Load the specific role data when it's available
   useEffect(() => {
-    if (roles.length > 0 && !isInitialized) {
-      const roleToEdit = roles.find(role => role.id.toString() === params.id);
-
-      if (roleToEdit) {
-        setCurrentRole(roleToEdit);
-        setFormData({
-          name: roleToEdit.name,
-          description: roleToEdit.description,
-          inheritsFrom: roleToEdit.inheritsFrom || [],
-          permissions: roleToEdit.permissions || [],
-        });
-        setIsInitialized(true);
-      } else if (!rolesLoading) {
-        // Role not found and we're not loading
-        toast.error('Role not found');
-        router.push('/simple-rbac/roles');
-      }
+    if (roleToEdit && !isInitialized) {
+      setFormData({
+        name: roleToEdit.name,
+        description: roleToEdit.description,
+        inheritsFrom: roleToEdit.inheritsFrom || [],
+        // Use the detailed permissions from the role API call
+        permissions: rolePermissions || [],
+      });
+      setIsInitialized(true);
     }
-  }, [roles, params.id, isInitialized, rolesLoading, router]);
+  }, [roleToEdit, rolePermissions, isInitialized]);
 
   /**
    * Validate form data
@@ -173,97 +164,20 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   };
 
   /**
-   * Handle role inheritance toggle
-   * @param roleName - Role name to toggle inheritance for
-   * @param checked - Whether inheritance should be enabled
-   */
-  const handleInheritanceToggle = (roleName: string, checked: boolean) => {
-    const currentInheritsFrom = formData.inheritsFrom;
-
-    if (checked) {
-      if (!currentInheritsFrom.includes(roleName)) {
-        handleFieldChange('inheritsFrom', [...currentInheritsFrom, roleName]);
-      }
-    } else {
-      handleFieldChange('inheritsFrom', currentInheritsFrom.filter(r => r !== roleName));
-    }
-  };
-
-  /**
    * Calculate inherited permissions from parent roles using role API data
    * @returns Array of inherited permissions
    */
   const getInheritedPermissions = (): Permission[] => {
-    if (formData.inheritsFrom.length === 0) return [];
-
-    return formData.inheritsFrom.flatMap(parentRoleName => {
-      // Find the parent role in the roles data
-      const parentRole = roles.find(role => role.name === parentRoleName);
-
-      // If parent role has explicit permissions, use those
-      if (parentRole?.permissions && parentRole.permissions.length > 0) {
-        return parentRole.permissions;
-      }
-
-      // Fallback to basic permissions based on role name if no explicit permissions
-      // This maintains backward compatibility during the transition to full Keto integration
-      const basicPermissions: Permission[] = [];
-
-      switch (parentRoleName.toLowerCase()) {
-        case 'admin':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'users', action: 'create' },
-            { resource: 'users', action: 'update' },
-            { resource: 'users', action: 'delete' },
-            { resource: 'products', action: 'view' },
-            { resource: 'products', action: 'create' },
-            { resource: 'products', action: 'update' },
-            { resource: 'products', action: 'delete' },
-            { resource: 'categories', action: 'view' },
-            { resource: 'categories', action: 'create' },
-            { resource: 'categories', action: 'update' },
-            { resource: 'categories', action: 'delete' },
-            { resource: 'roles', action: 'view' },
-            { resource: 'roles', action: 'create' },
-            { resource: 'roles', action: 'update' },
-            { resource: 'roles', action: 'delete' }
-          );
-          break;
-        case 'moderator':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'products', action: 'view' },
-            { resource: 'products', action: 'create' },
-            { resource: 'products', action: 'update' },
-            { resource: 'categories', action: 'view' },
-            { resource: 'categories', action: 'create' },
-            { resource: 'categories', action: 'update' },
-            { resource: 'roles', action: 'view' }
-          );
-          break;
-        case 'customer':
-          basicPermissions.push(
-            { resource: 'users', action: 'view' },
-            { resource: 'products', action: 'view' },
-            { resource: 'categories', action: 'view' }
-          );
-          break;
-        default:
-          // For unknown roles, check if they have any basic view permissions
-          basicPermissions.push({ resource: 'users', action: 'view' });
-          break;
-      }
-
-      return basicPermissions;
-    });
+    // Return empty array since we no longer have access to the roles list
+    // in this specific role view. Inheritance should be handled by the backend.
+    return [];
   };
 
   /**
    * Handle form submission
    */
   const handleSubmit = async () => {
-    if (!currentRole) {
+    if (!roleToEdit) {
       toast.error('Role data not available');
       return;
     }
@@ -275,18 +189,13 @@ export default function EditRolePage({ params }: EditRolePageProps) {
 
     setIsSubmitting(true);
     try {
-      // Update role metadata and inheritance through the backend API
-      // The backend (multi-tenancy-demo) should handle Keto integration
-      await updateRole(currentRole.name, {
+      // Update role metadata, inheritance, and permissions through the backend API
+      // The backend (multi-tenancy-demo) handles Keto integration for permissions
+      await updateRole(roleToEdit.name, {
         description: formData.description.trim(),
         inheritsFrom: formData.inheritsFrom,
+        permissions: formData.permissions,
       });
-
-      // Note: Permission updates (formData.permissions) are currently handled
-      // separately from the role metadata. In a complete implementation, the
-      // backend API should be extended to accept permissions in the update
-      // request and handle Keto relation tuple management automatically.
-      console.log('Permissions to be applied:', formData.permissions);
 
       toast.success('Role updated successfully');
       router.push('/simple-rbac/roles');
@@ -310,7 +219,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   };
 
   // Show loading state while fetching role data
-  if (rolesLoading || !isInitialized) {
+  if (isRoleLoading || !isInitialized) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -330,7 +239,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   }
 
   // Show error state if role loading failed
-  if (rolesError) {
+  if (isRoleError) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -344,7 +253,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load role data: {rolesError}
+            Failed to load role data: {isRoleError ? 'Error loading role' : 'Unknown error'}
           </AlertDescription>
         </Alert>
       </div>
@@ -352,7 +261,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   }
 
   // Role not found
-  if (!currentRole) {
+  if (!roleToEdit) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -375,7 +284,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
 
   // Generate preview role for matrix
   const previewRole = {
-    ...currentRole,
+    ...roleToEdit,
     description: formData.description,
     inheritsFrom: formData.inheritsFrom,
     permissions: formData.permissions,
@@ -391,7 +300,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">Edit Role</h1>
-            <Badge variant="outline">{currentRole.name}</Badge>
+            <Badge variant="outline">{roleToEdit.name}</Badge>
           </div>
           <p className="text-muted-foreground">
             Modify role permissions and inheritance rules
@@ -461,33 +370,20 @@ export default function EditRolePage({ params }: EditRolePageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {roles.length <= 1 ? (
-                <p className="text-sm text-muted-foreground">No other roles available for inheritance</p>
-              ) : (
-                <div className="space-y-3">
-                  {roles
-                    .filter((role) => role.name !== formData.name) // Don't show current role
-                    .map((role) => (
-                      <div key={role.id} className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          id={`inherit-${role.name}`}
-                          checked={formData.inheritsFrom.includes(role.name)}
-                          onChange={(e) => handleInheritanceToggle(role.name, e.target.checked)}
-                          disabled={isSubmitting}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <label
-                          htmlFor={`inherit-${role.name}`}
-                          className="flex-1 text-sm font-medium leading-none cursor-pointer"
-                        >
-                          <div>
-                            <span className="font-semibold">{role.name}</span>
-                            <p className="text-muted-foreground text-xs">{role.description}</p>
-                          </div>
-                        </label>
-                      </div>
+              <p className="text-sm text-muted-foreground">
+                Role inheritance selection requires the full roles list which is not available in this view.
+                Please update inheritance settings by editing the role again after creation.
+              </p>
+              {formData.inheritsFrom.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium mb-2">Current inheritance:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.inheritsFrom.map(roleName => (
+                      <span key={roleName} className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
+                        {roleName}
+                      </span>
                     ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -536,9 +432,9 @@ export default function EditRolePage({ params }: EditRolePageProps) {
               <div>
                 <h4 className="font-medium text-sm mb-2">Role Details:</h4>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <div>ID: {currentRole.id}</div>
-                  <div>Namespace: {currentRole.namespace}</div>
-                  <div>Created: {new Date(currentRole.createdAt).toLocaleDateString()}</div>
+                  <div>ID: {roleToEdit.id}</div>
+                  <div>Namespace: {roleToEdit.namespace}</div>
+                  <div>Created: {new Date(roleToEdit.createdAt).toLocaleDateString()}</div>
                 </div>
               </div>
 

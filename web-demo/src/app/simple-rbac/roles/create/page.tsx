@@ -242,19 +242,14 @@ export default function CreateRolePage() {
 
     setIsSubmitting(true);
     try {
-      // Create role through the backend API
-      // The backend (multi-tenancy-demo) should handle Keto integration
+      // Create role through the backend API with permissions
+      // The backend (multi-tenancy-demo) handles Keto integration for permissions
       await createRole({
         name: formData.name.trim(),
         description: formData.description.trim(),
         inheritsFrom: formData.inheritsFrom,
+        permissions: formData.permissions,
       });
-
-      // Note: Permission creation (formData.permissions) is currently handled
-      // separately from the role metadata. In a complete implementation, the
-      // backend API should be extended to accept permissions in the create
-      // request and handle Keto relation tuple management automatically.
-      console.log('Permissions to be applied:', formData.permissions);
 
       toast.success('Role created successfully');
       router.push('/simple-rbac/roles');

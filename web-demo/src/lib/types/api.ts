@@ -130,6 +130,7 @@ export interface CreateRoleRequest {
   name: string;
   description?: string;
   inheritsFrom?: string[]; // Array of parent role names
+  permissions?: Permission[]; // Array of resource permissions
 }
 
 export interface CreateRoleResponse extends ApiResponse {
@@ -152,6 +153,7 @@ export interface UpdateRoleRequest {
   name?: string;
   description?: string;
   inheritsFrom?: string[]; // Array of parent role names
+  permissions?: Permission[]; // Array of resource permissions
 }
 
 export interface UpdateRoleResponse extends ApiResponse {
