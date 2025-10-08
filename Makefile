@@ -24,7 +24,7 @@ network: ## Create Docker network (ory-network)
 		echo "✓ Network ory-network already exists"
 
 # Service Management
-up: network ## Start all services (postgres + kratos + keto)
+up-core: network ## Start core services only (postgres + kratos + keto)
 	@echo "Starting PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose up -d
 	@echo "Starting Kratos stack..."
@@ -33,7 +33,7 @@ up: network ## Start all services (postgres + kratos + keto)
 	@cd $(KETO_PATH) && docker-compose up -d
 	@echo "✓ Core services started"
 
-up-all: network ## Start all services including Oathkeeper and demo
+up: network ## Start all services including Oathkeeper, demo, and web-demo
 	@echo "Starting PostgreSQL..."
 	@cd $(POSTGRES_PATH) && docker-compose up -d
 	@echo "Starting Kratos stack..."
@@ -44,6 +44,8 @@ up-all: network ## Start all services including Oathkeeper and demo
 	@cd $(OATHKEEPER_PATH) && docker-compose up -d
 	@echo "Starting Multi-Tenancy Demo..."
 	@cd $(DEMO_PATH) && docker-compose up -d --build
+	@echo "Starting Web Demo..."
+	@cd $(WEB_DEMO_PATH) && docker-compose up -d --build
 	@echo "✓ All services started"
 
 down: ## Stop all services

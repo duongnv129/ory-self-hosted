@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Next.js
+.next
+out
+
+# Environment variables
+.env*
+!.env.example
+!.env.local.example
+
+# Development files
+.nyc_output
+.coverage
+*.log
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage
+.nyc_output
