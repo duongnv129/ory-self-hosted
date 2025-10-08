@@ -359,6 +359,9 @@ export class KetoService {
    * This is useful when updating a role's permissions - delete old ones first,
    * then create new ones.
    *
+   * IMPORTANT: This method only deletes resource permissions (like product:items, category:items)
+   * and does NOT delete role inheritance relationships (role:xxx).
+   *
    * @param roleName - The role name
    * @param namespace - The Keto namespace (defaults to "simple-rbac")
    */
@@ -367,14 +370,44 @@ export class KetoService {
     namespace: string = 'simple-rbac'
   ): Promise<void> {
     try {
-      await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
-        params: {
-          namespace,
-          'subject_set.namespace': namespace,
-          'subject_set.object': `role:${roleName}`,
-          'subject_set.relation': 'member',
-        },
-      });
+      // First, get all existing tuples for this role
+      const response = await axios.get<KetoRelationTuplesResponse>(
+        `${this.readUrl}/relation-tuples`,
+        {
+          params: {
+            namespace,
+            'subject_set.namespace': namespace,
+            'subject_set.object': `role:${roleName}`,
+            'subject_set.relation': 'member',
+          },
+        }
+      );
+
+      const tuplesToDelete = response.data.relation_tuples || [];
+
+      // Filter to only delete resource permissions (not role inheritance)
+      const resourcePermissionTuples = tuplesToDelete.filter(tuple =>
+        !tuple.object.startsWith('role:') // Only delete non-role objects (resources)
+      );
+
+      // Delete each resource permission tuple individually
+      for (const tuple of resourcePermissionTuples) {
+        try {
+          await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
+            params: {
+              namespace: tuple.namespace,
+              object: tuple.object,
+              relation: tuple.relation,
+              'subject_set.namespace': namespace,
+              'subject_set.object': `role:${roleName}`,
+              'subject_set.relation': 'member',
+            },
+          });
+        } catch (deleteError) {
+          console.warn(`   ⚠️ Failed to delete tuple ${tuple.object} ${tuple.relation}:`,
+            deleteError instanceof Error ? deleteError.message : 'Unknown error');
+        }
+      }
     } catch (error) {
       console.warn(
         `⚠️  Failed to delete Keto permissions for role ${roleName}:`,
@@ -405,15 +438,16 @@ export class KetoService {
       // Delete specific tuples where this role inherits FROM specified parent roles
       // Format: role:parentRole member role:thisRole
       for (const parentRole of parentRoles) {
+        const deleteParams = {
+          namespace,
+          object: `role:${parentRole}`,
+          relation: 'member',
+          'subject_set.namespace': namespace,
+          'subject_set.object': `role:${roleName}`,
+          'subject_set.relation': 'member',
+        };
         await axios.delete(`${this.writeUrl}/admin/relation-tuples`, {
-          params: {
-            namespace,
-            object: `role:${parentRole}`,
-            relation: 'member',
-            'subject_set.namespace': namespace,
-            'subject_set.object': `role:${roleName}`,
-            'subject_set.relation': 'member',
-          },
+          params: deleteParams,
         });
       }
     } catch (error) {
