@@ -16,6 +16,11 @@ import {
   UpdateUserRequest,
   UpdateUserResponse,
   DeleteUserResponse,
+  UserRoleAssignmentRequest,
+  UserRoleAssignmentResponse,
+  UserRoleRemovalRequest,
+  UserRoleRemovalResponse,
+  GetUserRolesResponse,
 } from '@/lib/types/api';
 
 export class UsersApi {
@@ -54,5 +59,26 @@ export class UsersApi {
    */
   async delete(userId: string): Promise<DeleteUserResponse> {
     return this.client.delete<DeleteUserResponse>(`/users/delete/${userId}`);
+  }
+
+  /**
+   * Assign a role to a user
+   */
+  async assignRole(data: UserRoleAssignmentRequest): Promise<UserRoleAssignmentResponse> {
+    return this.client.post<UserRoleAssignmentResponse>('/users/assign-role', data);
+  }
+
+  /**
+   * Remove a role from a user
+   */
+  async removeRole(data: UserRoleRemovalRequest): Promise<UserRoleRemovalResponse> {
+    return this.client.post<UserRoleRemovalResponse>('/users/remove-role', data);
+  }
+
+  /**
+   * Get all roles assigned to a user
+   */
+  async getRoles(userEmail: string): Promise<GetUserRolesResponse> {
+    return this.client.get<GetUserRolesResponse>(`/users/roles/${encodeURIComponent(userEmail)}`);
   }
 }

@@ -12,7 +12,7 @@
 import useSWR from 'swr';
 import { usersApi } from '@/lib/api';
 import { User } from '@/lib/types/models';
-import { CreateUserRequest, UpdateUserRequest } from '@/lib/types/api';
+import { CreateUserRequest, UpdateUserRequest, UserRoleAssignmentRequest, UserRoleRemovalRequest } from '@/lib/types/api';
 
 /**
  * Hook to fetch all users
@@ -63,6 +63,29 @@ export function useUser(userId: string | null) {
 }
 
 /**
+ * Hook to fetch user roles by email
+ */
+export function useUserRoles(userEmail: string | null) {
+  const { data, error, isLoading, mutate } = useSWR(
+    userEmail ? `/users/roles/${userEmail}` : null,
+    () => (userEmail ? usersApi.getRoles(userEmail) : null),
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  return {
+    roles: data?.roles || [],
+    userEmail: data?.userEmail,
+    tenantId: data?.tenant_id,
+    isLoading,
+    isError: !!error,
+    error,
+    mutate,
+  };
+}
+
+/**
  * Hook for user mutation operations
  */
 export function useUserMutations() {
@@ -84,5 +107,25 @@ export function useUserMutations() {
     createUser,
     updateUser,
     deleteUser,
+  };
+}
+
+/**
+ * Hook for user role management operations
+ */
+export function useUserRoleMutations() {
+  const assignRole = async (data: UserRoleAssignmentRequest): Promise<string[]> => {
+    const response = await usersApi.assignRole(data);
+    return response.userRoles;
+  };
+
+  const removeRole = async (data: UserRoleRemovalRequest): Promise<string[]> => {
+    const response = await usersApi.removeRole(data);
+    return response.userRoles;
+  };
+
+  return {
+    assignRole,
+    removeRole,
   };
 }

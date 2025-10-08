@@ -75,10 +75,13 @@ export default function UsersPage() {
       email: user.email,
       firstName: user.name.first,
       lastName: user.name.last,
-      role: user.tenant_ids[0] || 'customer', // Simple RBAC: one global role
+      role: 'customer', // Default role - will be updated when we fetch user roles
     });
     setSelectedUser(user);
     setDialogMode('edit');
+
+    // TODO: Fetch user roles and update formData.role with actual user role
+    // For now, defaulting to 'customer' until we implement role fetching in the dialog
   };
 
   const openDeleteDialog = (user: User) => {
@@ -103,6 +106,7 @@ export default function UsersPage() {
       await createUser({
         email: formData.email,
         name: `${formData.firstName} ${formData.lastName}`.trim(),
+        roles: [formData.role], // Include the selected role
       });
 
       // Optimistic update
@@ -113,6 +117,8 @@ export default function UsersPage() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create user';
       if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
         toast.error('Access denied: You do not have permission to create users');
+      } else if (errorMessage.includes('already exists')) {
+        toast.error('User with this email already exists');
       } else {
         toast.error(errorMessage);
       }
@@ -129,6 +135,7 @@ export default function UsersPage() {
       await updateUser(selectedUser.id, {
         email: formData.email,
         name: `${formData.firstName} ${formData.lastName}`.trim(),
+        roles: [formData.role], // Include the selected role
       });
 
       await mutate();
@@ -138,6 +145,8 @@ export default function UsersPage() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update user';
       if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
         toast.error('Access denied: You do not have permission to update users');
+      } else if (errorMessage.includes('already exists')) {
+        toast.error('Email already in use by another user');
       } else {
         toast.error(errorMessage);
       }
@@ -168,18 +177,18 @@ export default function UsersPage() {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = ROLES.find(r => r.value === role);
-    if (!roleConfig) return <Badge variant="secondary">{role}</Badge>;
-
-    const Icon = roleConfig.icon;
-    return (
-      <Badge variant={roleConfig.variant}>
-        <Icon className="mr-1 h-3 w-3" />
-        {roleConfig.label}
-      </Badge>
-    );
-  };
+  // TODO: Add role fetching and display
+  // const getRoleBadge = (role: string) => {
+  //   const roleConfig = ROLES.find(r => r.value === role);
+  //   if (!roleConfig) return <Badge variant="secondary">{role}</Badge>;
+  //   const Icon = roleConfig.icon;
+  //   return (
+  //     <Badge variant={roleConfig.variant}>
+  //       <Icon className="mr-1 h-3 w-3" />
+  //       {roleConfig.label}
+  //     </Badge>
+  //   );
+  // };
 
   // Simple RBAC: Global authorization model - no tenant isolation required
 
@@ -236,7 +245,8 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      {getRoleBadge(user.tenant_ids[0] || 'customer')}
+                      {/* TODO: Fetch actual user roles from Keto */}
+                      <Badge variant="secondary">Role Loading...</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

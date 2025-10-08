@@ -10,7 +10,9 @@ import {
   UpdateUserRequest,
   UserName,
   UserRoleAssignmentRequest,
-  UserRoleRemovalRequest
+  UserRoleRemovalRequest,
+  User,
+  UserWithRoles
 } from '../types/models';
 import { ValidationError, ForbiddenError } from '../types/errors';
 
@@ -63,6 +65,29 @@ function checkTenantAccess(userTenantIds: string[], requiredTenantId?: string): 
 }
 
 /**
+ * Helper function to enhance user with roles from Keto
+ * @param user - The user object to enhance
+ * @param namespace - The Keto namespace to query roles from (provided by context middleware)
+ */
+async function enhanceUserWithRoles(user: User, namespace: string): Promise<UserWithRoles> {
+  try {
+    const roles = await ketoService.getUserRoles(user.email, namespace);
+    return {
+      ...user,
+      roles,
+      ketoNamespace: namespace
+    };
+  } catch (error) {
+    console.warn(`Failed to fetch roles for user ${user.email}:`, error);
+    return {
+      ...user,
+      roles: [],
+      ketoNamespace: namespace
+    };
+  }
+}
+
+/**
  * Create a tenant user with optional role assignments
  */
 router.post('/create', async (req: Request, res: Response, next: NextFunction) => {
@@ -75,7 +100,7 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
 
     const parsedName = parseName(name);
     const tenantIds = req.tenantId ? [req.tenantId] : [];
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     // Create user in Kratos
     const user = await kratosService.createIdentity(email, parsedName, tenantIds);
@@ -98,10 +123,13 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
       }
     }
 
+    // Return user with roles
+    const userWithRoles = await enhanceUserWithRoles(user, namespace);
+
     res.status(201).json({
       message: 'User created successfully',
       tenant_id: req.tenantId,
-      user,
+      user: userWithRoles,
       assignedRoles,
       ketoSync: ketoWarnings.length === 0 ? 'success' : 'partial',
       ketoWarnings: ketoWarnings.length > 0 ? ketoWarnings : undefined,
@@ -117,18 +145,33 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
 });
 
 /**
- * Get all users (globally or for a specific tenant)
+ * Get all users with their roles (globally or for a specific tenant)
  */
-router.get('/list', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/list', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const allUsers = await kratosService.listIdentities();
-    const users = filterUsersByTenant(allUsers, req.tenantId);
+    const namespace = req.ketoNamespace;
+
+    // Get all users from Kratos
+    const users = await kratosService.listIdentities();
+
+    // Filter by tenant if specified
+    const filteredUsers = filterUsersByTenant(users, req.tenantId);
+
+    // Enhance each user with their roles from Keto
+    const usersWithRoles: UserWithRoles[] = await Promise.all(
+      filteredUsers.map(user => enhanceUserWithRoles(user, namespace))
+    );
 
     res.json({
       message: 'Users retrieved successfully',
       tenant_id: req.tenantId,
-      users,
-      count: users.length,
+      users: usersWithRoles,
+      count: usersWithRoles.length,
+      context: {
+        userId: req.userId,
+        tenantId: req.tenantId,
+        ketoNamespace: namespace,
+      },
     });
   } catch (error) {
     next(error);
@@ -136,24 +179,32 @@ router.get('/list', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 /**
- * Get a specific user if they belong to the tenant
+ * Get a specific user with their roles if they belong to the tenant
  */
 router.get('/get/:userId', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.params.userId!;
-    const user = await kratosService.getIdentity(userId);
+    const namespace = req.ketoNamespace;
 
-    if (!user) {
+    const user = await kratosService.getIdentity(userId);    if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
 
     checkTenantAccess(user.tenant_ids, req.tenantId);
 
+    // Enhance user with roles
+    const userWithRoles = await enhanceUserWithRoles(user, namespace);
+
     res.json({
       message: 'User retrieved successfully',
       tenant_id: req.tenantId,
-      user,
+      user: userWithRoles,
+      context: {
+        userId: req.userId,
+        tenantId: req.tenantId,
+        ketoNamespace: namespace,
+      },
     });
   } catch (error) {
     next(error);
@@ -167,7 +218,7 @@ router.put('/update/:userId', async (req: Request, res: Response, next: NextFunc
   try {
     const userId = req.params.userId!;
     const { email, name, tenant_ids, roles } = req.body as UpdateUserRequest;
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     const existingUser = await kratosService.getIdentity(userId);
     if (!existingUser) {
@@ -232,10 +283,13 @@ router.put('/update/:userId', async (req: Request, res: Response, next: NextFunc
       }
     }
 
+    // Return enhanced user with roles
+    const userWithRoles = await enhanceUserWithRoles(user, namespace);
+
     res.json({
       message: 'User updated successfully',
       tenant_id: req.tenantId,
-      user,
+      user: userWithRoles,
       roleChanges: roles !== undefined ? {
         previousRoles: currentRoles,
         newRoles: updatedRoles,
@@ -261,7 +315,7 @@ router.put('/update/:userId', async (req: Request, res: Response, next: NextFunc
 router.delete('/delete/:userId', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.params.userId!;
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     const user = await kratosService.getIdentity(userId);
     if (!user) {
@@ -320,7 +374,7 @@ router.delete('/delete/:userId', async (req: Request, res: Response, next: NextF
 router.post('/assign-role', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { userEmail, roleName }: UserRoleAssignmentRequest = req.body;
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     if (!userEmail || !roleName) {
       res.status(400).json({ error: 'User email and role name are required' });
@@ -377,7 +431,7 @@ router.post('/assign-role', async (req: Request, res: Response, next: NextFuncti
 router.post('/remove-role', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { userEmail, roleName }: UserRoleRemovalRequest = req.body;
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     if (!userEmail || !roleName) {
       res.status(400).json({ error: 'User email and role name are required' });
@@ -434,7 +488,7 @@ router.post('/remove-role', async (req: Request, res: Response, next: NextFuncti
 router.get('/roles/:userEmail', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userEmail = req.params.userEmail!;
-    const namespace = req.ketoNamespace || 'simple-rbac';
+    const namespace = req.ketoNamespace;
 
     // Verify user exists
     const user = await kratosService.getIdentityByEmail(userEmail);

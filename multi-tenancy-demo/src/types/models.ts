@@ -24,6 +24,15 @@ export interface User {
 }
 
 /**
+ * Enhanced user model with role information from Keto
+ * Used in API responses to provide complete user data including role assignments
+ */
+export interface UserWithRoles extends User {
+  roles: string[]; // Array of role names assigned to the user from Keto
+  ketoNamespace?: string; // The Keto namespace where roles were fetched from
+}
+
+/**
  * Kratos identity traits
  */
 export interface IdentityTraits {
