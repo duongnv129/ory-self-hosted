@@ -1,12 +1,19 @@
 /**
  * Users Management Page
  * CRUD interface for managing users and global role assignments
+ *
+ * Enhanced Features:
+ * - Edit form loads fresh user data from /users/get/:id API endpoint
+ * - Displays actual user roles from Keto in the table
+ * - Proper loading states and error handling for individual user fetching
+ * - Role-aware form population with primary role selection
  */
 
 'use client';
 
-import { useState } from 'react';
-import { useUsers, useUserMutations } from '@/lib/hooks/useUsers';
+import { useState, useEffect } from 'react';
+import { useUsers, useUser, useUserMutations } from '@/lib/hooks/useUsers';
+import { useRoles } from '@/lib/hooks/useRoles';
 import {
   Card,
   CardContent,
@@ -38,24 +45,37 @@ import {
   SelectValue,
 } from '@/components/ui';
 import { TableSkeleton } from '@/components/ui/loading';
-import { Plus, Pencil, Trash2, AlertCircle, ShieldCheck, Shield, User as UserIcon } from 'lucide-react';
-import { User } from '@/lib/types';
+import { Plus, Pencil, Trash2, AlertCircle, ShieldCheck, Shield, User as UserIcon, Loader2 } from 'lucide-react';
+import { User, UserWithRoles } from '@/lib/types';
 import { toast } from 'sonner';
 
 type DialogMode = 'create' | 'edit' | 'delete' | null;
 
-const ROLES = [
-  { value: 'admin', label: 'Admin', icon: ShieldCheck, variant: 'destructive' as const },
-  { value: 'moderator', label: 'Moderator', icon: Shield, variant: 'default' as const },
-  { value: 'customer', label: 'Customer', icon: UserIcon, variant: 'secondary' as const },
-];
+// Helper function to get role UI configuration
+const getRoleConfig = (roleName: string) => {
+  const roleConfigMap: Record<string, { icon: typeof ShieldCheck; variant: 'destructive' | 'default' | 'secondary' }> = {
+    admin: { icon: ShieldCheck, variant: 'destructive' },
+    moderator: { icon: Shield, variant: 'default' },
+    customer: { icon: UserIcon, variant: 'secondary' },
+  };
+
+  return roleConfigMap[roleName.toLowerCase()] || { icon: UserIcon, variant: 'secondary' };
+};
 
 export default function UsersPage() {
   const { users, isLoading, isError, error, mutate } = useUsers();
+  const { roles, isLoading: isLoadingRoles, isError: rolesError } = useRoles();
   const { createUser, updateUser, deleteUser } = useUserMutations();
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  // Fetch detailed user data when editing
+  const { user: editingUser, isLoading: isLoadingUser, error: userError } = useUser(
+    dialogMode === 'edit' ? selectedUserId : null
+  );
+
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -64,25 +84,52 @@ export default function UsersPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Set default role when roles are loaded
+  useEffect(() => {
+    if (roles.length > 0 && formData.role === 'customer' && !roles.find(r => r.name === 'customer')) {
+      setFormData(prev => ({ ...prev, role: roles[0].name }));
+    }
+  }, [roles, formData.role]);
+
   const openCreateDialog = () => {
-    setFormData({ email: '', firstName: '', lastName: '', role: 'customer' });
+    const defaultRole = roles.length > 0 ? roles[0].name : 'customer';
+    setFormData({ email: '', firstName: '', lastName: '', role: defaultRole });
     setSelectedUser(null);
     setDialogMode('create');
   };
 
   const openEditDialog = (user: User) => {
+    // Reset form to loading state initially
+    const defaultRole = roles.length > 0 ? roles[0].name : 'customer';
     setFormData({
-      email: user.email,
-      firstName: user.name.first,
-      lastName: user.name.last,
-      role: 'customer', // Default role - will be updated when we fetch user roles
+      email: '',
+      firstName: '',
+      lastName: '',
+      role: defaultRole,
     });
     setSelectedUser(user);
+    setSelectedUserId(user.id); // This will trigger the useUser hook to fetch detailed data
     setDialogMode('edit');
-
-    // TODO: Fetch user roles and update formData.role with actual user role
-    // For now, defaulting to 'customer' until we implement role fetching in the dialog
   };
+
+  // Effect to populate form when editing user data is loaded
+  useEffect(() => {
+    if (dialogMode === 'edit' && editingUser && !isLoadingUser) {
+      // Populate form with fresh data from API
+      const userWithRoles = editingUser as UserWithRoles;
+      const defaultRole = roles.length > 0 ? roles[0].name : 'customer';
+      const primaryRole = userWithRoles.roles && userWithRoles.roles.length > 0
+        ? userWithRoles.roles[0]
+        : defaultRole;
+
+      setFormData({
+        email: userWithRoles.email,
+        firstName: userWithRoles.name.first,
+        lastName: userWithRoles.name.last,
+        role: primaryRole,
+      });
+    }
+  }, [dialogMode, editingUser, isLoadingUser, roles]);
 
   const openDeleteDialog = (user: User) => {
     setSelectedUser(user);
@@ -92,7 +139,34 @@ export default function UsersPage() {
   const closeDialog = () => {
     setDialogMode(null);
     setSelectedUser(null);
-    setFormData({ email: '', firstName: '', lastName: '', role: 'customer' });
+    setSelectedUserId(null); // Reset user ID to stop fetching
+    const defaultRole = roles.length > 0 ? roles[0].name : 'customer';
+    setFormData({ email: '', firstName: '', lastName: '', role: defaultRole });
+  };
+
+  // Helper function to get role badge
+  const getRoleBadge = (userRoles: string[]) => {
+    if (!userRoles || userRoles.length === 0) {
+      return <Badge variant="secondary">No Role</Badge>;
+    }
+
+    const primaryRole = userRoles[0]; // Display primary role
+    const roleConfig = getRoleConfig(primaryRole);
+    const Icon = roleConfig.icon;
+
+    return (
+      <div className="flex items-center gap-1">
+        <Badge variant={roleConfig.variant}>
+          <Icon className="mr-1 h-3 w-3" />
+          {primaryRole}
+        </Badge>
+        {userRoles.length > 1 && (
+          <Badge variant="outline" className="text-xs">
+            +{userRoles.length - 1}
+          </Badge>
+        )}
+      </div>
+    );
   };
 
   const handleCreate = async () => {
@@ -177,19 +251,6 @@ export default function UsersPage() {
     }
   };
 
-  // TODO: Add role fetching and display
-  // const getRoleBadge = (role: string) => {
-  //   const roleConfig = ROLES.find(r => r.value === role);
-  //   if (!roleConfig) return <Badge variant="secondary">{role}</Badge>;
-  //   const Icon = roleConfig.icon;
-  //   return (
-  //     <Badge variant={roleConfig.variant}>
-  //       <Icon className="mr-1 h-3 w-3" />
-  //       {roleConfig.label}
-  //     </Badge>
-  //   );
-  // };
-
   // Simple RBAC: Global authorization model - no tenant isolation required
 
   if (isError) {
@@ -198,6 +259,17 @@ export default function UsersPage() {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           {error instanceof Error ? error.message : 'Failed to load users'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (rolesError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load roles. Please refresh the page.
         </AlertDescription>
       </Alert>
     );
@@ -214,7 +286,7 @@ export default function UsersPage() {
                 Manage users and assign global roles
               </CardDescription>
             </div>
-            <Button onClick={openCreateDialog}>
+            <Button onClick={openCreateDialog} disabled={isLoadingRoles}>
               <Plus className="mr-2 h-4 w-4" />
               Create User
             </Button>
@@ -245,8 +317,7 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      {/* TODO: Fetch actual user roles from Keto */}
-                      <Badge variant="secondary">Role Loading...</Badge>
+                      {getRoleBadge((user as UserWithRoles).roles || [])}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -288,70 +359,110 @@ export default function UsersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="user@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+          {/* Show loading state for edit mode when fetching user data */}
+          {dialogMode === 'edit' && isLoadingUser ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading user details...</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+          ) : dialogMode === 'edit' && userError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load user details. Please try again.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="firstName"
-                  placeholder="John"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  id="email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={dialogMode === 'edit' && isLoadingUser}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                />
-              </div>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    disabled={dialogMode === 'edit' && isLoadingUser}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Global Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((role) => {
-                    const Icon = role.icon;
-                    return (
-                      <SelectItem key={role.value} value={role.value}>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    disabled={dialogMode === 'edit' && isLoadingUser}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Global Role</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  disabled={(dialogMode === 'edit' && isLoadingUser) || isLoadingRoles}
+                >
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder={isLoadingRoles ? "Loading roles..." : "Select a role"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingRoles ? (
+                      <SelectItem value="" disabled>
                         <div className="flex items-center">
-                          <Icon className="mr-2 h-4 w-4" />
-                          {role.label}
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading roles...
                         </div>
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                    ) : roles.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        No roles available
+                      </SelectItem>
+                    ) : (
+                      roles.map((role) => {
+                        const roleConfig = getRoleConfig(role.name);
+                        const Icon = roleConfig.icon;
+                        return (
+                          <SelectItem key={role.name} value={role.name}>
+                            <div className="flex items-center">
+                              <Icon className="mr-2 h-4 w-4" />
+                              {role.name}
+                            </div>
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={closeDialog}
+              disabled={isSubmitting || (dialogMode === 'edit' && isLoadingUser)}
+            >
               Cancel
             </Button>
             <Button
               onClick={dialogMode === 'create' ? handleCreate : handleUpdate}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (dialogMode === 'edit' && isLoadingUser) || (dialogMode === 'edit' && !!userError)}
             >
               {isSubmitting ? 'Saving...' : dialogMode === 'create' ? 'Create' : 'Update'}
             </Button>
