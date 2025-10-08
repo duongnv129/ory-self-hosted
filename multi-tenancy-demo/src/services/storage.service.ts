@@ -22,66 +22,8 @@ export class StorageService {
 
   private rolesByNamespace: Record<string, Role[]> = {
     'simple-rbac': [
-      {
-        id: 1,
-        name: 'admin',
-        description: 'Administrator with full access',
-        namespace: 'simple-rbac',
-        inheritsFrom: ['moderator'], // Admin inherits from moderator
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 2,
-        name: 'moderator',
-        description: 'Moderator with limited access',
-        namespace: 'simple-rbac',
-        inheritsFrom: ['customer'], // Moderator inherits from customer
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 3,
-        name: 'customer',
-        description: 'Customer with view-only access',
-        namespace: 'simple-rbac',
-        inheritsFrom: [], // Customer has no inheritance
-        createdAt: '2025-01-01T00:00:00Z',
-      },
     ],
     'tenant-rbac': [
-      {
-        id: 4,
-        name: 'tenant-admin',
-        description: 'Tenant administrator',
-        namespace: 'tenant-rbac',
-        tenantId: 'tenant-a',
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 5,
-        name: 'tenant-member',
-        description: 'Tenant member',
-        namespace: 'tenant-rbac',
-        tenantId: 'tenant-a',
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-    ],
-    'resource-rbac': [
-      {
-        id: 6,
-        name: 'resource-owner',
-        description: 'Resource owner',
-        namespace: 'resource-rbac',
-        tenantId: 'tenant-a',
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 7,
-        name: 'resource-viewer',
-        description: 'Resource viewer',
-        namespace: 'resource-rbac',
-        tenantId: 'tenant-a',
-        createdAt: '2025-01-01T00:00:00Z',
-      },
     ],
   };
 

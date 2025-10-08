@@ -229,6 +229,9 @@ export class KetoService {
    * using subject sets. For example, "moderator inherits from customer" means
    * moderator members automatically have all customer permissions.
    *
+   * In Zanzibar/Keto model, this creates: role:parentRole member role:childRole
+   * This means "parentRole permissions include childRole members"
+   *
    * @param childRole - The role that inherits (e.g., "moderator")
    * @param parentRole - The role being inherited from (e.g., "customer")
    * @param namespace - The Keto namespace (defaults to "simple-rbac")
@@ -236,6 +239,7 @@ export class KetoService {
    * @example
    * // Moderator inherits Customer permissions
    * await ketoService.createRoleInheritance("moderator", "customer", "simple-rbac");
+   * // Creates: role:customer member role:moderator (customer perms include moderator members)
    */
   async createRoleInheritance(
     childRole: string,
@@ -245,11 +249,11 @@ export class KetoService {
     try {
       await axios.put(`${this.writeUrl}/admin/relation-tuples`, {
         namespace,
-        object: `role:${childRole}`,
+        object: `role:${parentRole}`,
         relation: 'member',
         subject_set: {
           namespace,
-          object: `role:${parentRole}`,
+          object: `role:${childRole}`,
           relation: 'member',
         },
       });
