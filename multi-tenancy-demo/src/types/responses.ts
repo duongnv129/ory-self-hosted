@@ -104,4 +104,11 @@ export interface HealthResponse {
   version: string;
   apis: string[];
   timestamp: string;
+  storage?: {
+    persistenceEnabled: boolean;
+    productsCount: number;
+    categoriesCount: number;
+    rolesCount: number;
+    namespaces: string[];
+  };
 }

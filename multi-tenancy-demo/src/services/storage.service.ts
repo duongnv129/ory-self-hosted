@@ -1,11 +1,19 @@
 /**
- * In-memory storage service for products, categories, and roles
+ * Storage service with file persistence for products, categories, and roles
  */
 
 import { Product, Category, Role } from '../types/models';
+import {
+  StorageData,
+  PersistenceConfig,
+  StorageOperationResult,
+  StorageError,
+  StorageErrorType,
+} from '../types/storage';
+import { FilePersistenceManager } from './file-persistence.service';
 
 /**
- * In-memory storage service
+ * Storage service with optional file persistence
  */
 export class StorageService {
   private products: Product[] = [
@@ -21,11 +29,150 @@ export class StorageService {
   ];
 
   private rolesByNamespace: Record<string, Role[]> = {
-    'simple-rbac': [
-    ],
-    'tenant-rbac': [
-    ],
+    'simple-rbac': [],
+    'tenant-rbac': [],
   };
+
+  private persistenceManager: FilePersistenceManager | null = null;
+  private persistenceConfig: PersistenceConfig | null = null;
+  private isInitialized = false;
+
+  constructor(persistenceConfig?: PersistenceConfig) {
+    if (persistenceConfig) {
+      this.persistenceConfig = persistenceConfig;
+      this.persistenceManager = new FilePersistenceManager(persistenceConfig);
+    }
+  }
+
+  /**
+   * Initialize storage service with optional file persistence
+   */
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    if (this.persistenceManager) {
+      try {
+        await this.persistenceManager.initialize();
+        const data = await this.persistenceManager.loadData();
+        this.loadFromStorageData(data);
+        console.log('✅ Storage service initialized with file persistence');
+      } catch (error) {
+        console.warn('Warning: Failed to load persisted data, using defaults:', error);
+        // Continue with default in-memory data
+      }
+    }
+
+    this.isInitialized = true;
+  }
+
+  /**
+   * Save current state to file (if persistence is enabled)
+   */
+  async persist(): Promise<StorageOperationResult | null> {
+    if (!this.persistenceManager) {
+      return null;
+    }
+
+    const data = this.createStorageData();
+    return await this.persistenceManager.saveData(data);
+  }
+
+  /**
+   * Restore from backup (if persistence is enabled)
+   */
+  async restoreFromBackup(): Promise<StorageOperationResult | null> {
+    if (!this.persistenceManager) {
+      throw new StorageError(
+        StorageErrorType.UNKNOWN_ERROR,
+        'Persistence is not enabled'
+      );
+    }
+
+    const result = await this.persistenceManager.restoreFromBackup();
+    const data = await this.persistenceManager.loadData();
+    this.loadFromStorageData(data);
+    return result;
+  }
+
+  /**
+   * Get storage statistics
+   */
+  getStorageStats(): {
+    productsCount: number;
+    categoriesCount: number;
+    rolesCount: number;
+    namespaces: string[];
+    persistenceEnabled: boolean;
+  } {
+    const rolesCount = Object.values(this.rolesByNamespace).reduce(
+      (sum, roles) => sum + roles.length,
+      0
+    );
+
+    return {
+      productsCount: this.products.length,
+      categoriesCount: this.categories.length,
+      rolesCount,
+      namespaces: Object.keys(this.rolesByNamespace),
+      persistenceEnabled: this.persistenceManager !== null,
+    };
+  }
+
+  /**
+   * Cleanup resources
+   */
+  async dispose(): Promise<void> {
+    if (this.persistenceManager) {
+      // Save current state before disposal
+      try {
+        await this.persist();
+      } catch (error) {
+        console.warn('Warning: Failed to save state during disposal:', error);
+      }
+
+      await this.persistenceManager.dispose();
+    }
+  }
+
+  /**
+   * Create storage data structure from current state
+   */
+  private createStorageData(): StorageData {
+    return {
+      products: [...this.products],
+      categories: [...this.categories],
+      rolesByNamespace: { ...this.rolesByNamespace },
+      metadata: {
+        version: '1.0.0',
+        lastModified: new Date().toISOString(),
+        backupCount: 0,
+      },
+    };
+  }
+
+  /**
+   * Load state from storage data
+   */
+  private loadFromStorageData(data: StorageData): void {
+    this.products = [...data.products];
+    this.categories = [...data.categories];
+    this.rolesByNamespace = { ...data.rolesByNamespace };
+  }
+
+  /**
+   * Helper method to persist after mutations (if auto-save is disabled)
+   */
+  private async persistIfEnabled(): Promise<void> {
+    if (this.persistenceManager && (!this.persistenceConfig?.autoSaveInterval || this.persistenceConfig.autoSaveInterval === 0)) {
+      try {
+        await this.persist();
+      } catch (error) {
+        console.warn('Warning: Failed to persist changes:', error);
+      }
+    }
+  }
 
   // ==================== PRODUCT METHODS ====================
 
@@ -49,7 +196,7 @@ export class StorageService {
   /**
    * Create new product
    */
-  createProduct(name: string, category: string, price: number, tenantId?: string): Product {
+  async createProduct(name: string, category: string, price: number, tenantId?: string): Promise<Product> {
     const newProduct: Product = {
       id: Math.max(...this.products.map((p) => p.id), 0) + 1,
       name,
@@ -59,16 +206,17 @@ export class StorageService {
       createdAt: new Date().toISOString(),
     };
     this.products.push(newProduct);
+    await this.persistIfEnabled();
     return newProduct;
   }
 
   /**
    * Update product
    */
-  updateProduct(
+  async updateProduct(
     id: number,
     updates: { name?: string; category?: string; price?: number }
-  ): Product | undefined {
+  ): Promise<Product | undefined> {
     const index = this.products.findIndex((p) => p.id === id);
     if (index === -1) {
       return undefined;
@@ -88,18 +236,21 @@ export class StorageService {
     };
 
     this.products[index] = updated;
+    await this.persistIfEnabled();
     return updated;
   }
 
   /**
    * Delete product
    */
-  deleteProduct(id: number): Product | undefined {
+  async deleteProduct(id: number): Promise<Product | undefined> {
     const index = this.products.findIndex((p) => p.id === id);
     if (index === -1) {
       return undefined;
     }
-    return this.products.splice(index, 1)[0];
+    const deleted = this.products.splice(index, 1)[0];
+    await this.persistIfEnabled();
+    return deleted;
   }
 
   // ==================== CATEGORY METHODS ====================
@@ -124,7 +275,7 @@ export class StorageService {
   /**
    * Create new category
    */
-  createCategory(name: string, description: string, tenantId?: string): Category {
+  async createCategory(name: string, description: string, tenantId?: string): Promise<Category> {
     const newCategory: Category = {
       id: Math.max(...this.categories.map((c) => c.id), 0) + 1,
       name,
@@ -133,16 +284,17 @@ export class StorageService {
       createdAt: new Date().toISOString(),
     };
     this.categories.push(newCategory);
+    await this.persistIfEnabled();
     return newCategory;
   }
 
   /**
    * Update category
    */
-  updateCategory(
+  async updateCategory(
     id: number,
     updates: { name?: string; description?: string }
-  ): Category | undefined {
+  ): Promise<Category | undefined> {
     const index = this.categories.findIndex((c) => c.id === id);
     if (index === -1) {
       return undefined;
@@ -161,18 +313,21 @@ export class StorageService {
     };
 
     this.categories[index] = updated;
+    await this.persistIfEnabled();
     return updated;
   }
 
   /**
    * Delete category
    */
-  deleteCategory(id: number): Category | undefined {
+  async deleteCategory(id: number): Promise<Category | undefined> {
     const index = this.categories.findIndex((c) => c.id === id);
     if (index === -1) {
       return undefined;
     }
-    return this.categories.splice(index, 1)[0];
+    const deleted = this.categories.splice(index, 1)[0];
+    await this.persistIfEnabled();
+    return deleted;
   }
 
   // ==================== ROLE METHODS ====================
@@ -199,13 +354,13 @@ export class StorageService {
   /**
    * Create new role
    */
-  createRole(
+  async createRole(
     namespace: string,
     name: string,
     description: string,
     tenantId?: string,
     inheritsFrom?: string[]
-  ): Role {
+  ): Promise<Role> {
     if (!this.rolesByNamespace[namespace]) {
       this.rolesByNamespace[namespace] = [];
     }
@@ -221,17 +376,18 @@ export class StorageService {
     };
 
     this.rolesByNamespace[namespace].push(newRole);
+    await this.persistIfEnabled();
     return newRole;
   }
 
   /**
    * Update role
    */
-  updateRole(
+  async updateRole(
     namespace: string,
     roleName: string,
     updates: { name?: string; description?: string; inheritsFrom?: string[] }
-  ): Role | undefined {
+  ): Promise<Role | undefined> {
     const roles = this.rolesByNamespace[namespace];
     if (!roles) {
       return undefined;
@@ -258,13 +414,14 @@ export class StorageService {
     };
 
     this.rolesByNamespace[namespace]![index] = updated;
+    await this.persistIfEnabled();
     return updated;
   }
 
   /**
    * Delete role
    */
-  deleteRole(namespace: string, roleName: string): Role | undefined {
+  async deleteRole(namespace: string, roleName: string): Promise<Role | undefined> {
     const roles = this.rolesByNamespace[namespace];
     if (!roles) {
       return undefined;
@@ -275,7 +432,9 @@ export class StorageService {
       return undefined;
     }
 
-    return this.rolesByNamespace[namespace]!.splice(index, 1)[0];
+    const deleted = this.rolesByNamespace[namespace]!.splice(index, 1)[0];
+    await this.persistIfEnabled();
+    return deleted;
   }
 
   /**

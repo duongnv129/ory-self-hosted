@@ -3,14 +3,13 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { StorageService } from '../services/storage.service';
+import { storageService } from '../app';
 import { KetoService } from '../services/keto.service';
 import { CreateRoleRequest, UpdateRoleRequest } from '../types/models';
 import { ValidationError, NotFoundError, ForbiddenError, ConflictError } from '../types/errors';
 import { Permission } from '../types/responses';
 
 const router: Router = Router();
-const storage = new StorageService();
 const ketoService = new KetoService();
 
 /**
@@ -28,7 +27,7 @@ function checkRoleTenantAccess(roleTenantId: string | undefined, requestTenantId
 router.get('/list', (req: Request, res: Response, next: NextFunction) => {
   try {
     const namespace = req.ketoNamespace;
-    const roles = storage.getRolesByNamespace(namespace, req.tenantId);
+    const roles = storageService.getRolesByNamespace(namespace, req.tenantId);
 
     res.json({
       message: 'Roles retrieved successfully (mock)',
@@ -55,7 +54,7 @@ router.get('/get/:roleName', async (req: Request, res: Response, next: NextFunct
     const roleName = req.params.roleName!;
     const namespace = req.ketoNamespace!;
 
-    const role = storage.getRoleByName(namespace, roleName);
+    const role = storageService.getRoleByName(namespace, roleName);
 
     if (!role) {
       throw new NotFoundError('Role', roleName);
@@ -115,13 +114,13 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
     const namespace = req.ketoNamespace;
 
     // Check if role already exists
-    const existingRole = storage.getRoleByName(namespace, name);
+    const existingRole = storageService.getRoleByName(namespace, name);
     if (existingRole) {
       throw new ConflictError('Role already exists', `Role ${name} in namespace ${namespace}`);
     }
 
     // Create role in memory
-    const role = storage.createRole(namespace, name, description || '', req.tenantId, inheritsFrom);
+    const role = await storageService.createRole(namespace, name, description || '', req.tenantId, inheritsFrom);
 
     // Sync to Keto - create relation tuples
     const ketoWarnings: string[] = [];
@@ -194,7 +193,7 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
     const {  description, inheritsFrom, permissions } = req.body as UpdateRoleRequest;
     const namespace = req.ketoNamespace!;
 
-    const existingRole = storage.getRoleByName(namespace, name);
+    const existingRole = storageService.getRoleByName(namespace, name);
 
     if (!existingRole) {
       throw new NotFoundError('Role', name);
@@ -203,7 +202,7 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
     checkRoleTenantAccess(existingRole.tenantId, req.tenantId);
 
     // Update role in memory
-    const role = storage.updateRole(namespace!, name!, { name, description, inheritsFrom });
+    const role = await storageService.updateRole(namespace!, name!, { name, description, inheritsFrom });
 
     if (!role) {
       throw new NotFoundError('Role', name);
@@ -308,7 +307,7 @@ router.delete('/delete/:roleName', async (req: Request, res: Response, next: Nex
     const roleName = req.params.roleName!;
     const namespace = req.ketoNamespace!;
 
-    const existingRole = storage.getRoleByName(namespace, roleName);
+    const existingRole = storageService.getRoleByName(namespace, roleName);
 
     if (!existingRole) {
       throw new NotFoundError('Role', roleName);
@@ -320,7 +319,7 @@ router.delete('/delete/:roleName', async (req: Request, res: Response, next: Nex
     await ketoService.deleteRoleRelations(roleName, namespace);
 
     // Delete from memory
-    const role = storage.deleteRole(namespace!, roleName!);
+    const role = await storageService.deleteRole(namespace!, roleName!);
 
     if (!role) {
       throw new NotFoundError('Role', roleName);

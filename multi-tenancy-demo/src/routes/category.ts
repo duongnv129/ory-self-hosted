@@ -3,18 +3,17 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { StorageService } from '../services/storage.service';
+import { storageService } from '../app';
 import { CreateCategoryRequest, UpdateCategoryRequest } from '../types/models';
 import { ValidationError, NotFoundError } from '../types/errors';
 
 const router: Router = Router();
-const storage = new StorageService();
 
 /**
  * List all categories
  */
 router.get('/list', (req: Request, res: Response) => {
-  const categories = storage.getCategories(req.tenantId);
+  const categories = storageService.getCategories(req.tenantId);
 
   res.json({
     message: 'Categories listed successfully (mock)',
@@ -39,7 +38,7 @@ router.get('/get/:id', (req: Request, res: Response, next: NextFunction) => {
       throw new ValidationError('Invalid category ID');
     }
 
-    const category = storage.getCategoryById(categoryId);
+    const category = storageService.getCategoryById(categoryId);
 
     if (!category) {
       throw new NotFoundError('Category', categoryId);
@@ -61,21 +60,21 @@ router.get('/get/:id', (req: Request, res: Response, next: NextFunction) => {
 /**
  * Create new category
  */
-router.post('/create', (req: Request, res: Response, next: NextFunction) => {
+router.post('/create', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description } = req.body as CreateCategoryRequest;
+    const { name, description }: CreateCategoryRequest = req.body;
 
-    if (!name) {
-      throw new ValidationError('Category name is required');
+    if (!name || name.trim().length < 2) {
+      throw new ValidationError('Category name must be at least 2 characters');
     }
 
-    const category = storage.createCategory(
+    const category = await storageService.createCategory(
       name,
-      description || 'No description provided',
+      description || '',
       req.tenantId
     );
 
-    res.status(201).json({
+    res.json({
       message: 'Category created successfully (mock)',
       data: category,
       context: {
@@ -91,7 +90,7 @@ router.post('/create', (req: Request, res: Response, next: NextFunction) => {
 /**
  * Update existing category
  */
-router.put('/update/:id', (req: Request, res: Response, next: NextFunction) => {
+router.put('/update/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categoryId = parseInt(req.params.id!, 10);
 
@@ -101,7 +100,7 @@ router.put('/update/:id', (req: Request, res: Response, next: NextFunction) => {
 
     const { name, description } = req.body as UpdateCategoryRequest;
 
-    const category = storage.updateCategory(categoryId, { name, description });
+    const category = await storageService.updateCategory(categoryId, { name, description });
 
     if (!category) {
       throw new NotFoundError('Category', categoryId);
@@ -123,7 +122,7 @@ router.put('/update/:id', (req: Request, res: Response, next: NextFunction) => {
 /**
  * Delete category
  */
-router.delete('/delete/:id', (req: Request, res: Response, next: NextFunction) => {
+router.delete('/delete/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categoryId = parseInt(req.params.id!, 10);
 
@@ -131,7 +130,7 @@ router.delete('/delete/:id', (req: Request, res: Response, next: NextFunction) =
       throw new ValidationError('Invalid category ID');
     }
 
-    const category = storage.deleteCategory(categoryId);
+    const category = await storageService.deleteCategory(categoryId);
 
     if (!category) {
       throw new NotFoundError('Category', categoryId);

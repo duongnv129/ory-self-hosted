@@ -1,0 +1,21 @@
+{
+  "products": [],
+  "categories": [],
+  "rolesByNamespace": {
+    "simple-rbac": [
+      {
+        "id": 1,
+        "name": "customer",
+        "description": "customer",
+        "namespace": "simple-rbac",
+        "inheritsFrom": [],
+        "createdAt": "2025-10-08T10:38:33.401Z"
+      }
+    ]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "lastModified": "2025-10-08T10:39:16.783Z",
+    "backupCount": 0
+  }
+}

@@ -3,18 +3,17 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { StorageService } from '../services/storage.service';
+import { storageService } from '../app';
 import { CreateProductRequest, UpdateProductRequest } from '../types/models';
 import { ValidationError, NotFoundError } from '../types/errors';
 
 const router: Router = Router();
-const storage = new StorageService();
 
 /**
  * List all products
  */
 router.get('/list', (req: Request, res: Response) => {
-  const products = storage.getProducts(req.tenantId);
+  const products = storageService.getProducts(req.tenantId);
 
   res.json({
     message: 'Products listed successfully (mock)',
@@ -39,7 +38,7 @@ router.get('/get/:id', (req: Request, res: Response, next: NextFunction) => {
       throw new ValidationError('Invalid product ID');
     }
 
-    const product = storage.getProductById(productId);
+    const product = storageService.getProductById(productId);
 
     if (!product) {
       throw new NotFoundError('Product', productId);
@@ -61,15 +60,15 @@ router.get('/get/:id', (req: Request, res: Response, next: NextFunction) => {
 /**
  * Create new product
  */
-router.post('/create', (req: Request, res: Response, next: NextFunction) => {
+router.post('/create', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, category, price } = req.body as CreateProductRequest;
+    const { name, category, price }: CreateProductRequest = req.body;
 
     if (!name) {
       throw new ValidationError('Product name is required');
     }
 
-    const product = storage.createProduct(
+    const product = await storageService.createProduct(
       name,
       category || 'General',
       price || 0,
@@ -90,19 +89,18 @@ router.post('/create', (req: Request, res: Response, next: NextFunction) => {
 });
 
 /**
- * Update existing product
+ * Update product
  */
-router.put('/update/:id', (req: Request, res: Response, next: NextFunction) => {
+router.put('/update/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const productId = parseInt(req.params.id!, 10);
+    const { name, category, price }: UpdateProductRequest = req.body;
 
     if (isNaN(productId)) {
       throw new ValidationError('Invalid product ID');
     }
 
-    const { name, category, price } = req.body as UpdateProductRequest;
-
-    const product = storage.updateProduct(productId, { name, category, price });
+    const product = await storageService.updateProduct(productId, { name, category, price });
 
     if (!product) {
       throw new NotFoundError('Product', productId);
@@ -124,7 +122,7 @@ router.put('/update/:id', (req: Request, res: Response, next: NextFunction) => {
 /**
  * Delete product
  */
-router.delete('/delete/:id', (req: Request, res: Response, next: NextFunction) => {
+router.delete('/delete/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const productId = parseInt(req.params.id!, 10);
 
@@ -132,7 +130,7 @@ router.delete('/delete/:id', (req: Request, res: Response, next: NextFunction) =
       throw new ValidationError('Invalid product ID');
     }
 
-    const product = storage.deleteProduct(productId);
+    const product = await storageService.deleteProduct(productId);
 
     if (!product) {
       throw new NotFoundError('Product', productId);
