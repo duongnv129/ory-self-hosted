@@ -163,7 +163,16 @@ function testResourceLevel(level, testData) {
     for (let i = 0; i < checksPerResourceType; i++) {
       const user = keto.randomChoice(levelTestData.users);
       const tenant = keto.randomChoice(levelTestData.tenants);
-      const operation = keto.randomChoice(testConfig.operationsToTest);
+
+      // Choose operation based on what permissions are actually granted for this resource type
+      let operation;
+      if (resourceType === 'product') {
+        operation = keto.randomChoice(['view', 'create', 'delete']); // No 'update' for products
+      } else if (resourceType === 'category') {
+        operation = keto.randomChoice(['view', 'create', 'update']); // No 'delete' for categories
+      } else {
+        operation = keto.randomChoice(testConfig.operationsToTest); // All operations for other resources
+      }
 
       const authResult = keto.checkAuth(
         config.keto.namespace,

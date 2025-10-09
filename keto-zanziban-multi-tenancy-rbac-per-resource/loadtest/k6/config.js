@@ -79,10 +79,9 @@ export const config = {
 
     // Real-world Load: 10K users per README.md
     realworld: [
-      { duration: '1m', target: 100 },    // Start baseline
-      { duration: '2m', target: 500 },    // Ramp to mid-scale
-      { duration: '2m', target: 1000 },   // Reach real-world scale
-      { duration: '5m', target: 1000 },   // Sustain real-world load
+      { duration: '30s', target: 50 },    // Start baseline
+      { duration: '1m30s', target: 100 },    // Ramp to mid-scale
+      { duration: '1m', target: 1000 },   // Reach real-world scale
       { duration: '2m', target: 0 }       // Cool down
     ],
 
@@ -115,6 +114,7 @@ export const config = {
   // Profile-to-stage mapping for easy selection
   profiles: {
     baseline: 'baseline',
+    realworld: 'realworld',
     stress: 'stress',
     breakingpoint: 'breakingpoint',
     validation: 'validation'

@@ -326,7 +326,7 @@ function simulateCharliePattern(charlieUser, testData) {
         type: 'charlie_failed',
         namespace: config.keto.namespace,
         object: `tenant:${tenant.id}#product:items`,
-        relation: keto.randomChoice(['create', 'update', 'delete']),
+        relation: keto.randomChoice(['create', 'delete']), // Products only have create and delete (no update)
         subjectId: `user:${charlieUser.id}`,
         expectFailure: true
       };

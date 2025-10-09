@@ -52,10 +52,11 @@ const testConfig = {
       tags: ['hierarchy', 'inheritance']
     }
   }, profiles: {
-    baseline: 'Baseline load testing with gradual ramp-up',
-    stress: 'High-load stress testing to find breaking points',
-    spike: 'Sudden load spikes to test elasticity',
-    soak: 'Extended duration testing for stability'
+    baseline: 'Baseline load testing (1-5 VUs, ~20s)',
+    realworld: 'Real-world load (50-1K VUs, ~5 min)',
+    stress: 'Stress testing (1K-10K VUs, ~23 min)',
+    breakingpoint: 'Breaking point analysis (10K-100K VUs, ~27 min)',
+    validation: 'Quick validation (2-5 VUs, ~2 min)'
   },
 
   outputFormats: ['json', 'csv', 'junit'],
@@ -130,6 +131,7 @@ class K6TestRunner {
     const k6Args = [
       'run',
       '--out', `json=${outputFile}`,
+      '-e', `LOAD_PROFILE=${profile}`,  // Pass profile as environment variable for K6 scripts
       '--tag', `scenario=${scenarioKey}`,
       '--tag', `profile=${profile}`,
       '--tag', `timestamp=${timestamp}`,
