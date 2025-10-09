@@ -94,7 +94,7 @@ const testConfig = {
 
 // K6 options for this test
 export const options = {
-  stages: config.stages.baseline,
+  stages: config.loadStages.scale || config.loadStages.warmup,
   thresholds: {
     ...config.thresholds,
 

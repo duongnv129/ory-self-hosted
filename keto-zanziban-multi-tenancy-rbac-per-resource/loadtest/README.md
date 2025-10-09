@@ -496,37 +496,352 @@ This comprehensive benchmarking plan ensures the resource-scoped RBAC approach c
 ## Quick Start
 
 ### 1. Prerequisites
-- Keto running locally or in test environment
-- PostgreSQL with proper monitoring enabled
-- Artillery.js and k6 installed for load testing
-- Prometheus/Grafana for metrics collection
 
-### 2. Run Basic Performance Test
+**Required**:
+- K6 load testing tool (`brew install k6` or [download](https://k6.io/docs/get-started/installation/))
+- Node.js 16+ (`node --version`)
+- Keto running on `localhost:4466` (read) and `localhost:4467` (write)
+- PostgreSQL accessible at `localhost:5432`
+
+**Optional**:
+- Prometheus/Grafana for real-time monitoring
+- jq for JSON result parsing
+
+**Verify setup**:
 ```bash
-# Start with baseline tuple explosion test
-./run-tuple-explosion-test.sh
+# Check K6
+k6 version
 
-# Run realistic authorization patterns
-./run-authorization-patterns-test.sh
+# Check Keto health
+curl http://localhost:4466/health/ready
+curl http://localhost:4467/health/ready
 
-# Monitor results in Grafana dashboard
-open http://localhost:3000/dashboards/keto-performance
+# Install Node dependencies
+npm install
 ```
 
-### 3. Analyze Results
-```bash
-# Check performance metrics
-./analyze-performance-results.sh
+### 2. Run Load Tests
 
-# Generate optimization recommendations
-./generate-optimization-report.sh
+**Using Makefile** (recommended):
+```bash
+# List available scenarios
+make list-scenarios
+
+# Run individual scenarios with stress profile
+make test-scenario1    # Tuple Explosion Impact (~23 min)
+make test-scenario2    # Authorization Patterns (~23 min)
+make test-scenario3    # Resource Type Scaling (~23 min)
+make test-scenario4    # Hierarchy Inheritance (~23 min)
+
+# Run all scenarios
+make test-all          # All with baseline profile
+make test-stress       # All with stress/scale profile (10K VUs)
+
+# Analyze results
+make analyze           # Generate analysis reports
+make analyze-sla       # Focus on SLA compliance
 ```
+
+**Using Node.js runner**:
+```bash
+# Single scenario with stress profile
+node run-tests.js --scenario scenario1 --profile stress --verbose
+
+# Multiple scenarios
+node run-tests.js --scenario scenario1,scenario2 --profile stress
+
+# All scenarios
+node run-tests.js --scenario all --profile stress
+
+# CI mode (minimal output)
+node run-tests.js --scenario all --profile baseline --ci
+```
+
+**Using K6 directly**:
+```bash
+# Set environment variables
+export TUPLE_THRESHOLD=100000
+export LOAD_PROFILE=stress
+
+# Run specific scenario
+k6 run --out json=results/scenario1.json \
+  k6/scenarios/scenario1-tuple-explosion.js
+
+# With custom parameters
+k6 run -e TUPLE_THRESHOLD=50000 \
+  -e USERS_SMALL=50 \
+  k6/scenarios/scenario1-tuple-explosion.js
+```
+
+### 3. Environment Configuration
+
+**Key Environment Variables**:
+```bash
+# Load profile (default: baseline)
+export LOAD_PROFILE=stress          # baseline|stress|scale|breakingpoint|validation
+
+# Tuple threshold (default: 100000)
+export TUPLE_THRESHOLD=100000       # Max tuples per test combination
+
+# Scenario 1 parameters
+export USERS_SMALL=100
+export USERS_MEDIUM=1000
+export USERS_LARGE=10000
+export TENANTS_SMALL=10
+export TENANTS_MEDIUM=50
+export TENANTS_LARGE=100
+
+# Keto endpoints (defaults shown)
+export KETO_READ_URL=http://localhost:4466
+export KETO_WRITE_URL=http://localhost:4467
+```
+
+### 4. Load Profiles
+
+| Profile | VUs | Duration | Use Case |
+|---------|-----|----------|----------|
+| **baseline** | 50 → 100 | ~5.5 min | Quick validation |
+| **realworld** | 100 → 1K | ~12 min | Realistic load |
+| **stress/scale** | 1K → 10K | ~23 min | **Stress testing (recommended)** |
+| **breakingpoint** | 10K → 100K | ~27 min | Breaking point analysis |
+| **validation** | 2 → 5 | ~2 min | Config validation |
+
+### 5. Analyze Results
+
+**View results**:
+```bash
+# List result files
+ls -lh results/
+
+# View latest result
+cat results/scenario1-*.json | jq '.metrics'
+
+# Generate analysis report
+node analyze-results.js --input results --output reports --verbose
+
+# View analysis summary
+cat reports/analysis-summary-*.json | jq
+```
+
+**Key metrics to check**:
+- Authorization latency (P50, P95, P99)
+- HTTP request failure rate
+- Tuple creation rate
+- Cache hit ratio (if monitored)
+- Tenant isolation (should be 100%)
+
+### 6. Troubleshooting
+
+**"No valid test combinations generated"**:
+```bash
+# Increase tuple threshold
+export TUPLE_THRESHOLD=200000
+make test-scenario1
+```
+
+**"Setup timeout exceeded"**:
+```bash
+# Reduce scale or use baseline profile
+node run-tests.js --scenario scenario1 --profile baseline
+```
+
+**High error rate**:
+```bash
+# Check Keto logs
+docker logs keto -f
+
+# Reduce load
+export LOAD_PROFILE=baseline
+```
+
+**Config issues**:
+```bash
+# Verify configuration loads correctly
+k6 run --duration 10s --vus 1 k6/scenarios/scenario1-tuple-explosion.js
+```
+
+---
+
+## Test Scenarios Summary
+
+### Scenario 1: Tuple Explosion Impact
+- **File**: `k6/scenarios/scenario1-tuple-explosion.js`
+- **Duration**: ~23 min (stress profile)
+- **Focus**: Performance vs tuple count growth
+- **Metrics**: `total_tuples_created`, `auth_latency_by_tuple_count`, `test_setup_time`
+
+### Scenario 2: Real-World Authorization Patterns
+- **File**: `k6/scenarios/scenario2-auth-patterns.js`
+- **Duration**: ~23 min (stress profile)
+- **Focus**: Realistic user behavior (Alice 70%, Bob 20%, Charlie 10%)
+- **Metrics**: User-specific latency, success rates, cross-tenant isolation
+
+### Scenario 3: Resource Type Scaling
+- **File**: `k6/scenarios/scenario3-resource-scaling.js`
+- **Duration**: ~23 min (stress profile)
+- **Focus**: Impact of adding resource types (2 → 3 → 4 → 5)
+- **Metrics**: `tuples_per_resource`, `query_latency_by_resource_count`, `performance_degradation`
+
+### Scenario 4: Hierarchical Inheritance
+- **File**: `k6/scenarios/scenario4-hierarchy-inheritance.js`
+- **Duration**: ~23 min (stress profile)
+- **Focus**: Role hierarchy depth (shallow/medium/deep)
+- **Metrics**: Hierarchy-specific latency, traversal depth, inheritance correctness
+
+---
+
+## Performance Targets (SLAs)
+
+### Authorization Performance
+```yaml
+Baseline (1K users, 10 tenants, 5 resources):
+  p50: <10ms
+  p95: <25ms
+  p99: <50ms
+
+Scale (10K users, 100 tenants, 20 resources):
+  p50: <20ms
+  p95: <50ms
+  p99: <100ms
+```
+
+### Database Performance
+```yaml
+Tuple insertion rate: >1000/second (baseline)
+Query execution time: <5ms average (baseline), <15ms (scale)
+```
+
+### System Metrics
+```yaml
+HTTP request failed rate: <5%
+Tenant isolation: 100% (rate == 1)
+Cache hit ratio: >90% (if caching enabled)
+```
+
+---
+
+## Configuration Files
+
+### `k6/config.js`
+Main configuration with:
+- Load stage profiles (baseline, stress, scale, etc.)
+- Test data sizes (users, tenants, resources)
+- SLA targets and thresholds
+- Keto endpoint configuration
+
+### `k6/utils/keto-utils.js`
+Utility functions for:
+- Test data generation
+- Tuple creation/deletion
+- Authorization checks
+- Random selection helpers
+
+### `Makefile`
+Convenient commands for test execution and analysis
+
+### `run-tests.js`
+Node.js test orchestrator with:
+- Scenario selection
+- Profile management
+- Result aggregation
+- JSON report generation
+
+### `analyze-results.js`
+Result analysis tool for:
+- Metric aggregation
+- SLA compliance checking
+- Performance trend analysis
+- Report generation
 
 ---
 
 ## Related Files
 
-- **Main Documentation**: `../README.md` - Overview of resource-scoped RBAC approach
-- **Architecture Details**: `../Keto-Resource-Scoped-RBAC-Architecture.md`
+- **Parent Documentation**: `../README.md` - Resource-scoped RBAC overview
+- **Architecture**: `../Keto-Resource-Scoped-RBAC-Architecture.md`
 - **Test Cases**: `../Keto-Resource-Scoped-RBAC-Test-Cases.md`
-- **Test Scripts**: `../Keto-Resource-Scoped-RBAC-Test.sh`
+- **Setup Script**: `../Keto-Resource-Scoped-RBAC-Test.sh`
+
+---
+
+## CI/CD Integration
+
+**GitLab CI example**:
+```yaml
+performance-test:
+  stage: test
+  script:
+    - npm install
+    - make test-ci
+    - make analyze
+  artifacts:
+    paths:
+      - results/
+      - reports/
+    expire_in: 1 week
+```
+
+**GitHub Actions example**:
+```yaml
+- name: Run K6 Load Tests
+  run: |
+    npm install
+    make test-stress
+    make analyze
+
+- name: Upload Results
+  uses: actions/upload-artifact@v3
+  with:
+    name: loadtest-results
+    path: |
+      results/
+      reports/
+```
+
+---
+
+## Advanced Usage
+
+### Custom Test Matrix
+
+Edit `k6/scenarios/scenario1-tuple-explosion.js`:
+```javascript
+const testConfig = {
+  userCounts: [50, 500, 5000],      // Custom user counts
+  tenantCounts: [5, 25, 50],        // Custom tenant counts
+  resourceCounts: [2, 4, 8],        // Custom resource counts
+  iterations: 50                     // More iterations
+};
+```
+
+### Custom Load Profile
+
+Add to `k6/config.js`:
+```javascript
+loadStages: {
+  custom: [
+    { duration: '1m', target: 500 },
+    { duration: '5m', target: 2000 },
+    { duration: '2m', target: 0 }
+  ]
+}
+```
+
+Then use:
+```bash
+export LOAD_PROFILE=custom
+make test-scenario1
+```
+
+### Monitoring Integration
+
+Forward K6 metrics to InfluxDB:
+```bash
+k6 run --out influxdb=http://localhost:8086/k6 \
+  k6/scenarios/scenario1-tuple-explosion.js
+```
+
+Or use K6 Cloud:
+```bash
+k6 run --out cloud k6/scenarios/scenario1-tuple-explosion.js
+```

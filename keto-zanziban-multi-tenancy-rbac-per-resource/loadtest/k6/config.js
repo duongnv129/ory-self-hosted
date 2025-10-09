@@ -64,6 +64,13 @@ export const config = {
   // Load stage patterns for different phases
   loadStages: {
     // Baseline Testing: 1K users per README.md
+    baseline: [
+      { duration: '30s', target: 50 },    // Gentle warmup
+      { duration: '2m', target: 100 },    // Reach baseline 100 users
+      { duration: '3m', target: 100 }     // Sustain baseline load
+    ],
+
+    // Warmup (alias for baseline)
     warmup: [
       { duration: '30s', target: 50 },    // Gentle warmup
       { duration: '2m', target: 100 },    // Reach baseline 100 users
@@ -79,8 +86,17 @@ export const config = {
       { duration: '2m', target: 0 }       // Cool down
     ],
 
-    // Scale Testing: 100K users per README.md
+    // Scale Testing: 10K VUs per README.md (stress/scale profile)
     scale: [
+      { duration: '2m', target: 1000 },   // Start from real-world
+      { duration: '3m', target: 5000 },   // Ramp up significantly
+      { duration: '5m', target: 10000 },  // Reach scale target
+      { duration: '10m', target: 10000 }, // Sustain scale load
+      { duration: '3m', target: 0 }       // Cool down
+    ],
+
+    // Stress (alias for scale)
+    stress: [
       { duration: '2m', target: 1000 },   // Start from real-world
       { duration: '3m', target: 5000 },   // Ramp up significantly
       { duration: '5m', target: 10000 },  // Reach scale target
@@ -103,6 +119,15 @@ export const config = {
       { duration: '1m', target: 5 },      // Small sustained load
       { duration: '30s', target: 0 }      // Quick cooldown
     ]
+  },
+
+  // Profile-to-stage mapping for easy selection
+  profiles: {
+    baseline: 'baseline',
+    stress: 'scale',
+    scale: 'scale',
+    breakingpoint: 'breakingpoint',
+    validation: 'validation'
   },
 
   // Thresholds for pass/fail criteria - Aligned with README.md SLA targets
@@ -139,5 +164,19 @@ config.testData.resources.enterprise = [
   'analytics', 'backup', 'schedule', 'policy', 'document'
   // Total: 20 resource types for enterprise testing per README.md
 ];
+
+/**
+ * Get load stages based on profile name
+ * Supports: baseline, stress, scale, breakingpoint, validation
+ * Falls back to baseline if profile not found
+ */
+export function getStagesByProfile(profile) {
+  const profileName = profile || __ENV.LOAD_PROFILE || 'baseline';
+  const stageName = config.profiles[profileName] || config.profiles.baseline;
+  return config.loadStages[stageName] || config.loadStages.baseline;
+}
+
+// Backward compatibility: add stages alias
+config.stages = config.loadStages;
 
 export default config;

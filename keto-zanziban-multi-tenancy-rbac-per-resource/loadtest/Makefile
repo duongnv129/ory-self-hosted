@@ -77,19 +77,19 @@ test-ci:
 # Individual scenario targets
 test-scenario1:
 	@echo "📈 Running Scenario 1: Tuple Explosion Impact..."
-	./run-tests.js --scenario scenario1
+	./run-tests.js --scenario scenario1 --profile stress
 
 test-scenario2:
 	@echo "👥 Running Scenario 2: Authorization Patterns..."
-	./run-tests.js --scenario scenario2
+	./run-tests.js --scenario scenario2 --profile stress
 
 test-scenario3:
 	@echo "🔧 Running Scenario 3: Resource Type Scaling..."
-	./run-tests.js --scenario scenario3
+	./run-tests.js --scenario scenario3 --profile stress
 
 test-scenario4:
 	@echo "🏗️ Running Scenario 4: Hierarchical Inheritance..."
-	./run-tests.js --scenario scenario4
+	./run-tests.js --scenario scenario4 --profile stress
 
 # Quick scenario combinations
 test-core: test-scenario1 test-scenario2

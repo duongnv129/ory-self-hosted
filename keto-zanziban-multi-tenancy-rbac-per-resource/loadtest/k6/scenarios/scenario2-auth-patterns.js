@@ -59,7 +59,7 @@ const testConfig = {
 
 // K6 options for this test
 export const options = {
-  stages: config.stages.baseline, // Use minimal load for test case validation
+  stages: config.loadStages.scale || config.loadStages.warmup, // Use scale load profile
   thresholds: {
     ...config.thresholds,
 

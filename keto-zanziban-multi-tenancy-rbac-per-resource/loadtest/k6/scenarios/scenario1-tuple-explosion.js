@@ -42,7 +42,7 @@ const testConfig = {
 
 // K6 options for this test
 export const options = {
-  stages: config.stages.baseline,
+  stages: config.loadStages.scale || config.loadStages.warmup,
   thresholds: {
     ...config.thresholds,
     'auth_latency_by_tuple_count': ['p(95) < 100'], // Should scale logarithmically
@@ -68,9 +68,10 @@ export function setup() {
         const resourceTypes = config.testData.resources.full.slice(0, resourceCount);
         const expectedTuples = userCount * tenantCount * resourceCount;
 
-        // Skip combinations that would create too many tuples for test validation
-        if (expectedTuples > 1000) {  // Reduced threshold for test case validation
-          console.log(`⚠️  Skipping combination: ${userCount} users × ${tenantCount} tenants × ${resourceCount} resources = ${expectedTuples} tuples (too large for validation)`);
+        // Skip combinations that would create too many tuples (scale testing allows more)
+        const tupleThreshold = parseInt(__ENV.TUPLE_THRESHOLD) || 100000;  // Default 100K tuples for scale testing
+        if (expectedTuples > tupleThreshold) {
+          console.log(`⚠️  Skipping combination: ${userCount} users × ${tenantCount} tenants × ${resourceCount} resources = ${expectedTuples} tuples (exceeds threshold ${tupleThreshold})`);
           continue;
         }
 
@@ -86,6 +87,11 @@ export function setup() {
   }
 
   console.log(`📊 Generated ${testCombinations.length} test combinations`);
+
+  // Validate we have test combinations
+  if (testCombinations.length === 0) {
+    throw new Error('❌ No valid test combinations generated! All combinations exceeded tuple threshold.');
+  }
 
   return {
     testCombinations,
@@ -110,6 +116,14 @@ export default function (data) {
     combination.tenants,
     combination.resourceTypes
   );
+
+  // Check if testData was generated properly
+  if (!testData || !testData.users) {
+    console.error('❌ Failed to generate test data - skipping this iteration');
+    return;
+  }
+
+  console.log(`✅ Generated test data: ${testData.users.length} users, ${testData.tenants.length} tenants`);
 
   // Setup tuples for this test
   const tupleCount = keto.setupTestTuples(
