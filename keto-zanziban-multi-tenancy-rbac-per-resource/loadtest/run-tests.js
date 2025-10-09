@@ -52,7 +52,7 @@ const testConfig = {
       tags: ['hierarchy', 'inheritance']
     }
   }, profiles: {
-    baseline: 'Baseline load testing (1-5 VUs, ~20s)',
+    baseline: 'Baseline load testing (5-10 VUs, ~30s)',
     realworld: 'Real-world load (50-1K VUs, ~5 min)',
     stress: 'Stress testing (1K-10K VUs, ~23 min)',
     breakingpoint: 'Breaking point analysis (10K-100K VUs, ~27 min)',

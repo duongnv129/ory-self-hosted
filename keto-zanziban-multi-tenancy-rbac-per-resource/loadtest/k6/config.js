@@ -65,16 +65,9 @@ export const config = {
   loadStages: {
     // Baseline Testing: 1K users per README.md
     baseline: [
-      { duration: '5s', target: 1 },    // Gentle warmup
-      { duration: '10s', target: 5 },    // Reach baseline 5 users
-      { duration: '5s', target: 0 }       // Cool down
-    ],
-
-    // Warmup (alias for baseline)
-    warmup: [
-      { duration: '30s', target: 50 },    // Gentle warmup
-      { duration: '2m', target: 100 },    // Reach baseline 100 users
-      { duration: '3m', target: 100 }     // Sustain baseline load
+      { duration: '10s', target: 5 },      // Gentle warmup
+      { duration: '10s', target: 10 },     // Ramp to 10 users
+      { duration: '10s', target: 0 }       // Cool down
     ],
 
     // Real-world Load: 10K users per README.md
