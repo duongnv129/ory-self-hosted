@@ -62,45 +62,46 @@ export const config = {
   },
 
   // Load stage patterns for different phases
+  // Note: VU counts (virtual users) are independent of test data size (100/1K/10K/100K users in test matrix)
   loadStages: {
-    // Baseline Testing: 1K users per README.md
+    // Baseline: Quick smoke test with minimal load
     baseline: [
-      { duration: '10s', target: 5 },      // Gentle warmup
-      { duration: '10s', target: 10 },     // Ramp to 10 users
+      { duration: '10s', target: 5 },      // Warmup to 5 VUs
+      { duration: '10s', target: 10 },     // Ramp to 10 VUs
       { duration: '10s', target: 0 }       // Cool down
     ],
 
-    // Real-world Load: 10K users per README.md
+    // Real-world: Moderate concurrent load simulating typical production traffic
     realworld: [
-      { duration: '30s', target: 50 },    // Start baseline
-      { duration: '1m30s', target: 100 },    // Ramp to mid-scale
-      { duration: '1m', target: 1000 },   // Reach real-world scale
-      { duration: '2m', target: 0 }       // Cool down
+      { duration: '30s', target: 50 },     // Warmup to 50 VUs
+      { duration: '1m30s', target: 100 },  // Ramp to 100 VUs
+      { duration: '1m', target: 1000 },    // Peak at 1K VUs
+      { duration: '2m', target: 0 }        // Cool down
     ],
 
-    // Stress Testing: 10K VUs per README.md (scale/stress profile)
+    // Stress: High load to test system limits (10K concurrent VUs)
     stress: [
-      { duration: '2m', target: 1000 },   // Start from real-world
-      { duration: '3m', target: 5000 },   // Ramp up significantly
-      { duration: '5m', target: 10000 },  // Reach scale target
-      { duration: '10m', target: 10000 }, // Sustain scale load
-      { duration: '3m', target: 0 }       // Cool down
+      { duration: '2m', target: 1000 },    // Start from 1K VUs
+      { duration: '3m', target: 5000 },    // Ramp to 5K VUs
+      { duration: '5m', target: 10000 },   // Reach 10K VUs
+      { duration: '10m', target: 10000 },  // Sustain 10K VUs
+      { duration: '3m', target: 0 }        // Cool down
     ],
 
-    // Breaking Point: Up to 100K users per README.md
+    // Breaking Point: Extreme load to find system breaking point (up to 100K VUs)
     breakingpoint: [
-      { duration: '2m', target: 10000 },  // Start from scale
-      { duration: '5m', target: 25000 },  // Push boundaries
-      { duration: '5m', target: 50000 },  // Extreme load
-      { duration: '10m', target: 100000 }, // Breaking point
-      { duration: '5m', target: 0 }       // Cool down
+      { duration: '2m', target: 10000 },   // Start from 10K VUs
+      { duration: '5m', target: 25000 },   // Push to 25K VUs
+      { duration: '5m', target: 50000 },   // Push to 50K VUs
+      { duration: '10m', target: 100000 }, // Peak at 100K VUs
+      { duration: '5m', target: 0 }        // Cool down
     ],
 
-    // For test validation (small parameters)
+    // Validation: Minimal load for quick functional validation
     validation: [
-      { duration: '30s', target: 2 },     // Quick validation
-      { duration: '1m', target: 5 },      // Small sustained load
-      { duration: '30s', target: 0 }      // Quick cooldown
+      { duration: '30s', target: 2 },      // Start with 2 VUs
+      { duration: '1m', target: 5 },       // Sustain 5 VUs
+      { duration: '30s', target: 0 }       // Cool down
     ]
   },
 

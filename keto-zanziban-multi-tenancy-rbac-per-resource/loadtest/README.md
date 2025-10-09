@@ -600,11 +600,11 @@ export KETO_WRITE_URL=http://localhost:4467
 
 | Profile | VUs | Duration | Use Case |
 |---------|-----|----------|----------|
-| **baseline** | 50 → 100 | ~5.5 min | Quick validation |
-| **realworld** | 100 → 1K | ~12 min | Realistic load |
-| **stress/scale** | 1K → 10K | ~23 min | **Stress testing (recommended)** |
-| **breakingpoint** | 10K → 100K | ~27 min | Breaking point analysis |
-| **validation** | 2 → 5 | ~2 min | Config validation |
+| **baseline** | 5 → 10 | ~30s | Quick smoke test |
+| **realworld** | 50 → 100 → 1K | ~5 min | Realistic production load |
+| **stress/scale** | 1K → 5K → 10K | ~23 min | **Stress testing (recommended)** |
+| **breakingpoint** | 10K → 25K → 50K → 100K | ~27 min | Breaking point analysis |
+| **validation** | 2 → 5 | ~2 min | Quick functional validation |
 
 ### 5. Analyze Results
 
