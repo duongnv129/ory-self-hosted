@@ -173,6 +173,10 @@ function setupRoleHierarchy(hierarchy, tenantId, resourceType) {
 export function setup() {
   console.log('🚀 Starting Hierarchical Permission Inheritance Test Setup');
 
+  // Clean up any existing tuples from previous runs
+  console.log('🧹 Cleaning up existing tuples...');
+  keto.cleanupTestTuples([], [], []);
+
   // Generate test data
   const testData = keto.generateTestData(
     testConfig.userCount,

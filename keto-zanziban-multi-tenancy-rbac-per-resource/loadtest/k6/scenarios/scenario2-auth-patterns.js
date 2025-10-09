@@ -88,6 +88,10 @@ export const options = {
 export function setup() {
   console.log('🚀 Starting Real-World Authorization Patterns Test Setup');
 
+  // Clean up any existing tuples from previous runs
+  console.log('🧹 Cleaning up existing tuples...');
+  keto.cleanupTestTuples([], [], []);
+
   // Generate test data
   const testData = keto.generateTestData(
     testConfig.userCount,

@@ -100,6 +100,10 @@ export const options = {
 export function setup() {
   console.log('🚀 Starting Resource Type Scaling Impact Test Setup');
 
+  // Clean up any existing tuples from previous runs
+  console.log('🧹 Cleaning up existing tuples...');
+  keto.cleanupTestTuples([], [], []);
+
   // Generate consistent test data for all progressions
   const baseTestData = keto.generateTestData(
     testConfig.userCount,
