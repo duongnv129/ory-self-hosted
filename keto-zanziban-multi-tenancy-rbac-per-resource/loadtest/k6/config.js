@@ -66,8 +66,9 @@ export const config = {
   loadStages: {
     // Baseline: Quick smoke test with minimal load
     baseline: [
-      { duration: '10s', target: 5 },      // Warmup to 5 VUs
-      { duration: '10s', target: 10 },     // Ramp to 10 VUs
+      { duration: '30s', target: 5 },      // Warmup to 5 VUs
+      { duration: '30s', target: 10 },     // Ramp to 10 VUs
+      { duration: '30s', target: 50 },     // Ramp to 50 VUs
       { duration: '10s', target: 0 }       // Cool down
     ],
 

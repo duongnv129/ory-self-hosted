@@ -81,7 +81,7 @@ export function setup() {
         // Dynamic threshold based on load profile
         const tupleThreshold = parseInt(__ENV.TUPLE_THRESHOLD) || 1000000;  // Default 1M tuples (realworld can handle this)
         if (expectedTuples > tupleThreshold) {
-          console.log(`⚠️  Skipping combination: ${userCount} users × ${tenantCount} tenants × ${resourceCount} resources = ${expectedTuples} tuples (exceeds threshold ${tupleThreshold})`);
+          // console.log(`⚠️  Skipping combination: ${userCount} users × ${tenantCount} tenants × ${resourceCount} resources = ${expectedTuples} tuples (exceeds threshold ${tupleThreshold})`);
           continue;
         }
 
@@ -117,7 +117,7 @@ export default function (data) {
   const combinationIndex = Math.floor(Math.random() * data.testCombinations.length);
   const combination = data.testCombinations[combinationIndex];
 
-  console.log(`🧪 Testing combination: ${combination.users} users × ${combination.tenants} tenants × ${combination.resources} resources`);
+  // console.log(`🧪 Testing combination: ${combination.users} users × ${combination.tenants} tenants × ${combination.resources} resources`);
 
   // Generate test data for this combination
   const setupStartTime = Date.now();
@@ -133,7 +133,7 @@ export default function (data) {
     return;
   }
 
-  console.log(`✅ Generated test data: ${testData.users.length} users, ${testData.tenants.length} tenants`);
+  // console.log(`✅ Generated test data: ${testData.users.length} users, ${testData.tenants.length} tenants`);
 
   // Setup tuples for this test
   const tupleCount = keto.setupTestTuples(
@@ -146,7 +146,7 @@ export default function (data) {
   tupleExplosionMetrics.setupTime.add(setupTime);
   tupleExplosionMetrics.totalTuples.add(tupleCount);
 
-  console.log(`⏱️  Setup completed in ${setupTime}ms for ${tupleCount} tuples`);
+  // console.log(`⏱️  Setup completed in ${setupTime}ms for ${tupleCount} tuples`);
 
   // Wait for database to settle
   sleep(1);

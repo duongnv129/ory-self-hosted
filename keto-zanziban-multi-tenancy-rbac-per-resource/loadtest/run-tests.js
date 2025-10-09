@@ -161,7 +161,7 @@ class K6TestRunner {
         timestamp,
         duration,
         success: result.exitCode === 0,
-        outputFile,
+        summaryFile,  // Fixed: was 'outputFile' (undefined variable)
         stdout: result.stdout,
         stderr: result.stderr,
         exitCode: result.exitCode
