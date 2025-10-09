@@ -68,10 +68,10 @@ export const options = {
     'bob_latency': ['p(95) < 100'],   // Relaxed for test validation
     'charlie_latency': ['p(95) < 100'], // Relaxed for test validation
 
-    // Success rate requirements (more lenient for validation)
-    'alice_success_rate': ['rate > 0.70'], // More lenient for test validation
-    'bob_success_rate': ['rate > 0.80'],   // More lenient for test validation
-    'charlie_success_rate': ['rate > 0.70'], // More lenient for test validation
+    // Success rate requirements (should be high now that test patterns match granted permissions)
+    'alice_success_rate': ['rate > 0.95'], // Should be high - Alice only tests granted permissions (view, create, delete for products; view, update for categories)
+    'bob_success_rate': ['rate > 0.95'],   // Should be high - Bob only tests granted permissions per resource type
+    'charlie_success_rate': ['rate > 0.95'], // Should be high - Charlie only does view operations
 
     // Cross-tenant isolation
     'checks{check:tenant_isolation}': ['rate == 1'], // 100% isolation maintained
@@ -138,7 +138,7 @@ export function setup() {
 
   // Setup Alice patterns - multi-tenant with varying roles
   for (const user of aliceUsers) {
-    for (let i = 0; i < Math.min(3, testData.tenants.length); i++) { // Alice has access to multiple tenants
+    for (let i = 0; i < Math.min(2, testData.tenants.length); i++) { // Alice has access to first 2 tenants only (to test cross-tenant isolation)
       const tenant = testData.tenants[i];
 
       // Different roles for different resources (matching reference test pattern)
@@ -187,7 +187,7 @@ export function setup() {
  */
 function simulateAlicePattern(aliceUser, testData) {
   const actions = [];
-  const tenant = keto.randomChoice(testData.tenants.slice(0, 3)); // Alice has access to first 3 tenants
+  const tenant = keto.randomChoice(testData.tenants.slice(0, 2)); // Alice has access to first 2 tenants only
 
   for (let i = 0; i < testConfig.actionsPerIteration.alice; i++) {
     const behavior = keto.weightedRandomChoice(
@@ -203,7 +203,7 @@ function simulateAlicePattern(aliceUser, testData) {
           type: 'alice_product',
           namespace: config.keto.namespace,
           object: `tenant:${tenant.id}#product:items`,
-          relation: keto.randomChoice(['view', 'create', 'update', 'delete']), // Alice is admin for products
+          relation: keto.randomChoice(['view', 'create', 'delete']), // Alice is admin for products (view from customer, create from moderator, delete from admin)
           subjectId: `user:${aliceUser.id}`
         };
         break;
@@ -213,21 +213,21 @@ function simulateAlicePattern(aliceUser, testData) {
           type: 'alice_category',
           namespace: config.keto.namespace,
           object: `tenant:${tenant.id}#category:items`,
-          relation: keto.randomChoice(['view', 'update']), // Alice is moderator for categories
+          relation: keto.randomChoice(['view', 'update']), // Alice is moderator for categories (view from customer, update from moderator)
           subjectId: `user:${aliceUser.id}`
         };
         break;
 
       case 'cross_tenant_check':
-        // Find tenant Alice doesn't have access to (use modulo to ensure we get a valid tenant)
-        const aliceAccessibleTenants = testData.tenants.slice(0, Math.min(3, testData.tenants.length));
+        // Find tenant Alice doesn't have access to (Alice only has access to first 2 tenants)
+        const aliceAccessibleTenants = testData.tenants.slice(0, Math.min(2, testData.tenants.length));
         const allTenants = testData.tenants;
         const inaccessibleTenants = allTenants.filter(t => !aliceAccessibleTenants.includes(t));
 
-        // If no inaccessible tenants, use the last tenant (Alice should still fail on wrong resource)
+        // Use tenant 3 (index 2) which Alice doesn't have access to
         const otherTenant = inaccessibleTenants.length > 0 ?
           keto.randomChoice(inaccessibleTenants) :
-          testData.tenants[testData.tenants.length - 1];
+          testData.tenants[testData.tenants.length - 1]; // Fallback to last tenant
 
         action = {
           type: 'alice_cross_tenant',
@@ -264,11 +264,21 @@ function simulateBobPattern(bobUser, testData) {
     let action;
 
     if (behavior === 'admin_operation') {
+      // Bob is admin - choose operations based on resource type permissions
+      let adminRelations;
+      if (resourceType === 'product') {
+        adminRelations = ['create', 'delete']; // Products have create (moderator) and delete (admin)
+      } else if (resourceType === 'category') {
+        adminRelations = ['create', 'update', 'delete']; // Categories have create (admin), update (moderator), delete (admin)
+      } else {
+        adminRelations = ['create', 'update', 'delete']; // Other resources have full CRUD
+      }
+
       action = {
         type: 'bob_admin',
         namespace: config.keto.namespace,
         object: `tenant:${tenant.id}#${resourceType}:items`,
-        relation: keto.randomChoice(['create', 'update', 'delete']),
+        relation: keto.randomChoice(adminRelations),
         subjectId: `user:${bobUser.id}`
       };
     } else {

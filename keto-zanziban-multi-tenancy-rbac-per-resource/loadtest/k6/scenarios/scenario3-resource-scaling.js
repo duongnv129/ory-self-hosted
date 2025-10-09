@@ -5,7 +5,7 @@
  * Tests how tuple creation overhead, query performance, and cache effectiveness
  * change as the number of resource types increases.
  *
- * Test Progression:
+ * Test Progression (per README.md):
  * 1. Baseline: 2 resource types (product, category)
  * 2. Expanded: 5 resource types (+ user, invoice, report)
  * 3. Full: 10 resource types (+ notification, audit, file, comment, tag)
@@ -42,27 +42,27 @@ const testConfig = {
   userCount: 10,  // Reduced for test case validation
   tenantCount: 3, // Reduced for test case validation
 
-  // Resource type progressions (reduced for validation)
+  // Resource type progressions (per README.md)
   resourceProgression: [
     {
       name: 'baseline',
-      types: ['product', 'category'],
+      types: config.testData.resources.baseline, // 2 types: product, category
       description: '2 resource types (baseline)'
     },
     {
       name: 'expanded',
-      types: ['product', 'category', 'user'],
-      description: '3 resource types (expanded)'
+      types: config.testData.resources.expanded, // 5 types: + user, invoice, report
+      description: '5 resource types (expanded)'
     },
     {
       name: 'full',
-      types: ['product', 'category', 'user', 'invoice'],
-      description: '4 resource types (full)'
+      types: config.testData.resources.full, // 10 types: + notification, audit, file, comment, tag
+      description: '10 resource types (full)'
     },
     {
       name: 'enterprise',
-      types: ['product', 'category', 'user', 'invoice', 'report'],
-      description: '5 resource types (enterprise)'
+      types: config.testData.resources.enterprise, // 20 types: + 10 business-specific
+      description: '20 resource types (enterprise)'
     }
   ],
 
