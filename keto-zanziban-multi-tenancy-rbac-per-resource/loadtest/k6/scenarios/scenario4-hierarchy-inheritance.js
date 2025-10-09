@@ -19,7 +19,7 @@
 
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
-import config from '../config.js';
+import config, { getStagesByProfile } from '../config.js';
 import keto from '../utils/keto-utils.js';
 
 // Test-specific metrics
@@ -94,7 +94,7 @@ const testConfig = {
 
 // K6 options for this test
 export const options = {
-  stages: config.loadStages.scale || config.loadStages.warmup,
+  stages: getStagesByProfile(__ENV.LOAD_PROFILE),
   thresholds: {
     ...config.thresholds,
 
