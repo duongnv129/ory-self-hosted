@@ -341,6 +341,23 @@ curl -G "http://localhost:4466/relation-tuples/check" \
 
 ---
 
+---
+
+## Performance Benchmarking
+
+For comprehensive performance testing, load testing scenarios, optimization strategies, and monitoring guidance, see:
+
+📊 **[Performance Benchmarking Plan](./loadtest/README.md)**
+
+Key areas covered:
+- **Tuple Explosion Impact**: Testing scalability with increasing users/tenants/resources
+- **Real-World Load Patterns**: Alice/Bob/Charlie user behavior simulation
+- **Resource Type Scaling**: Performance impact of adding new resource types
+- **Optimization Strategies**: Database indexing, caching, query optimization
+- **Monitoring & Alerting**: Grafana dashboards and performance thresholds
+
+---
+
 ## Related Documentation
 
 - **Tenant-Scoped Approach**: `/keto-zanzibar-multi-tenancy-rbac/`
