@@ -3,14 +3,19 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Install pnpm globally (cache this layer)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files for dependency installation
 COPY package.json pnpm-lock.yaml* package-lock.json* ./
 
-# Install dependencies (including devDependencies for build)
+# Install dependencies with optimizations
 RUN if [ -f pnpm-lock.yaml ]; then \
-  npm install -g pnpm && pnpm install --no-frozen-lockfile; \
+    pnpm install --frozen-lockfile --prefer-offline; \
+  elif [ -f package-lock.json ]; then \
+    npm ci --prefer-offline --no-audit; \
   else \
-  npm ci; \
+    npm install --no-audit; \
   fi
 
 # Copy TypeScript configuration and source code
@@ -19,9 +24,9 @@ COPY src/ ./src/
 
 # Build the TypeScript application
 RUN if [ -f pnpm-lock.yaml ]; then \
-  pnpm run build; \
+    pnpm run build; \
   else \
-  npm run build; \
+    npm run build; \
   fi
 
 # Production stage
@@ -29,14 +34,25 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Install pnpm globally (cache this layer)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files for production dependency installation
 COPY package.json pnpm-lock.yaml* package-lock.json* ./
 
-# Install only production dependencies
+# Install only production dependencies with optimizations
 RUN if [ -f pnpm-lock.yaml ]; then \
-  npm install -g pnpm && pnpm install --prod --no-frozen-lockfile; \
+    pnpm install --prod --frozen-lockfile --prefer-offline; \
+  elif [ -f package-lock.json ]; then \
+    npm ci --omit=dev --prefer-offline --no-audit; \
   else \
-  npm ci --only=production; \
+    npm install --omit=dev --no-audit; \
+  fi && \
+  # Clean npm cache to reduce image size
+  if [ -f pnpm-lock.yaml ]; then \
+    pnpm store prune; \
+  else \
+    npm cache clean --force; \
   fi
 
 # Copy built application from builder stage
