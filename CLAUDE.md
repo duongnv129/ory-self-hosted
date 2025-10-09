@@ -4,53 +4,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive Ory Stack self-hosted setup demonstrating identity management, authentication, authorization, and API gateway capabilities. It includes:
+A production-ready Ory Stack self-hosted implementation demonstrating three distinct authorization models. This is a **TypeScript/Node.js project** (Express.js backend, Next.js frontend) with Docker-based Ory services (Kratos, Keto, Oathkeeper).
+
+### Core Components
 
 - **Ory Kratos**: Headless authentication and identity management
-- **Ory Keto**: Fine-grained authorization using Zanzibar-style permissions
-- **Ory Oathkeeper**: Identity and access proxy (API gateway)
-- **PostgreSQL**: Shared database for all Ory services
-- **Web Demo**: Next.js 14 application demonstrating three RBAC models (Simple, Tenant-Centric, Resource-Scoped)
-- **Multi-tenancy Demo**: Express.js backend API demonstrating tenant isolation
-- **RBAC Test Suite**: Comprehensive Postman collection for Keto authorization testing
+- **Ory Keto**: Zanzibar-style fine-grained authorization
+- **Ory Oathkeeper**: API gateway with authentication/authorization pipeline
+- **PostgreSQL 18**: Shared database for Ory services
+- **Multi-tenancy Demo**: Express.js + TypeScript backend API (port 9000) with in-memory/file-based storage
+- **Web Demo**: Next.js 14 application demonstrating three RBAC models
+- **Test Suites**: Comprehensive Postman collections for each RBAC model
 
 ## Architecture
 
+### Three Authorization Models
+
+This project demonstrates three distinct Keto namespace configurations via Oathkeeper routing:
+
+1. **Simple RBAC** (`/api/simple-rbac/*` → namespace: `simple-rbac`)
+   - Global role hierarchy: Admin > Moderator > Customer
+   - No tenant isolation, direct user-to-role mapping
+   - Test suite: `keto-zanziban-simple-rbac/`
+
+2. **Tenant-Centric RBAC** (`/api/tenant-rbac/*` → namespace: `tenant-rbac`)
+   - Multi-tenant roles with tenant context in headers (`x-tenant-id`)
+   - User can have different roles per tenant
+   - Test suite: `keto-zanzibar-multi-tenancy-rbac/`
+
+3. **Resource-Scoped RBAC** (`/api/resource-rbac/*` → namespace: `resource-rbac`)
+   - Fine-grained permissions per individual resource
+   - Tenant + resource-level authorization
+   - Test suite: `keto-zanziban-multi-tenancy-rbac-per-resource/`
+
 ### Service Stack
 
-All services communicate through a shared Docker network (`ory-network`):
+All services communicate via Docker network (`ory-network`):
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ Oathkeeper (API Gateway)                                    │
-│ Proxy: 4455 | API: 4456                                     │
-├─────────────────────────────────────────────────────────────┤
-│ Kratos (Identity)        │ Keto (Authorization)             │
-│ Public: 4433             │ Read: 4466                       │
-│ Admin: 4434              │ Write: 4467                      │
-│ UI: 4455                 │                                  │
-├──────────────────────────┴──────────────────────────────────┤
-│ PostgreSQL: 5432                                            │
-│ Databases: kratos, keto                                     │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Next.js Web Demo (3000)                                      │
+│ - Three RBAC model demos                                     │
+│ - Kratos session integration                                 │
+└──────────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────────┐
+│ Oathkeeper (API Gateway)                                     │
+│ Proxy: 4455 | API: 4456                                      │
+│ - Route-based namespace selection                            │
+│ - Session extraction (cookie/bearer)                         │
+│ - Keto authorization checks                                  │
+│ - Header injection (X-User-Id, X-Tenant-Id, etc.)           │
+└──────────────────────────────────────────────────────────────┘
+       ↓                              ↓                    ↓
+┌─────────────────┐     ┌──────────────────────┐  ┌────────────┐
+│ Kratos          │     │ Keto                 │  │ Multi-     │
+│ Public: 4433    │     │ Read: 4466           │  │ Tenancy    │
+│ Admin: 4434     │     │ Write: 4467          │  │ Demo: 9000 │
+│ UI: 4455        │     │                      │  │ (Express)  │
+└─────────────────┘     └──────────────────────┘  └────────────┘
+       ↓                              ↓
+┌──────────────────────────────────────────────────────────────┐
+│ PostgreSQL: 5432                                             │
+│ Databases: kratos (identities), keto (relation-tuples)       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### Directory Structure
+### Key Architectural Patterns
 
-- `kratos/` - Kratos identity service with self-service UI
-  - `config/kratos.yml` - Main Kratos configuration
-  - `config/identity.schema.json` - Identity schema (email, name, traits)
-- `keto/` - Keto authorization service
-  - `config/keto.yml` - Namespace: default (single-namespace RBAC model)
-- `oathkeeper/` - Oathkeeper API gateway
-  - `config/oathkeeper.yml` - Authenticators, authorizers, mutators
-  - `config/access-rules.yml` - Routing and access control rules
-- `postgres/` - PostgreSQL database service
-- `web-demo/` - Next.js 14 frontend application (port 3000)
-- `multi-tenancy-demo/` - Express.js backend API (port 9000)
-- `keto-zanziban-simple-rbac/` - Postman test collection for Keto RBAC
-- `keto-zanzibar-multi-tenancy-rbac/` - Tenant-centric RBAC test collection
-- `keto-zanziban-multi-tenancy-rbac-per-resource/` - Resource-scoped RBAC test collection
+**Request Flow**:
+```
+Client → Oathkeeper → Kratos (authenticate) → Keto (authorize) → Backend
+```
+
+**Oathkeeper Route Mapping** (`oathkeeper/config/access-rules.yml`):
+- URL path determines Keto namespace (`/api/simple-rbac/*` → `simple-rbac`)
+- Regex capture groups extract action from URL (`/products/create` → action: `create`)
+- Dynamic permission mapping (e.g., `list` action → `view` permission)
+- Header injection passes user context to backend
+
+**Multi-Tenancy Demo** (`multi-tenancy-demo/src/`):
+- TypeScript Express.js application
+- Context middleware extracts `x-tenant-id`, `x-user-id`, `x-keto-namespace` headers
+- In-memory storage with optional file persistence (`ENABLE_STORAGE_PERSISTENCE=true`)
+- Four resource APIs: users, products, categories, roles
+- All endpoints follow `/{resource}/{action}` pattern
 
 ## Development Commands
 
@@ -123,7 +161,7 @@ cd kratos && docker-compose up -d --force-recreate kratos
 cd keto && docker-compose up -d --force-recreate keto
 ```
 
-### Multi-Tenancy Demo
+### Multi-Tenancy Demo (TypeScript)
 
 ```bash
 # Docker-based (recommended)
@@ -132,16 +170,39 @@ make demo-logs             # View demo logs
 make demo-shell            # Shell access to demo container
 make demo-restart          # Restart demo container
 
-# Or use docker-compose directly
+# Local development (TypeScript)
 cd multi-tenancy-demo
-docker-compose up -d --build
-docker-compose logs -f
+npm install                # Install dependencies
+npm run build              # Compile TypeScript to dist/
+npm start                  # Run compiled code (starts on port 9000)
+npm run dev                # Development mode with ts-node
+node simple-test.js        # Run test suite against running server
 
-# Local development (without Docker)
-cd multi-tenancy-demo
-npm install
-npm start                  # Starts on port 9000
-node simple-test.js        # Run test suite
+# Enable file persistence (default: in-memory)
+ENABLE_STORAGE_PERSISTENCE=true npm start
+
+# Storage files (when persistence enabled)
+# - data/storage.json          # Main data file
+# - data/backups/*.json        # Auto-backups
+```
+
+### Web Demo (Next.js)
+
+```bash
+# Development
+cd web-demo
+pnpm install               # Install dependencies
+pnpm dev                   # Start dev server on port 3000
+pnpm build                 # Build for production
+pnpm start                 # Run production build
+pnpm lint                  # Lint code
+pnpm type-check            # TypeScript type checking
+
+# Or use Makefile
+make web-demo              # Start dev server
+make web-demo-build        # Production build
+make web-demo-lint         # Lint
+make web-demo-type-check   # Type check
 ```
 
 ## Service Endpoints
@@ -297,28 +358,101 @@ curl -X POST -H "x-tenant-id: tenant-a" -H "Content-Type: application/json" \
 
 ### Integration with Oathkeeper
 
-The `access-rules.yml` demonstrates API gateway patterns:
-- **Users API**: `GET|POST|PUT|DELETE /users/<action>/<path>` - Maps actions to Keto permissions via regex capture groups
-- **Products API**: `GET|POST|DELETE /products/<action>` - Authorizes via Keto's `product:items` with dynamic relation mapping (list→view)
-- **Categories API**: `GET|POST|PUT /categories/<action>` - Authorizes via Keto's `category:items` with similar mapping
-- **Authenticators**: Uses Kratos session (cookie_session or bearer_token) to extract identity
-- **Mutators**: Injects `X-User-Id`, `X-Tenant-Id`, `X-User-Email`, `X-User-Traits` headers from Kratos identity
-- **Authorization Flow**: Oathkeeper → Kratos (authenticate) → Keto (authorize) → Backend (proxy)
+The `oathkeeper/config/access-rules.yml` implements three distinct routing patterns:
 
-## Keto RBAC Model
+**1. Simple RBAC Routes** (`/api/simple-rbac/*`)
+```yaml
+# URL: /api/simple-rbac/products/create
+# Strips prefix → /products/create (proxied to multi-tenancy-demo:9000)
+# Authenticator: cookie_session or bearer_token
+# Authorizer: remote_json → Keto check (namespace: simple-rbac)
+# Mutator: Injects X-User-Id, X-User-Email, X-Keto-Namespace headers
+```
 
-The test suite demonstrates hierarchical RBAC:
+**2. Tenant RBAC Routes** (`/api/tenant-rbac/*`)
+```yaml
+# URL: /api/tenant-rbac/products/list
+# Requires x-tenant-id header from client
+# Authenticator: cookie_session or bearer_token
+# Authorizer: remote_json → Keto check (namespace: tenant-rbac)
+# Mutator: Injects X-User-Id, X-Tenant-Id, X-Keto-Namespace headers
+```
 
-- **Role Hierarchy**: Admin > Moderator > Customer (inheritance via subject sets)
-- **Resources**: product:items, category:items
-- **Permissions**: view, create, update, delete
-- **Users**: alice (admin), bob (moderator), charlie (customer)
+**3. Resource RBAC Routes** (`/api/resource-rbac/*`)
+```yaml
+# URL: /api/resource-rbac/products/get/123
+# Fine-grained per-resource authorization
+# Authenticator: cookie_session or bearer_token
+# Authorizer: remote_json → Keto check (namespace: resource-rbac)
+# Mutator: Injects X-User-Id, X-Tenant-Id, X-Keto-Namespace headers
+```
 
-Permission matrix:
+**Dynamic Permission Mapping**:
+- Regex capture groups extract action from URL path
+- Action mapping: `list` → `view`, `create` → `create`, etc.
+- Template: `{{ if eq (index .MatchContext.RegexpCaptureGroups 2) "list" }}view{{ else }}...{{ end }}`
 
-- Admin: All permissions (inherited from moderator + customer)
-- Moderator: create products, update categories, view all (inherited from customer)
-- Customer: view only
+**Authorization Pipeline**:
+```
+1. Extract session from cookie/bearer token (Kratos)
+2. Check permission via Keto (namespace + object + relation + subject)
+3. Inject headers with user context
+4. Proxy to backend (multi-tenancy-demo or web-demo)
+```
+
+## Keto Authorization Models
+
+### 1. Simple RBAC (Hierarchical Roles)
+
+**Namespace**: `simple-rbac`
+
+**Role Hierarchy** (via subject sets):
+```
+Admin (all permissions)
+  ├─ inherits → Moderator
+  │             ├─ inherits → Customer (view only)
+  │             └─ additional: create products, update categories
+  └─ additional: delete products, create categories
+```
+
+**Permission Matrix**:
+| User              | Role      | Product View | Create | Delete | Category View | Create | Update |
+|-------------------|-----------|--------------|--------|--------|---------------|--------|--------|
+| alice@example.com | Admin     | ✅           | ✅     | ✅     | ✅            | ✅     | ✅     |
+| bob@example.com   | Moderator | ✅           | ✅     | ❌     | ✅            | ❌     | ✅     |
+| charlie@...       | Customer  | ✅           | ❌     | ❌     | ✅            | ❌     | ❌     |
+
+**Keto Relation Tuple Examples**:
+```json
+// Role hierarchy (subject sets)
+{"namespace": "simple-rbac", "object": "role:customer", "relation": "member",
+ "subject_set": {"namespace": "simple-rbac", "object": "role:moderator", "relation": "member"}}
+
+// User assignment
+{"namespace": "simple-rbac", "object": "role:admin", "relation": "member", "subject_id": "user:alice@example.com"}
+
+// Permission grant
+{"namespace": "simple-rbac", "object": "product:items", "relation": "delete",
+ "subject_set": {"namespace": "simple-rbac", "object": "role:admin", "relation": "member"}}
+```
+
+### 2. Tenant-Centric RBAC
+
+**Namespace**: `tenant-rbac`
+
+- Same role hierarchy as Simple RBAC but **scoped per tenant**
+- User can be Admin in `tenant-a` but Customer in `tenant-b`
+- Authorization checks include tenant context from `x-tenant-id` header
+- Kratos identity schema includes `tenant_ids` array field
+
+### 3. Resource-Scoped RBAC
+
+**Namespace**: `resource-rbac`
+
+- Per-resource permission grants (e.g., `product:prod-123` instead of `product:items`)
+- Most fine-grained authorization model
+- Supports individual resource sharing/delegation
+- Higher Keto query volume (check each resource individually)
 
 ## Development Environment Notes
 
@@ -371,8 +505,145 @@ cd keto && docker-compose up -d --force-recreate keto
 make reload-kratos
 ```
 
-## Testing Scripts
+## Testing and Development Workflows
 
-- `clean-kratos-identities.sh` - Remove all Kratos identities
-- `comprehensive-oathkeeper-test.sh` - Test Oathkeeper integration
-- `keto-zanziban-simple-rbac/auto-test-postman-collection.sh` - Automated Postman tests
+### Quick Start (First Time Setup)
+
+```bash
+# 1. Create Docker network
+docker network create ory-network
+
+# 2. Start all services
+make dev                          # Starts all services + shows URLs + health check
+
+# 3. Create test users in Kratos
+make create-test-users            # Creates alice, bob, charlie with passwords
+
+# 4. Setup Keto permissions (Simple RBAC)
+cd keto-zanziban-simple-rbac
+./auto-test-postman-collection.sh # Requires newman (npm install -g newman)
+
+# 5. Test the setup
+curl -H "x-tenant-id: tenant-a" http://localhost:9000/health
+curl -H "x-tenant-id: tenant-a" http://localhost:9000/products/list
+```
+
+### Testing RBAC Models
+
+**Option 1: Postman Collections** (Recommended)
+```bash
+# Install newman (Postman CLI)
+npm install -g newman
+
+# Simple RBAC - Automated tests
+cd keto-zanziban-simple-rbac
+./auto-test-postman-collection.sh
+
+# Tenant-Centric RBAC
+cd keto-zanzibar-multi-tenancy-rbac
+./test-multi-tenant-rbac.sh
+
+# Resource-Scoped RBAC
+cd keto-zanziban-multi-tenancy-rbac-per-resource
+./Keto-Resource-Scoped-RBAC-Test.sh
+```
+
+**Option 2: Manual Testing with cURL**
+```bash
+# Create test user in Kratos
+curl -X POST http://127.0.0.1:4434/admin/identities \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schema_id": "default",
+    "traits": {"email": "test@example.com", "name": {"first": "Test"}, "tenant_ids": ["tenant-a"]},
+    "credentials": {"password": {"config": {"password": "test123"}}}
+  }'
+
+# Assign role in Keto
+curl -X PUT http://localhost:4467/admin/relation-tuples \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "simple-rbac",
+    "object": "role:admin",
+    "relation": "member",
+    "subject_id": "user:test@example.com"
+  }'
+
+# Check permission
+curl -G http://localhost:4466/relation-tuples/check \
+  --data-urlencode "namespace=simple-rbac" \
+  --data-urlencode "object=product:items" \
+  --data-urlencode "relation=create" \
+  --data-urlencode "subject_id=user:test@example.com"
+```
+
+### Development Scripts
+
+```bash
+# Cleanup and utilities
+./clean-kratos-identities.sh              # Delete all Kratos identities
+./comprehensive-oathkeeper-test.sh        # Test Oathkeeper routes
+make clean-identities                     # Clean test identities (uses script above)
+
+# Service management
+make status                               # Check all service status
+make health                               # Health check all endpoints
+make urls                                 # Display all service URLs
+
+# Individual service commands
+make create-admin                         # Create admin user (admin@example.com / admin)
+make create-test-users                    # Create alice, bob, charlie
+```
+
+### Common Development Tasks
+
+**Adding a New User**:
+```bash
+# 1. Create identity in Kratos
+make create-admin  # or use curl with /admin/identities
+
+# 2. Assign role in Keto
+curl -X PUT http://localhost:4467/admin/relation-tuples \
+  -H "Content-Type: application/json" \
+  -d '{"namespace": "simple-rbac", "object": "role:customer", "relation": "member", "subject_id": "user:newuser@example.com"}'
+
+# 3. Verify assignment
+curl -G http://localhost:4466/relation-tuples/check \
+  --data-urlencode "namespace=simple-rbac" \
+  --data-urlencode "object=role:customer" \
+  --data-urlencode "relation=member" \
+  --data-urlencode "subject_id=user:newuser@example.com"
+```
+
+**Debugging Authorization Issues**:
+```bash
+# 1. List all relations in namespace
+curl "http://localhost:4466/relation-tuples?namespace=simple-rbac" | jq
+
+# 2. Expand role hierarchy
+curl -G "http://localhost:4466/relation-tuples/expand" \
+  --data-urlencode "namespace=simple-rbac" \
+  --data-urlencode "object=role:admin" \
+  --data-urlencode "relation=member" \
+  --data-urlencode "max-depth=5" | jq
+
+# 3. Check Keto logs
+make logs-keto
+
+# 4. Check Oathkeeper logs (for routing issues)
+make logs-oathkeeper
+```
+
+**Modifying TypeScript Code**:
+```bash
+# Multi-tenancy demo
+cd multi-tenancy-demo
+# Edit files in src/
+npm run build                             # Compile TypeScript
+docker-compose restart multi-tenancy-demo # Restart container
+
+# Web demo
+cd web-demo
+# Edit files in app/
+pnpm dev                                  # Hot reload enabled
+```

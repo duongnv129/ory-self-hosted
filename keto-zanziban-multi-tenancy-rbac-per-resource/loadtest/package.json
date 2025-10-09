@@ -1,0 +1,50 @@
+{
+  "name": "keto-loadtest-runner",
+  "version": "1.0.0",
+  "description": "Load testing infrastructure for Keto Resource-Scoped RBAC performance validation",
+  "main": "run-tests.js",
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:all": "node run-tests.js --scenario all",
+    "test:baseline": "node run-tests.js --scenario all --profile baseline",
+    "test:stress": "node run-tests.js --scenario all --profile stress",
+    "test:ci": "node run-tests.js --scenario all --ci",
+    "test:scenario1": "node run-tests.js --scenario scenario1",
+    "test:scenario2": "node run-tests.js --scenario scenario2",
+    "test:scenario3": "node run-tests.js --scenario scenario3",
+    "test:scenario4": "node run-tests.js --scenario scenario4",
+    "list": "node run-tests.js --list",
+    "check-deps": "node run-tests.js --check-deps",
+    "analyze": "node analyze-results.js",
+    "report": "node generate-report.js"
+  },
+  "dependencies": {
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "csv-parser": "^3.0.0",
+    "json2csv": "^5.0.0"
+  },
+  "keywords": [
+    "k6",
+    "load-testing",
+    "performance",
+    "keto",
+    "rbac",
+    "authorization",
+    "multi-tenancy"
+  ],
+  "author": "Keto Performance Testing Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ory/examples"
+  },
+  "bugs": {
+    "url": "https://github.com/ory/examples/issues"
+  },
+  "homepage": "https://github.com/ory/examples#readme"
+}
