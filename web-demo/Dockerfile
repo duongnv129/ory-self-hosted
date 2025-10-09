@@ -1,39 +1,77 @@
-# Use the official Node.js 18 Alpine image for smaller image size
-FROM node:18-alpine AS base
+# Dependencies stage - Install all dependencies
+FROM node:24-alpine AS deps
 
-# Install pnpm globally for dependency management
-RUN npm install -g pnpm
+# Install libc6-compat for Next.js compatibility
+RUN apk add --no-cache libc6-compat
 
-# Create and change to the app directory
 WORKDIR /app
 
-# Copy package files
+# Install pnpm using corepack (faster than npm install -g)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files for dependency installation
 COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies using pnpm
-RUN pnpm install
+# Install dependencies with optimizations
+RUN pnpm install --frozen-lockfile --prefer-offline
 
-# Copy the rest of the application code
+# Builder stage - Build the application
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm using corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+
+# Copy application source
 COPY . .
+
+# Create public directory if it doesn't exist
+RUN mkdir -p public
+
+# Set Next.js telemetry to disabled for faster builds
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the Next.js application for production
 RUN pnpm build
 
-# Production stage - Use a minimal node image
-FROM node:18-alpine AS production
+# Production stage - Minimal runtime image
+FROM node:24-alpine AS production
 
-# Create and change to the app directory
+# Install libc6-compat for Next.js compatibility
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Copy the standalone output from the base stage
-COPY --from=base /app/.next/standalone ./ 
-COPY --from=base /app/.next/static ./.next/static
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Expose port 3000 to allow communication to/from the Next.js app
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy public assets from builder (if any)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy standalone output and static files from builder
+# Next.js automatically copies only necessary files to standalone
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port 3000
 EXPOSE 3000
 
-# Set environment variables for production
-ENV NODE_ENV=production
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Run the application using the standalone server
 CMD ["node", "server.js"]

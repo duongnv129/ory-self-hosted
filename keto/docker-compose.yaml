@@ -1,4 +1,3 @@
-version: "3"
 services:
   keto-migrate:
     image: oryd/keto:v0.14.0

@@ -50,6 +50,11 @@ coverage
 .nyc_output
 jest.config.js
 .jest
+simple-test.js
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
 
 # Linting
 .eslintrc*

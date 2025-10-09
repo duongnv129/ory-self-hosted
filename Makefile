@@ -49,6 +49,8 @@ up: network ## Start all services including Oathkeeper, demo, and web-demo
 	@echo "✓ All services started"
 
 down: ## Stop all services
+	@echo "Stopping Web Demo..."
+	@cd $(WEB_DEMO_PATH) && docker-compose down 2>/dev/null || true
 	@echo "Stopping Multi-Tenancy Demo..."
 	@cd $(DEMO_PATH) && docker-compose down 2>/dev/null || true
 	@echo "Stopping Oathkeeper..."
@@ -94,25 +96,22 @@ demo-shell: ## Get shell access to demo container
 demo-restart: ## Restart demo container
 	@cd $(DEMO_PATH) && docker-compose restart multi-tenancy-demo
 
-web-demo: ## Start web-demo development server (Next.js on port 3000)
-	@echo "Starting web-demo development server..."
-	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm dev
+web-demo: network ## Start web-demo as Docker container (Next.js on port 3000)
+	@echo "Starting web-demo on port 3000..."
+	@cd $(WEB_DEMO_PATH) && docker-compose up -d --build
+	@echo "✓ Web demo started at http://localhost:3000"
 
-web-demo-build: ## Build web-demo for production
-	@echo "Building web-demo for production..."
-	@cd $(WEB_DEMO_PATH) && pnpm install && pnpm build
+web-demo-logs: ## Show web-demo logs
+	@cd $(WEB_DEMO_PATH) && docker-compose logs -f
 
-web-demo-start: ## Start web-demo production server
-	@echo "Starting web-demo production server..."
-	@cd $(WEB_DEMO_PATH) && pnpm start
+web-demo-shell: ## Get shell access to web-demo container
+	@cd $(WEB_DEMO_PATH) && docker-compose exec web-demo sh
 
-web-demo-lint: ## Lint web-demo code
-	@echo "Linting web-demo code..."
-	@cd $(WEB_DEMO_PATH) && pnpm lint
+web-demo-restart: ## Restart web-demo container
+	@cd $(WEB_DEMO_PATH) && docker-compose restart web-demo
 
-web-demo-type-check: ## Type check web-demo code
-	@echo "Type checking web-demo code..."
-	@cd $(WEB_DEMO_PATH) && pnpm type-check
+web-demo-down: ## Stop web-demo container
+	@cd $(WEB_DEMO_PATH) && docker-compose down
 
 # Logs and Monitoring
 logs: ## Show logs for all Kratos services
@@ -146,17 +145,20 @@ status: ## Show status of all services
 	@echo ""
 	@echo "=== Multi-Tenancy Demo Status ==="
 	@cd $(DEMO_PATH) && docker-compose ps 2>/dev/null || echo "Demo not running"
+	@echo ""
+	@echo "=== Web Demo Status ==="
+	@cd $(WEB_DEMO_PATH) && docker-compose ps 2>/dev/null || echo "Web Demo not running"
 
 health: ## Check service health
 	@echo "Checking service health..."
 	@echo ""
 	@curl -s http://127.0.0.1:4433/health/ready >/dev/null 2>&1 && echo "✓ Kratos Public API: Ready" || echo "✗ Kratos Public API: Not ready"
 	@curl -s http://127.0.0.1:4434/health/ready >/dev/null 2>&1 && echo "✓ Kratos Admin API: Ready" || echo "✗ Kratos Admin API: Not ready"
-	@curl -s http://127.0.0.1:4455 >/dev/null 2>&1 && echo "✓ Self-Service UI: Ready" || echo "✗ Self-Service UI: Not ready"
 	@curl -s http://localhost:4466/health/ready >/dev/null 2>&1 && echo "✓ Keto Read API: Ready" || echo "✗ Keto Read API: Not ready"
 	@curl -s http://localhost:4467/health/ready >/dev/null 2>&1 && echo "✓ Keto Write API: Ready" || echo "✗ Keto Write API: Not ready"
 	@curl -s http://localhost:4456/health/ready >/dev/null 2>&1 && echo "✓ Oathkeeper API: Ready" || echo "✗ Oathkeeper API: Not ready"
 	@curl -s http://localhost:9000/health >/dev/null 2>&1 && echo "✓ Multi-Tenancy Demo: Ready" || echo "✗ Multi-Tenancy Demo: Not ready"
+	@curl -s http://localhost:3000 >/dev/null 2>&1 && echo "✓ Web Demo: Ready" || echo "✗ Web Demo: Not ready"
 
 # Development
 reload-kratos: ## Reload Kratos after config changes
@@ -189,6 +191,7 @@ shell-postgres: ## Get shell access to PostgreSQL
 # Cleanup
 clean: ## Stop and remove all containers, networks, and volumes
 	@echo "Cleaning up all services..."
+	@cd $(WEB_DEMO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
 	@cd $(DEMO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
 	@cd $(OATHKEEPER_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
 	@cd $(KETO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
@@ -268,7 +271,6 @@ urls: ## Show all service URLs
 	@echo "=== Ory Stack Service URLs ==="
 	@echo ""
 	@echo "Kratos:"
-	@echo "  Self-Service UI:    http://127.0.0.1:4455"
 	@echo "  Public API:         http://127.0.0.1:4433"
 	@echo "  Admin API:          http://127.0.0.1:4434"
 	@echo ""
@@ -277,7 +279,7 @@ urls: ## Show all service URLs
 	@echo "  Write API:          http://localhost:4467"
 	@echo ""
 	@echo "Oathkeeper:"
-	@echo "  Proxy:              http://localhost:4455 (port conflict with Kratos UI)"
+	@echo "  Proxy:              http://localhost:4455"
 	@echo "  API:                http://localhost:4456"
 	@echo ""
 	@echo "Supporting Services:"
