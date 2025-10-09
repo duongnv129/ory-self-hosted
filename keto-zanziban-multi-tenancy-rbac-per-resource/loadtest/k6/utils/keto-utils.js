@@ -84,21 +84,16 @@ export function createTupleWithSubjectSet(namespace, object, relation, subjectNa
  * Delete a relation tuple from Keto
  */
 export function deleteTuple(namespace, object, relation, subjectId) {
-  const params = {
-    namespace,
-    object,
-    relation,
-    subject_id: subjectId
-  };
+  // Build URL with query parameters (same pattern as checkAuth)
+  const url = `${config.keto.writeUrl}/admin/relation-tuples` +
+    `?namespace=${encodeURIComponent(namespace)}` +
+    `&object=${encodeURIComponent(object)}` +
+    `&relation=${encodeURIComponent(relation)}` +
+    `&subject_id=${encodeURIComponent(subjectId)}`;
 
-  const response = http.del(
-    `${config.keto.writeUrl}/admin/relation-tuples`,
-    null,
-    {
-      params,
-      tags: { operation: 'tuple_delete', endpoint: 'delete_tuple' }
-    }
-  );
+  const response = http.del(url, null, {
+    tags: { operation: 'tuple_delete', endpoint: 'delete_tuple' }
+  });
 
   check(response, {
     'tuple deletion successful': (r) => r.status === 204,
@@ -314,44 +309,32 @@ export function setupTestTuples(users, tenants, resourceTypes) {
 }
 
 /**
- * Cleanup test tuples (including permission mappings)
+ * Cleanup test tuples (delete all tuples in namespace)
  */
 export function cleanupTestTuples(users, tenants, resourceTypes) {
   const cleanupStartTime = Date.now();
-  let deletedCount = 0;
 
-  // Delete user role assignments
-  for (const user of users) {
-    for (const tenant of tenants) {
-      for (const resourceType of resourceTypes) {
-        deleteTuple(
-          config.keto.namespace,
-          `tenant:${tenant.id}#${resourceType}:items`,
-          user.role,
-          `user:${user.id}`
-        );
-        deletedCount++;
-      }
-    }
-  }
+  // Delete all tuples in the namespace at once
+  const url = `${config.keto.writeUrl}/admin/relation-tuples?namespace=${encodeURIComponent(config.keto.namespace)}`;
 
-  // Delete permission mappings
-  for (const tenant of tenants) {
-    for (const resourceType of resourceTypes) {
-      const resourceObject = `tenant:${tenant.id}#${resourceType}:items`;
-
-      // Note: Keto DELETE API doesn't support subject_set deletion easily
-      // In a real scenario, you might want to delete the entire namespace
-      // or use a more sophisticated cleanup strategy
-
-      deletedCount += 6; // Account for permission tuples (estimated)
-    }
-  }
+  const response = http.del(url, null, {
+    tags: { operation: 'cleanup', endpoint: 'delete_namespace' }
+  });
 
   const cleanupTime = Date.now() - cleanupStartTime;
-  console.log(`Cleanup completed: ${deletedCount} tuples deleted in ${cleanupTime}ms`);
+  const success = response.status === 204;
 
-  return deletedCount;
+  if (success) {
+    console.log(`Cleanup completed: all tuples in namespace '${config.keto.namespace}' deleted in ${cleanupTime}ms`);
+  } else {
+    console.log(`Cleanup failed: status ${response.status}, response: ${response.body}`);
+  }
+
+  check(response, {
+    'cleanup successful': (r) => r.status === 204
+  });
+
+  return success ? 1 : 0;
 }
 
 /**

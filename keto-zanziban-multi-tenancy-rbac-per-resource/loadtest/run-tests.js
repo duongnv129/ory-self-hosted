@@ -76,6 +76,7 @@ class K6TestRunner {
       outputDir: options.outputDir || 'results',
       ciMode: options.ciMode || false,
       verbose: options.verbose || false,
+      detailedMetrics: options.detailedMetrics || false,  // Only enable for debugging
       ...options
     };
 
@@ -125,23 +126,24 @@ class K6TestRunner {
     this.log(`   Tags: ${scenario.tags.join(', ')}`);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const outputFile = path.join(this.options.outputDir, `${scenarioKey}-${timestamp}.json`);
+    const summaryFile = path.join(this.options.outputDir, `${scenarioKey}-${timestamp}-summary.json`);
 
-    // Prepare K6 command
+    // Prepare K6 command - USE SUMMARY EXPORT ONLY (much smaller)
     const k6Args = [
       'run',
-      '--out', `json=${outputFile}`,
-      '-e', `LOAD_PROFILE=${profile}`,  // Pass profile as environment variable for K6 scripts
+      '--summary-export', summaryFile,  // Only export summary (90% smaller than full JSON)
+      '-e', `LOAD_PROFILE=${profile}`,
       '--tag', `scenario=${scenarioKey}`,
       '--tag', `profile=${profile}`,
       '--tag', `timestamp=${timestamp}`,
       scenario.file
     ];
 
-    // Add summary output for CI mode
-    if (this.options.ciMode) {
-      const summaryFile = path.join(this.options.outputDir, `${scenarioKey}-${timestamp}-summary.json`);
-      k6Args.push('--summary-export', summaryFile);
+    // Optional: Add full JSON output only if explicitly requested
+    if (this.options.detailedMetrics) {
+      const detailedFile = path.join(this.options.outputDir, `${scenarioKey}-${timestamp}-detailed.json`);
+      k6Args.splice(1, 0, '--out', `json=${detailedFile}`);
+      this.log(`⚠️  Detailed metrics enabled - large file: ${detailedFile}`);
     }
 
     const startTime = Date.now();
@@ -313,6 +315,7 @@ async function main() {
     .option('-p, --profile <profile>', 'Load profile to use', 'baseline')
     .option('-o, --output <directory>', 'Output directory for results', 'results')
     .option('--k6-binary <path>', 'Path to K6 binary', 'k6')
+    .option('--detailed', 'Enable detailed metrics (large files - only for debugging)')
     .option('--ci', 'CI mode with minimal output')
     .option('--verbose', 'Verbose output')
     .option('--list', 'List available scenarios and exit')
@@ -344,7 +347,8 @@ async function main() {
     k6Binary: options.k6Binary,
     outputDir: options.output,
     ciMode: options.ci,
-    verbose: options.verbose
+    verbose: options.verbose,
+    detailedMetrics: options.detailed
   });
 
   // Check dependencies
@@ -382,6 +386,7 @@ async function main() {
   runner.log(`   Scenarios: ${scenariosToRun.join(', ')}`);
   runner.log(`   Profile: ${options.profile}`);
   runner.log(`   Output: ${options.output}`);
+  runner.log(`   Detailed metrics: ${options.detailed ? 'ENABLED (large files)' : 'DISABLED (summary only - saves 90% disk space)'}`);
 
   // Run scenarios sequentially
   for (const scenario of scenariosToRun) {
