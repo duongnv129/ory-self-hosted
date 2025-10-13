@@ -3,3 +3,6 @@
  */
 
 export * from './TenantSelector';
+export * from './ResourceTable';
+export * from './ResourceRoleAssignment';
+export * from './ResourcePermissionTester';

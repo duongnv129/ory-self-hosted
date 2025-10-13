@@ -25,11 +25,10 @@ open http://localhost:3000
 
 ## 📖 Overview
 
-A production-ready Next.js application that demonstrates three different authorization models:
+A production-ready Next.js application that demonstrates two different authorization models:
 
 1. **Simple RBAC** - Global roles with hierarchical inheritance
-2. **Tenant-Centric RBAC** - Multi-tenant users with different roles per tenant
-3. **Resource-Scoped RBAC** - Fine-grained permissions per resource type
+2. **Resource-Scoped RBAC** - Fine-grained permissions per resource type
 
 ### Key Features
 
@@ -144,8 +143,7 @@ web-demo/
 │   │   ├── page.tsx           # Landing page (use case selection)
 │   │   ├── layout.tsx         # Root layout with providers
 │   │   ├── simple-rbac/       # Use Case 1: Simple RBAC
-│   │   ├── tenant-rbac/       # Use Case 2: Tenant-Centric RBAC
-│   │   └── resource-rbac/     # Use Case 3: Resource-Scoped RBAC
+│   │   └── resource-rbac/     # Use Case 2: Resource-Scoped RBAC
 │   ├── components/
 │   │   ├── ui/                # shadcn/ui components (Button, Input, etc.)
 │   │   ├── layout/            # Layout components (Header, Footer, Nav)
@@ -178,22 +176,7 @@ web-demo/
 
 ---
 
-### 2. Tenant-Centric RBAC
-
-**Pattern**: `user:alice → tenant:a (as admin) → tenant:a#product:items (create)`
-
-- Multi-tenant users (same user, different roles in different tenants)
-- Complete tenant isolation
-- One role per tenant per user
-- Best for: Multi-tenant SaaS applications
-
-**Example**: Alice is **admin** in Tenant A, **customer** in Tenant B
-
-**Demo**: http://localhost:3000/tenant-rbac
-
----
-
-### 3. Resource-Scoped RBAC
+### 2. Resource-Scoped RBAC
 
 **Pattern**: `user:alice → tenant:a#product:items (as admin) → delete allowed`
 
@@ -328,7 +311,6 @@ Apache License 2.0 - see LICENSE file for details.
 
 - [Multi-Tenancy Demo Backend](../multi-tenancy-demo/README.md)
 - [Keto Simple RBAC](../keto-zanziban-simple-rbac/README.md)
-- [Keto Tenant-Centric RBAC](../keto-zanzibar-multi-tenancy-rbac/README.md)
 - [Keto Resource-Scoped RBAC](../keto-zanziban-multi-tenancy-rbac-per-resource/README.md)
 
 ---

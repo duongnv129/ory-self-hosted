@@ -536,7 +536,7 @@ Use in Tailwind:
 With these components in place, you can now:
 
 1. Build the Simple RBAC UI (Epic 4)
-2. Build the Tenant-Centric RBAC UI (Epic 5)
+2. Build enhanced resource management features
 3. Build the Resource-Scoped RBAC UI (Epic 6)
 
 All the foundation is ready!

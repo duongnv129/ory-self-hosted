@@ -3,8 +3,9 @@
 > Comprehensive task breakdown for implementing the Next.js Web Demo application based on ARCHITECTURE.md
 
 **Status**: 📋 Planning Phase
-**Total Estimated Story Points**: 144
+**Total Estimated Story Points**: 137
 **Estimated Timeline**: 6-8 sprints (12-16 weeks with 2-person team)
+**Supported Use Cases**: 2 (Simple RBAC, Resource-Scoped RBAC)
 
 ---
 
@@ -14,11 +15,10 @@
 - [Epic 2: Core API Integration Layer](#epic-2-core-api-integration-layer)
 - [Epic 3: Shared Components & Layout](#epic-3-shared-components--layout)
 - [Epic 4: Authentication Flow (Kratos Integration)](#epic-4-authentication-flow-kratos-integration)
-- [Epic 6: Use Case 1 - Simple RBAC](#epic-5-use-case-1---simple-rbac)
-- [Epic 6: Use Case 2 - Tenant-Centric RBAC](#epic-6-use-case-2---tenant-centric-rbac)
-- [Epic 7: Use Case 3 - Resource-Scoped RBAC](#epic-7-use-case-3---resource-scoped-rbac)
-- [Epic 8: Testing & Quality Assurance](#epic-8-testing--quality-assurance)
-- [Epic 9: Documentation & Deployment](#epic-9-documentation--deployment)
+- [Epic 5: Use Case 1 - Simple RBAC](#epic-5-use-case-1---simple-rbac)
+- [Epic 6: Use Case 2 - Resource-Scoped RBAC](#epic-6-use-case-2---resource-scoped-rbac)
+- [Epic 7: Testing & Quality Assurance](#epic-7-testing--quality-assurance)
+- [Epic 8: Documentation & Deployment](#epic-8-documentation--deployment)
 
 ---
 
@@ -132,9 +132,8 @@ web-demo/
 │   ├── app/                      # Next.js App Router
 │   │   ├── page.tsx             # Landing page (use case selection)
 │   │   ├── layout.tsx           # Root layout
-│   │   ├── simple-rbac/         # Use Case 1
-│   │   ├── tenant-rbac/         # Use Case 2
-│   │   └── resource-rbac/       # Use Case 3
+│   │   ├── simple-rbac/         # Use Case 1: Simple RBAC
+│   │   └── resource-rbac/       # Use Case 2: Resource-Scoped RBAC
 │   ├── components/              # Shared components
 │   │   ├── ui/                  # UI primitives
 │   │   ├── layout/              # Layout components
@@ -568,7 +567,9 @@ export class KetoApi {
 
 **Acceptance Criteria**:
 - [ ] Hero section with project description
-- [ ] Three cards for use cases with descriptions
+- [ ] Two cards for use cases with descriptions:
+  - Simple RBAC (Global role hierarchy)
+  - Resource-Scoped RBAC (Per-resource permissions with tenant isolation)
 - [ ] Links to each use case route
 - [ ] Architecture diagram display
 - [ ] Responsive design
@@ -837,106 +838,11 @@ export default function ProtectedLayout({ children }) {
 
 ---
 
-## Epic 6: Use Case 2 - Tenant-Centric RBAC
-
-**Story Points**: 28 | **Priority**: 🟠 High | **Sprint**: 4-5
-
-### Task 5.1: Tenant Management Interface
-
-**Story Points**: 5 | **Priority**: 🟠 High
-
-**Description**: Build tenant CRUD interface
-
-**Acceptance Criteria**:
-- [ ] Tenant list with create/edit/delete
-- [ ] Tenant switcher in navigation
-- [ ] Visual indicator of current tenant
-- [ ] Tenant context persisted across routes
-
-**Files to Create**:
-- `src/app/tenant-rbac/tenants/page.tsx`
-- `src/components/features/tenant-rbac/TenantList.tsx`
-- `src/components/features/tenant-rbac/TenantForm.tsx`
-
----
-
-### Task 5.2: Multi-Tenant User Management
-
-**Story Points**: 8 | **Priority**: 🟠 High
-
-**Description**: Build user management with multi-tenant role assignment
-
-**Acceptance Criteria**:
-- [ ] User list shows roles per tenant
-- [ ] Assign different roles in different tenants
-- [ ] Visual display of multi-tenant user (e.g., Alice)
-- [ ] Keto relation tuples: `user:alice → tenant:a#admin`
-
-**Files to Create**:
-- `src/app/tenant-rbac/users/page.tsx`
-- `src/components/features/tenant-rbac/MultiTenantUserList.tsx`
-- `src/components/features/tenant-rbac/TenantRoleAssignment.tsx`
-
----
-
-### Task 5.3: Tenant-Scoped Product Management
-
-**Story Points**: 5 | **Priority**: 🟡 Medium
-
-**Description**: Product management with tenant isolation
-
-**Acceptance Criteria**:
-- [ ] Products filtered by current tenant
-- [ ] Permission checks: `tenant:a#product:items → create`
-- [ ] Cross-tenant isolation verification
-- [ ] Visual tenant indicator in product list
-
-**Files to Create**:
-- `src/app/tenant-rbac/products/page.tsx`
-- `src/components/features/tenant-rbac/TenantProductList.tsx`
-
----
-
-### Task 5.4: Tenant-Scoped Category Management
-
-**Story Points**: 5 | **Priority**: 🟡 Medium
-
-**Description**: Category management with tenant isolation
-
-**Acceptance Criteria**:
-- [ ] Categories filtered by current tenant
-- [ ] Permission checks: `tenant:a#category:items → update`
-- [ ] Cross-tenant isolation verification
-
-**Files to Create**:
-- `src/app/tenant-rbac/categories/page.tsx`
-- `src/components/features/tenant-rbac/TenantCategoryList.tsx`
-
----
-
-### Task 5.5: Multi-Tenant User Demo (Alice)
-
-**Story Points**: 5 | **Priority**: 🟡 Medium
-
-**Description**: Build interactive demo showing Alice with different roles in different tenants
-
-**Acceptance Criteria**:
-- [ ] Visual diagram of Alice's permissions in Tenant A vs B
-- [ ] Side-by-side permission comparison
-- [ ] Interactive permission checks
-- [ ] Switch between tenants to show different access levels
-
-**Files to Create**:
-- `src/app/tenant-rbac/demo/page.tsx`
-- `src/components/features/tenant-rbac/MultiTenantDemo.tsx`
-
----
-
-## Epic 6: Use Case 3 - Resource-Scoped RBAC
+## Epic 6: Use Case 2 - Resource-Scoped RBAC
 
 **Story Points**: 26 | **Priority**: 🟡 Medium | **Sprint**: 5-6
 
-### Task 5.1: Resource-Scoped Role Assignment Interface
+### Task 6.1: Resource-Scoped Role Assignment Interface
 
 **Story Points**: 8 | **Priority**: 🟠 High
 
@@ -955,7 +861,7 @@ export default function ProtectedLayout({ children }) {
 
 ---
 
-### Task 5.2: Resource-Scoped Product Management
+### Task 6.2: Resource-Scoped Product Management
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -972,7 +878,7 @@ export default function ProtectedLayout({ children }) {
 
 ---
 
-### Task 5.3: Resource-Scoped Category Management
+### Task 6.3: Resource-Scoped Category Management
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -989,7 +895,7 @@ export default function ProtectedLayout({ children }) {
 
 ---
 
-### Task 5.4: Resource-Scoped Permission Comparison
+### Task 6.4: Resource-Scoped Permission Comparison
 
 **Story Points**: 6 | **Priority**: 🟡 Medium
 
@@ -999,7 +905,7 @@ export default function ProtectedLayout({ children }) {
 - [ ] Side-by-side permission matrix for products vs categories
 - [ ] Interactive permission checks for Alice
 - [ ] Visual explanation of resource-scoped model
-- [ ] Comparison with tenant-centric approach
+- [ ] Comparison with simple RBAC approach
 
 **Files to Create**:
 - `src/app/resource-rbac/comparison/page.tsx`
@@ -1161,11 +1067,11 @@ export default function ProtectedLayout({ children }) {
 3. Epic 3: Shared Components & Layout
 
 ### 🟠 **Phase 2: Core Features (Sprints 3-5)**
-4. Epic 4: Use Case 1 - Simple RBAC
-5. Epic 6: Use Case 2 - Tenant-Centric RBAC
+4. Epic 4: Authentication Flow (Kratos Integration)
+5. Epic 5: Use Case 1 - Simple RBAC
 
 ### 🟡 **Phase 3: Advanced Features (Sprints 5-6)**
-6. Epic 6: Use Case 3 - Resource-Scoped RBAC
+6. Epic 6: Use Case 2 - Resource-Scoped RBAC
 
 ### 🟢 **Phase 4: Polish & Launch (Sprints 6-8)**
 7. Epic 7: Testing & Quality Assurance
@@ -1180,12 +1086,12 @@ export default function ProtectedLayout({ children }) {
 | Epic 1: Project Setup | 13 | 🔴 Critical | 1 sprint |
 | Epic 2: API Integration | 21 | 🔴 Critical | 1-2 sprints |
 | Epic 3: Shared Components | 18 | 🟠 High | 1 sprint |
-| Epic 4: Simple RBAC | 24 | 🟠 High | 1-2 sprints |
-| Epic 6: Tenant-Centric RBAC | 28 | 🟠 High | 1-2 sprints |
+| Epic 4: Authentication Flow | 21 | 🔴 Critical | 1 sprint |
+| Epic 5: Simple RBAC | 24 | 🟠 High | 1-2 sprints |
 | Epic 6: Resource-Scoped RBAC | 26 | 🟡 Medium | 1-2 sprints |
 | Epic 7: Testing | 21 | 🟡 Medium | 1-2 sprints |
 | Epic 8: Documentation | 13 | 🟢 Low | 1 sprint |
-| **Total** | **144** | - | **6-8 sprints** |
+| **Total** | **137** | - | **6-8 sprints** |
 
 ---
 

@@ -6,7 +6,8 @@ import express, { Express, Request, Response } from 'express';
 import userRouter from './routes/user';
 import categoryRouter from './routes/category';
 import productRouter from './routes/product';
-import roleRouter from './routes/role';
+import simpleRBACRoleRouter from './routes/simple_rbac_role';
+import resourceRBACRoleRouter from './routes/simple_rbac_role';
 import metadataRouter from './routes/metadata';
 import { contextMiddleware } from './middleware/context';
 import { errorHandler } from './middleware/error-handler';
@@ -82,7 +83,8 @@ app.use('/metadata', metadataRouter);
 app.use('/users', contextMiddleware, userRouter);
 app.use('/products', contextMiddleware, productRouter);
 app.use('/categories', contextMiddleware, categoryRouter);
-app.use('/roles', contextMiddleware, roleRouter);
+app.use('/simple-rbac/roles', contextMiddleware, simpleRBACRoleRouter);
+app.use('/resource-rbac/roles', contextMiddleware, resourceRBACRoleRouter);
 
 // ==================== API DOCUMENTATION ====================
 

@@ -53,7 +53,7 @@ The Web Demo is a **Next.js-based web application** that serves as a comprehensi
 │   │        Web Demo (Next.js)                    │                │
 │   │  ┌──────────────────────────────────────┐   │                │
 │   │  │  Use Case 1: Simple RBAC             │   │                │
-│   │  │  Use Case 2: Tenant-Centric RBAC     │   │                │
+│   │  │  Use Case 2: Resource-Scoped RBAC    │   │                │
 │   │  │  Use Case 3: Resource-Scoped RBAC    │   │                │
 │   │  └──────────────────────────────────────┘   │                │
 │   └───────────────────┬──────────────────────────┘                │
@@ -234,7 +234,7 @@ admin (highest)
 
 ---
 
-### Use Case 2: Keto Zanzibar Multi-Tenancy RBAC (Tenant-Centric)
+### Use Case 2: Keto Resource-Scoped RBAC
 
 **Reference**: `keto-zanzibar-multi-tenancy-rbac/README.md`
 
@@ -365,7 +365,7 @@ Result: ❌ Denied (moderator role - create is admin-only)
 │  │  Pages                                                      │    │
 │  │  ├─ index.js (Use case selection)                          │    │
 │  │  ├─ simple-rbac/ (Use Case 1 UI)                           │    │
-│  │  ├─ tenant-rbac/ (Use Case 2 UI)                           │    │
+│  │  ├─ resource-rbac/ (Use Case 2 UI)                        │    │
 │  │  └─ resource-rbac/ (Use Case 3 UI)                         │    │
 │  └────────────────────────────────────────────────────────────┘    │
 │  ┌────────────────────────────────────────────────────────────┐    │
@@ -987,7 +987,7 @@ sequenceDiagram
 
 ---
 
-### Flow 2: Tenant-Centric RBAC Authorization
+### Flow 2: Resource-Scoped RBAC Authorization
 
 ```mermaid
 sequenceDiagram
@@ -1183,7 +1183,7 @@ function requirePermission(resource, action) {
     // Use Case 1: Simple RBAC
     const object = `${resource}:items`;
 
-    // Use Case 2: Tenant-Centric RBAC
+    // Use Case 2: Resource-Scoped RBAC
     // const object = `tenant:${tenantId}#${resource}:items`;
 
     // Use Case 3: Resource-Scoped RBAC
@@ -1688,7 +1688,7 @@ curl -X POST http://localhost:9000/users/create \
   }
 }
 
-# Step 2: Assign role in Keto (Use Case 2: Tenant-Centric)
+# Step 2: Assign role in Keto (Use Case 2: Resource-Scoped)
 curl -X PUT http://localhost:4467/admin/relation-tuples \
   -H "Content-Type: application/json" \
   -d '{

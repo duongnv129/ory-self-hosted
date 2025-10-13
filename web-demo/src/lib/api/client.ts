@@ -60,7 +60,7 @@ export class ApiClient {
    * Set use case context for API routing
    * Automatically detects use case from current pathname
    */
-  setUseCaseContext(useCase?: 'simple-rbac' | 'tenant-rbac' | 'resource-rbac') {
+  setUseCaseContext(useCase?: 'simple-rbac' | 'resource-rbac') {
     if (useCase) {
       this.useCasePrefix = `/api/${useCase}`;
     } else if (typeof window !== 'undefined') {
@@ -68,8 +68,6 @@ export class ApiClient {
       const pathname = window.location.pathname;
       if (pathname.includes('/simple-rbac')) {
         this.useCasePrefix = '/api/simple-rbac';
-      } else if (pathname.includes('/tenant-rbac')) {
-        this.useCasePrefix = '/api/tenant-rbac';
       } else if (pathname.includes('/resource-rbac')) {
         this.useCasePrefix = '/api/resource-rbac';
       } else {

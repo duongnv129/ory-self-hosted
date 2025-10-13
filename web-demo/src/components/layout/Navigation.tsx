@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 const navigationItems = [
   { href: '/', label: 'Home' },
   { href: '/simple-rbac', label: 'Simple RBAC' },
-  { href: '/tenant-rbac', label: 'Tenant RBAC' },
   { href: '/resource-rbac', label: 'Resource RBAC' },
 ];
 

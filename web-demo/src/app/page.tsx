@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Shield, Users, Target, ExternalLink } from 'lucide-react';
+import { ArrowRight, Shield, Target, ExternalLink } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -59,45 +59,6 @@ export default function HomePage() {
               <Link href="/simple-rbac" className="block">
                 <Button className="w-full group-hover:shadow-md">
                   Explore Simple RBAC
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Tenant-Centric RBAC */}
-          <Card className="group transition-all hover:shadow-lg">
-            <CardHeader>
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Users className="h-6 w-6" />
-              </div>
-              <CardTitle>Tenant-Centric RBAC</CardTitle>
-              <CardDescription>
-                Multi-tenant users with different roles per tenant
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">✓</span>
-                  <span>Complete tenant isolation</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">✓</span>
-                  <span>One role per tenant per user</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">✓</span>
-                  <span>Multi-tenant user support</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">✓</span>
-                  <span>Tenant-scoped permissions</span>
-                </li>
-              </ul>
-              <Link href="/tenant-rbac" className="block">
-                <Button className="w-full group-hover:shadow-md">
-                  Explore Tenant RBAC
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
