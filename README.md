@@ -10,7 +10,7 @@ A complete, production-ready implementation of the Ory Stack showcasing identity
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 
-## 🎯 What's Included
+## 🎯 What's Included 
 
 ### Core Services
 - **Ory Kratos** - Headless authentication and identity management
@@ -29,7 +29,7 @@ A complete, production-ready implementation of the Ory Stack showcasing identity
 
 ### Prerequisites
 
-- Docker & Docker Compose
+- Docker & Docker Compose v2 (`docker compose` - without hyphen)
 - Make (optional, but recommended)
 - Node.js 18+ & pnpm (for web-demo)
 - curl or Postman (for testing)

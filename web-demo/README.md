@@ -290,7 +290,7 @@ docker run -p 3000:3000 web-demo
 
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 ```
 
 **📦 Deployment Guide**: See [`docs/deployment.md`](./docs/deployment.md)

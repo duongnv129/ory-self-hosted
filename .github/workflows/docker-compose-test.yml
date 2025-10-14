@@ -3,9 +3,9 @@ name: Docker Compose Tests
 on:
   pull_request:
     paths:
-      - "**/docker compose.yaml"
+      - "**/docker-compose.yaml"
       - "**/Dockerfile"
-      - ".github/workflows/docker compose-test.yml"
+      - ".github/workflows/docker-compose-test.yml"
 
 jobs:
   validate-compose:
@@ -16,16 +16,16 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Validate postgres compose
-        run: docker compose -f postgres/docker compose.yaml config
+        run: docker compose -f postgres/docker-compose.yaml config
 
       - name: Validate kratos compose
-        run: docker compose -f kratos/docker compose.yaml config
+        run: docker compose -f kratos/docker-compose.yaml config
 
       - name: Validate keto compose
-        run: docker compose -f keto/docker compose.yaml config
+        run: docker compose -f keto/docker-compose.yaml config
 
       - name: Validate oathkeeper compose
-        run: docker compose -f oathkeeper/docker compose.yaml config
+        run: docker compose -f oathkeeper/docker-compose.yaml config
 
       - name: Validate demo compose
-        run: docker compose -f multi-tenancy-demo/docker compose.yaml config
+        run: docker compose -f multi-tenancy-demo/docker-compose.yaml config

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/an.nguyen1/cake/ory-self-hosted -name \"*.md\" -exec grep -l \"docker-compose\" {} ;)",
+      "Bash(grep -n \"docker-compose.*up\\|docker-compose.*down\\|docker-compose.*logs\\|docker-compose.*restart\" /Users/an.nguyen1/cake/ory-self-hosted/web-demo/docs/implementation-tasks.md)",
+      "Bash(grep -r \"docker-compose.*up\\|docker-compose.*down\\|docker-compose.*logs\\|docker-compose.*restart\" /Users/an.nguyen1/cake/ory-self-hosted --exclude-dir=.git --exclude-dir=node_modules)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

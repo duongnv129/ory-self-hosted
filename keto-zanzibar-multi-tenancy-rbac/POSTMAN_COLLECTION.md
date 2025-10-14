@@ -408,7 +408,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Start Keto
-        run: docker-compose up -d keto
+        run: docker compose up -d keto
 
       - name: Wait for Keto
         run: sleep 10
@@ -439,7 +439,7 @@ keto-rbac-test:
   services:
     - postgres:13
   before_script:
-    - docker-compose up -d keto
+    - docker compose up -d keto
     - sleep 10
   script:
     - cd keto-zanzibar-multi-tenancy-rbac
@@ -466,7 +466,7 @@ keto-rbac-test:
 curl http://localhost:4466/health/ready
 
 # Start Keto if not running
-cd keto && docker-compose up -d
+cd keto && docker compose up -d
 ```
 
 ### Test Failures
@@ -476,7 +476,7 @@ cd keto && docker-compose up -d
 **Solution:**
 1. Re-run Setup folder
 2. Wait 1-2 seconds for relations to propagate
-3. Check Keto logs: `docker-compose logs keto`
+3. Check Keto logs: `docker compose logs keto`
 
 ### Invalid Namespace
 

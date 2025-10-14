@@ -45,7 +45,7 @@ jobs:
             kratos/config/*.yml
             keto/config/*.yml
             oathkeeper/config/*.yml
-            */docker compose.yaml
+            */docker-compose.yaml
           strict: false
 
       - name: Validate JSON files

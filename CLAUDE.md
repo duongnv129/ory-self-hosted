@@ -147,7 +147,7 @@ make reset              # Full reset and restart
 
 ### Direct Docker Compose Commands
 
-Each service has its own docker compose.yaml in its subdirectory:
+Each service has its own docker compose.yaml in its subdirectory. Note: Uses Docker Compose v2 syntax (`docker compose` without hyphen):
 
 ```bash
 # Start complete stack (from root)
