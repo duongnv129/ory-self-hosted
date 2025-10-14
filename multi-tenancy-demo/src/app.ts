@@ -7,7 +7,7 @@ import userRouter from './routes/user';
 import categoryRouter from './routes/category';
 import productRouter from './routes/product';
 import simpleRBACRoleRouter from './routes/simple_rbac_role';
-import resourceRBACRoleRouter from './routes/simple_rbac_role';
+import resourceRBACRoleRouter from './routes/resource_rbac_role';
 import metadataRouter from './routes/metadata';
 import { contextMiddleware } from './middleware/context';
 import { errorHandler } from './middleware/error-handler';

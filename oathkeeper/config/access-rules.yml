@@ -229,7 +229,7 @@
 - id: "resource-rbac-metadata-rule"
   upstream:
     url: "http://multi-tenancy-demo:9000"
-    strip_path: "/api"
+    strip_path: "/api/resource-rbac"
   match:
     url: "<http|https>://<.*>/api/resource-rbac/metadata/list"
     methods:
@@ -295,7 +295,7 @@
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-User-Traits: "{{ .Extra.identity.traits | toJson }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
-          X-Keto-Namespace: "tenant-rbac"
+          X-Keto-Namespace: "resource-rbac"
 
 # Resource RBAC - Products API
 - id: "resource-rbac-products-rule"

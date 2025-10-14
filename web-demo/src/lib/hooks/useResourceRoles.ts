@@ -6,7 +6,7 @@
 import useSWR from 'swr';
 import { rolesApi } from '@/lib/api';
 import { useTenant } from '@/lib/context/TenantContext';
-import { ListRolesResponse, CreateRoleRequest, UpdateRoleRequest } from '@/lib/types/api';
+import { ListRolesResponse, CreateRoleRequest, UpdateRoleRequest, GetRoleResponse } from '@/lib/types/api';
 import { Role } from '@/lib/types/models';
 
 export function useResourceRoles() {
@@ -92,6 +92,36 @@ export function useResourceRoles() {
     }
   };
 
+  const getRoleWithPermissions = async (roleName: string): Promise<{ role: Role; permissions: Array<{ resource: string; action: string }> }> => {
+    try {
+      const result: GetRoleResponse = await rolesApi.get(roleName);
+
+      // Defensive programming - validate response structure
+      if (!result.role) {
+        throw new Error('Invalid response: role data missing');
+      }
+
+      // Type guard for permissions array
+      const validPermissions = (result.permissions || []).filter(
+        (perm): perm is { resource: string; action: string } =>
+          typeof perm === 'object' &&
+          perm !== null &&
+          typeof perm.resource === 'string' &&
+          typeof perm.action === 'string' &&
+          perm.resource.length > 0 &&
+          perm.action.length > 0
+      );
+
+      return {
+        role: result.role,
+        permissions: validPermissions,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch role ${roleName} with permissions:`, error);
+      throw error;
+    }
+  };
+
   return {
     roles: data?.roles || [],
     tenantId: data?.tenantId,
@@ -104,5 +134,6 @@ export function useResourceRoles() {
     createRole,
     updateRole,
     deleteRole,
+    getRoleWithPermissions,
   };
 }

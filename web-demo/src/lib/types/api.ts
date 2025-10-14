@@ -291,7 +291,73 @@ export interface UpdateCategoryResponse extends ApiResponse {
 }
 
 export interface DeleteCategoryResponse extends ApiResponse {
-  message: string;
+  category: Category;
+}
+
+// Roles API
+/**
+ * Request body for creating a new role
+ */
+export interface CreateRoleRequest {
+  name: string;
+  description?: string;
+  inheritsFrom?: string[]; // Array of parent role names to inherit from
+  permissions?: Array<{ resource: string; action: string }>; // Permissions to assign
+}
+
+/**
+ * Response from role creation API
+ */
+export interface CreateRoleResponse extends ApiResponse {
+  role: Role;
+  namespace?: string;
+  ketoSync?: 'success' | 'partial';
+  ketoWarnings?: string[];
+}
+
+/**
+ * Response from role list API
+ */
+export interface ListRolesResponse extends ApiResponse {
+  roles: Role[];
+  count: number;
+  namespace?: string;
+}
+
+/**
+ * Response from get role API
+ */
+export interface GetRoleResponse extends ApiResponse {
+  role: Role;
+  permissions?: Permission[];
+  namespace?: string;
+}
+
+/**
+ * Request body for updating an existing role
+ */
+export interface UpdateRoleRequest {
+  description?: string;
+  inheritsFrom?: string[]; // Array of parent role names to inherit from
+  permissions?: Array<{ resource: string; action: string }>; // Permissions to assign
+}
+
+/**
+ * Response from role update API
+ */
+export interface UpdateRoleResponse extends ApiResponse {
+  role: Role;
+  namespace?: string;
+  ketoSync?: 'success' | 'partial';
+  ketoWarnings?: string[];
+}
+
+/**
+ * Response from role deletion API
+ */
+export interface DeleteRoleResponse extends ApiResponse {
+  role: Role;
+  namespace?: string;
 }
 
 // Roles API
@@ -310,12 +376,13 @@ export interface ListRolesResponse extends ApiResponse {
   roles: Role[];
   count: number;
   tenantId?: string;
-  namespace: string;
+  namespace?: string;
 }
 
 export interface GetRoleResponse extends ApiResponse {
   role: Role;
   permissions?: Permission[];
+  namespace?: string;
 }
 
 export interface UpdateRoleRequest {
