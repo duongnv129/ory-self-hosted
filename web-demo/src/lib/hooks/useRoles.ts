@@ -68,9 +68,25 @@ export function useRoles() {
 export function useRole(roleName: string | null) {
   const { data, error, isLoading, mutate } = useSWR(
     roleName ? `/roles/get/${encodeURIComponent(roleName)}` : null,
-    () => (roleName ? rolesApi.get(roleName) : null),
+    async () => {
+      if (!roleName) return null;
+
+      try {
+        const result = await rolesApi.get(roleName);
+        console.log(`✅ Successfully fetched role "${roleName}":`, {
+          role: result.role?.name,
+          permissions: result.permissions?.length || 0
+        });
+        return result;
+      } catch (err: unknown) {
+        console.error(`❌ Failed to fetch role "${roleName}":`, err);
+        // Let SWR handle the error properly - don't transform it here
+        throw err;
+      }
+    },
     {
       revalidateOnFocus: false,
+      shouldRetryOnError: false, // Don't retry 404s
     }
   );
 
