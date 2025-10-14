@@ -14,7 +14,7 @@ import { useUsers } from '@/lib/hooks';
 import { useProducts } from '@/lib/hooks';
 import { useCategories } from '@/lib/hooks';
 import { useTenant } from '@/lib/context/TenantContext';
-import { Shield, Package, FolderOpen, Users, ArrowRight, AlertCircle, Building, Globe } from 'lucide-react';
+import { Shield, Package, FolderOpen, Users, ArrowRight, AlertCircle, Building } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/loading';
 
 export default function ResourceRBACOverviewPage() {

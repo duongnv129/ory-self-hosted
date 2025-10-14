@@ -21,8 +21,9 @@ import { Role } from '@/lib/types/models';
 import { CreateRoleRequest, UpdateRoleRequest, GetRoleResponse, ListRolesResponse } from '@/lib/types/api';
 
 /**
- * Main hook for role management
+ * Hook for role list management
  * Automatically adapts behavior based on tenant context
+ * Focused on listing roles only - use useRole for individual role operations
  */
 export function useRoles() {
   const { currentTenant } = useTenant();
@@ -45,78 +46,86 @@ export function useRoles() {
     }
   );
 
+  return {
+    roles: data?.roles || [],
+    count: data?.count || 0,
+    tenantId: data?.tenantId,
+    namespace: data?.namespace,
+    total: data?.count || 0, // Alias for consistency
+    isLoading,
+    isError: !!error,
+    error,
+    mutate,
+    refresh: mutate, // Alias for resource RBAC compatibility
+  };
+}
+
+/**
+ * Hook to fetch and manage a specific role by name
+ * Handles individual role operations: create, update, delete, get with permissions
+ * Compatible with both RBAC models
+ */
+export function useRole(roleName: string | null) {
+  const { data, error, isLoading, mutate } = useSWR(
+    roleName ? `/roles/get/${encodeURIComponent(roleName)}` : null,
+    () => (roleName ? rolesApi.get(roleName) : null),
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
   const createRole = async (roleData: CreateRoleRequest): Promise<Role> => {
     try {
       const result = await rolesApi.create(roleData);
 
-      // Optimistic updates for better UX (Next.js Pro pattern)
-      if (data && currentTenant) {
+      // Trigger re-fetch of role list if needed
+      // Note: Components should use both useRoles() and useRole() for full state management
+
+      return result.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const updateRole = async (updateRoleName: string, roleData: UpdateRoleRequest): Promise<Role> => {
+    try {
+      const result = await rolesApi.update(updateRoleName, roleData);
+
+      // If we're updating the current role, update local cache
+      if (updateRoleName === roleName) {
         mutate({
-          ...data,
-          roles: [...data.roles, result.data],
-          count: (data.count || 0) + 1,
+          message: 'Role updated successfully',
+          role: result.data,
+          permissions: data?.permissions || [],
         }, false);
-      } else {
-        // Simple RBAC - just refetch
-        mutate();
       }
 
       return result.data;
     } catch (error) {
       // Re-fetch on error to ensure data consistency
-      mutate();
-      throw error;
-    }
-  };
-
-  const updateRole = async (roleName: string, roleData: UpdateRoleRequest): Promise<Role> => {
-    try {
-      const result = await rolesApi.update(roleName, roleData);
-
-      // Optimistic updates for resource RBAC
-      if (data && currentTenant) {
-        mutate({
-          ...data,
-          roles: data.roles.map(role =>
-            role.name === roleName ? result.data : role
-          ),
-        }, false);
-      } else {
-        // Simple RBAC - just refetch
+      if (updateRoleName === roleName) {
         mutate();
       }
-
-      return result.data;
-    } catch (error) {
-      mutate();
       throw error;
     }
   };
 
-  const deleteRole = async (roleName: string): Promise<void> => {
+  const deleteRole = async (deleteRoleName: string): Promise<void> => {
     try {
-      await rolesApi.delete(roleName);
+      await rolesApi.delete(deleteRoleName);
 
-      // Optimistic updates for resource RBAC
-      if (data && currentTenant) {
-        mutate({
-          ...data,
-          roles: data.roles.filter(role => role.name !== roleName),
-          count: Math.max((data.count || 0) - 1, 0),
-        }, false);
-      } else {
-        // Simple RBAC - just refetch
-        mutate();
+      // If we deleted the current role, clear the cache
+      if (deleteRoleName === roleName) {
+        mutate(undefined, false);
       }
     } catch (error) {
-      mutate();
       throw error;
     }
   };
 
-  const getRoleWithPermissions = async (roleName: string): Promise<{ role: Role; permissions: Array<{ resource: string; action: string }> }> => {
+  const getRoleWithPermissions = async (getRoleName: string): Promise<{ role: Role; permissions: Array<{ resource: string; action: string }> }> => {
     try {
-      const result: GetRoleResponse = await rolesApi.get(roleName);
+      const result: GetRoleResponse = await rolesApi.get(getRoleName);
 
       // Defensive programming - validate response structure
       if (!result.role) {
@@ -134,46 +143,23 @@ export function useRoles() {
           perm.action.length > 0
       );
 
-      return {
+      const roleData = {
+        message: 'Role fetched successfully',
         role: result.role,
         permissions: validPermissions,
       };
+
+      // Update cache if this is the current role
+      if (getRoleName === roleName) {
+        mutate(roleData, false);
+      }
+
+      return roleData;
     } catch (error) {
-      console.error(`Failed to fetch role ${roleName} with permissions:`, error);
+      console.error(`Failed to fetch role ${getRoleName} with permissions:`, error);
       throw error;
     }
   };
-
-  return {
-    roles: data?.roles || [],
-    count: data?.count || 0,
-    tenantId: data?.tenantId,
-    namespace: data?.namespace,
-    total: data?.count || 0, // Alias for consistency
-    isLoading,
-    isError: !!error,
-    error,
-    mutate,
-    refresh: mutate, // Alias for resource RBAC compatibility
-    createRole,
-    updateRole,
-    deleteRole,
-    getRoleWithPermissions,
-  };
-}
-
-/**
- * Hook to fetch a specific role by name
- * Compatible with both RBAC models
- */
-export function useRole(roleName: string | null) {
-  const { data, error, isLoading, mutate } = useSWR(
-    roleName ? `/roles/get/${encodeURIComponent(roleName)}` : null,
-    () => (roleName ? rolesApi.get(roleName) : null),
-    {
-      revalidateOnFocus: false,
-    }
-  );
 
   return {
     role: data?.role,
@@ -182,6 +168,12 @@ export function useRole(roleName: string | null) {
     isError: !!error,
     error,
     mutate,
+    refresh: mutate,
+    // Role management operations
+    createRole,
+    updateRole,
+    deleteRole,
+    getRoleWithPermissions,
   };
 }
 

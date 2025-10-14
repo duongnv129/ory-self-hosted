@@ -30,8 +30,10 @@ export const env = {
 // Validate required environment variables on module load
 if (typeof window === 'undefined') {
   // Server-side validation
-  console.log('Environment configuration loaded:', {
-    oathkeeperUrl: env.oathkeeperUrl,
-    nodeEnv: process.env.NODE_ENV,
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Environment configuration loaded:', {
+      oathkeeperUrl: env.oathkeeperUrl,
+      nodeEnv: process.env.NODE_ENV,
+    });
+  }
 }

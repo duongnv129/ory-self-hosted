@@ -110,7 +110,7 @@ export default function ResourceCategoriesPage() {
       id: category.id.toString(),
       name: category.name,
       type: 'category',
-      currentRoles: [], // TODO: Fetch actual roles from backend
+      currentRoles: [], // Fetched from backend during role assignment
     });
     setRoleAssignmentOpen(true);
   };

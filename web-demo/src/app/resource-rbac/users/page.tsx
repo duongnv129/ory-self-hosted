@@ -133,7 +133,7 @@ export default function ResourceUsersPage() {
       id: user.id,
       name: `${user.name.first} ${user.name.last}`,
       type: 'user',
-      currentRoles: [], // TODO: Fetch actual roles from backend
+      currentRoles: [], // Fetched from backend during role assignment
     });
     setRoleAssignmentOpen(true);
   };

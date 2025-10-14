@@ -289,17 +289,8 @@ export function PermissionMatrix({
 
       roles.forEach((role) => {
         try {
-          console.log(`Calculating permissions for role: ${role.name}`, {
-            resources: allResources,
-            actions: allActions,
-            rolePermissions: role.permissions?.length || 0,
-            inheritsFrom: role.inheritsFrom?.length || 0
-          });
-
           const permissions = getRolePermissions(role, roles, allResources, allActions);
           permissionsMap.set(role.name, permissions);
-
-          console.log(`Calculated ${permissions.length} permissions for role: ${role.name}`);
         } catch (error) {
           console.error(`Failed to calculate permissions for role ${role.name}:`, error);
           // Set empty permissions array as fallback
@@ -308,10 +299,6 @@ export function PermissionMatrix({
       });
 
       setRolePermissions(permissionsMap);
-      console.log('Permission calculation completed', {
-        rolesProcessed: permissionsMap.size,
-        totalPermissions: Array.from(permissionsMap.values()).reduce((sum, perms) => sum + perms.length, 0)
-      });
     } catch (error) {
       console.error('Failed to calculate role permissions:', error);
       setRolePermissions(new Map());
@@ -507,13 +494,6 @@ export function PermissionMatrix({
                   const Icon = getRoleIcon(role.name);
                   const permissions = rolePermissions.get(role.name) || [];
 
-                  console.log(`Rendering role: ${role.name}`, {
-                    permissionsCount: permissions.length,
-                    samplePermissions: permissions.slice(0, 3),
-                    allResources,
-                    allActions
-                  });
-
                   return (
                     <TableRow key={role.name}>
                       <TableCell className="font-medium">
@@ -532,14 +512,6 @@ export function PermissionMatrix({
                               );
                               const isGranted = permission?.granted || false;
                               const isInherited = permission?.inherited || false;
-
-                              // Debug log for each permission cell
-                              console.log(`Permission cell: ${role.name} - ${resource}:${action}`, {
-                                permission,
-                                isGranted,
-                                isInherited,
-                                allPermissions: permissions.filter(p => p.resource === resource)
-                              });
 
                               if (editable) {
                                 return (

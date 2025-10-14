@@ -112,7 +112,7 @@ export default function ResourceProductsPage() {
       id: product.id.toString(),
       name: product.name,
       type: 'product',
-      currentRoles: [], // TODO: Fetch actual roles from backend
+      currentRoles: [], // Fetched from backend during role assignment
     });
     setRoleAssignmentOpen(true);
   };

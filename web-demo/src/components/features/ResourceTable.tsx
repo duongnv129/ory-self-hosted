@@ -114,23 +114,6 @@ interface ResourceTableProps<T extends BaseResource = BaseResource> {
 }
 
 /**
- * Get display name for a resource
- */
-const getResourceDisplayName = (item: BaseResource): string => {
-  if ('email' in item && item.email && typeof item.email === 'string') {
-    return item.email;
-  }
-  if ('name' in item && item.name) {
-    if (typeof item.name === 'string') {
-      return item.name;
-    } else if (typeof item.name === 'object' && 'first' in item.name && 'last' in item.name) {
-      return `${item.name.first} ${item.name.last}`;
-    }
-  }
-  return `Item ${item.id}`;
-};
-
-/**
  * Get roles for a resource (if available)
  */
 const getResourceRoles = (item: BaseResource): string[] => {
@@ -380,7 +363,6 @@ export function ResourceTable<T extends BaseResource = BaseResource>({
                                 size="icon"
                                 onClick={() => {
                                   // Handle permission testing
-                                  console.log('Test permissions for:', getResourceDisplayName(item));
                                 }}
                                 title="Test permissions"
                               >
@@ -395,7 +377,6 @@ export function ResourceTable<T extends BaseResource = BaseResource>({
                                 size="icon"
                                 onClick={() => {
                                   // Handle role assignment
-                                  console.log('Assign roles to:', getResourceDisplayName(item));
                                 }}
                                 title="Manage roles"
                               >
@@ -575,8 +556,7 @@ export const commonActions = {
     key: 'edit',
     label: 'Edit',
     icon: Edit,
-    onClick: (item: BaseResource) => {
-      console.log('Edit:', item);
+    onClick: (_item: BaseResource) => {
       // Will be overridden by parent component
     },
   } as TableAction,
@@ -586,8 +566,7 @@ export const commonActions = {
     label: 'Delete',
     icon: Trash2,
     destructive: true,
-    onClick: (item: BaseResource) => {
-      console.log('Delete:', item);
+    onClick: (_item: BaseResource) => {
       // Will be overridden by parent component
     },
   } as TableAction,
@@ -596,8 +575,7 @@ export const commonActions = {
     key: 'view',
     label: 'View Details',
     icon: Eye,
-    onClick: (item: BaseResource) => {
-      console.log('View:', item);
+    onClick: (_item: BaseResource) => {
       // Will be overridden by parent component
     },
   } as TableAction,
