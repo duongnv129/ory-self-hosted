@@ -30,10 +30,10 @@ import { apiClient } from '@/lib/api/client';
 
 const sidebarItems = [
   { href: '/resource-rbac', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/resource-rbac/users', label: 'User Resources', icon: Users, exact: false },
-  { href: '/resource-rbac/products', label: 'Product Resources', icon: Package, exact: false },
-  { href: '/resource-rbac/categories', label: 'Category Resources', icon: FolderOpen, exact: false },
-  { href: '/resource-rbac/permissions', label: 'Permission Matrix', icon: Shield, exact: false },
+  { href: '/resource-rbac/users', label: 'Users', icon: Users, exact: false },
+  { href: '/resource-rbac/products', label: 'Products', icon: Package, exact: false },
+  { href: '/resource-rbac/categories', label: 'Categories', icon: FolderOpen, exact: false },
+  { href: '/resource-rbac/roles', label: 'Roles', icon: Shield, exact: false },
 ];
 
 export default function ResourceRBACLayout({

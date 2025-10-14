@@ -1,217 +1,113 @@
 /**
  * Resource-Scoped RBAC Overview Page
- * Main page for resource-scoped role-based access control with tenant awareness
+ * Dashboard showing tenant context, stats, and quick navigation
  *
- * Follows Next.js Pro patterns:
- * - Client Component with proper state management
- * - Component separation and composition
- * - TypeScript interfaces for all props
- * - Error handling with user-friendly messages
+ * Note: Resource-RBAC provides fine-grained authorization at the resource level
+ * with tenant isolation. Each resource can have individual permission assignments.
  */
 
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
-import { Package, FolderOpen, Users, Building, Globe, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, Alert, AlertDescription } from '@/components/ui';
 import { useResourceUsers } from '@/lib/hooks/useResourceUsers';
 import { useResourceProducts } from '@/lib/hooks/useResourceProducts';
 import { useResourceCategories } from '@/lib/hooks/useResourceCategories';
-import { useTenant } from '@/lib/hooks/useTenant';
-import { User, Product, Category, UserWithRoles } from '@/lib/types/models';
-import { toast } from 'sonner';
-import {
-  ResourceTable,
-  ResourceRoleAssignment,
-  ResourcePermissionTester,
-  commonColumns,
-  commonActions,
-} from '@/components/features';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useTenant } from '@/lib/context/TenantContext';
+import { Shield, Package, FolderOpen, Users, ArrowRight, AlertCircle, Building, Globe } from 'lucide-react';
+import { CardSkeleton } from '@/components/ui/loading';
 
-// Interface for assignable resources
-interface AssignableResource {
-  id: string;
-  name: string;
-  type: 'user' | 'product' | 'category';
-  currentRoles: string[];
-}
-
-// Interface for testable resources
-interface TestableResource {
-  id: string;
-  name: string;
-  type: 'users' | 'products' | 'categories'; // Match TestableResourceType
-}
-
-export default function ResourceRBACPage() {
+export default function ResourceRBACOverviewPage() {
   const { currentTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState('users');
+  const { users, isLoading: usersLoading } = useResourceUsers();
+  const { products, isLoading: productsLoading } = useResourceProducts();
+  const { categories, isLoading: categoriesLoading } = useResourceCategories();
 
-  // Dialog states
-  const [roleAssignmentOpen, setRoleAssignmentOpen] = useState(false);
-  const [permissionTesterOpen, setPermissionTesterOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<AssignableResource | null>(null);
-  const [testableResource, setTestableResource] = useState<TestableResource | null>(null);
+  const isLoading = usersLoading || productsLoading || categoriesLoading;
 
-  // Data hooks
-  const {
-    users,
-    isLoading: usersLoading,
-    error: usersError,
-    refresh: refreshUsers,
-  } = useResourceUsers();
+  // Show loading state
+  if (isLoading && !currentTenant) {
+    return <CardSkeleton count={4} />;
+  }
 
-  const {
-    products,
-    isLoading: productsLoading,
-    error: productsError,
-    refresh: refreshProducts,
-  } = useResourceProducts();
+  // Show tenant selection prompt if no tenant selected
+  if (!currentTenant) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Resource-Scoped RBAC</h2>
+          <p className="mt-2 text-muted-foreground">
+            Per-resource permissions with tenant-aware authorization
+          </p>
+        </div>
 
-  const {
-    categories,
-    isLoading: categoriesLoading,
-    error: categoriesError,
-    refresh: refreshCategories,
-  } = useResourceCategories();
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please select a tenant from the sidebar to view resource-specific permissions and manage access control.
+          </AlertDescription>
+        </Alert>
 
-  // Handle role assignment for resources
-  const handleManageRoles = (
-    resource: User | Product | Category,
-    type: 'user' | 'product' | 'category'
-  ) => {
-    let assignableResource: AssignableResource;
-
-    if (type === 'user') {
-      const user = resource as User;
-      assignableResource = {
-        id: user.id,
-        name: `${user.name.first} ${user.name.last}`,
-        type: 'user',
-        currentRoles: 'roles' in user ? (user as UserWithRoles).roles || [] : [],
-      };
-    } else if (type === 'product') {
-      const product = resource as Product;
-      assignableResource = {
-        id: product.id.toString(),
-        name: product.name,
-        type: 'product',
-        currentRoles: [], // Mock - in real implementation, fetch from Keto
-      };
-    } else {
-      const category = resource as Category;
-      assignableResource = {
-        id: category.id.toString(),
-        name: category.name,
-        type: 'category',
-        currentRoles: [], // Mock - in real implementation, fetch from Keto
-      };
-    }
-
-    setSelectedResource(assignableResource);
-    setRoleAssignmentOpen(true);
-  };
-
-  // Handle permission testing
-  const handleTestPermissions = (
-    resource: User | Product | Category,
-    type: 'user' | 'product' | 'category'
-  ) => {
-    let testable: TestableResource;
-
-    if (type === 'user') {
-      const user = resource as User;
-      testable = {
-        id: user.id,
-        name: `${user.name.first} ${user.name.last}`,
-        type: 'users', // Change to plural for compatibility
-      };
-    } else if (type === 'product') {
-      const product = resource as Product;
-      testable = {
-        id: product.id.toString(),
-        name: product.name,
-        type: 'products', // Change to plural for compatibility
-      };
-    } else {
-      const category = resource as Category;
-      testable = {
-        id: category.id.toString(),
-        name: category.name,
-        type: 'categories', // Change to plural for compatibility
-      };
-    }
-
-    setTestableResource(testable);
-    setPermissionTesterOpen(true);
-  };
-
-  // Handle resource deletion
-  const handleDelete = async (
-    resource: User | Product | Category,
-    type: 'user' | 'product' | 'category'
-  ) => {
-    try {
-      // Mock deletion - in real implementation, call appropriate API
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const resourceName = type === 'user'
-        ? `${(resource as User).name.first} ${(resource as User).name.last}`
-        : (resource as Product | Category).name;
-
-      toast.success(`${type} "${resourceName}" deleted successfully`);
-
-      // Refresh data
-      if (type === 'user') refreshUsers();
-      else if (type === 'product') refreshProducts();
-      else refreshCategories();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Deletion failed';
-      toast.error(errorMessage);
-    }
-  };
-
-  // Calculate stats
-  const totalUsers = users.length;
-  const totalProducts = products.length;
-  const totalCategories = categories.length;
-
-  const hasError = usersError || productsError || categoriesError;
+        <Card>
+          <CardHeader>
+            <CardTitle>What is Resource-Scoped RBAC?</CardTitle>
+            <CardDescription>
+              Fine-grained authorization model for multi-tenant applications
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">Key Features:</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Per-resource permission assignment</li>
+                <li>Tenant-level isolation and access control</li>
+                <li>Individual resource role assignments</li>
+                <li>Real-time permission testing</li>
+                <li>Granular access management</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Use Cases:</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Multi-tenant SaaS applications</li>
+                <li>Document sharing systems</li>
+                <li>Project-based collaboration tools</li>
+                <li>Resource-specific access delegation</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Resource-Scoped RBAC</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Resource-Scoped RBAC Overview</h2>
         <p className="mt-2 text-muted-foreground">
           Per-resource permissions with tenant-aware authorization
         </p>
       </div>
 
-      {/* Context Info */}
+      {/* Tenant Context Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {currentTenant ? (
-              <>
-                <Building className="h-5 w-5" />
-                Tenant Context: {currentTenant}
-              </>
-            ) : (
-              <>
-                <Globe className="h-5 w-5" />
-                Global Context
-              </>
-            )}
+            <Building className="h-5 w-5" />
+            Current Tenant: <Badge variant="default" className="ml-2">{currentTenant}</Badge>
           </CardTitle>
           <CardDescription>
-            {currentTenant
-              ? `Viewing resources and permissions for tenant "${currentTenant}"`
-              : 'Viewing all resources across all tenants'
-            }
+            All resources and permissions are scoped to this tenant
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Shield className="h-4 w-4" />
+            <span>Resource-level permission isolation enabled</span>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Stats Cards */}
@@ -222,9 +118,9 @@ export default function ResourceRBACPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
+            <div className="text-2xl font-bold">{isLoading ? '...' : users.length}</div>
             <p className="text-xs text-muted-foreground">
-              {currentTenant ? `In tenant ${currentTenant}` : 'Across all tenants'}
+              User resources in this tenant
             </p>
           </CardContent>
         </Card>
@@ -235,9 +131,9 @@ export default function ResourceRBACPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
+            <div className="text-2xl font-bold">{isLoading ? '...' : products.length}</div>
             <p className="text-xs text-muted-foreground">
-              Product resources
+              Product resources with permissions
             </p>
           </CardContent>
         </Card>
@@ -248,180 +144,120 @@ export default function ResourceRBACPage() {
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCategories}</div>
+            <div className="text-2xl font-bold">{isLoading ? '...' : categories.length}</div>
             <p className="text-xs text-muted-foreground">
-              Category resources
+              Category resources managed
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Error Display */}
-      {hasError && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <span className="font-medium">Error loading resources</span>
+      {/* Resource Features Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Resource-Level Authorization</CardTitle>
+          <CardDescription>
+            Fine-grained permission control for each resource
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                <span className="font-medium">Individual Permissions</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Assign roles and permissions to specific users for individual resources
+              </p>
             </div>
-            <div className="mt-2 text-sm text-muted-foreground">
-              {usersError && <div>Users: {usersError.message}</div>}
-              {productsError && <div>Products: {productsError.message}</div>}
-              {categoriesError && <div>Categories: {categoriesError.message}</div>}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-primary" />
+                <span className="font-medium">Tenant Isolation</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Complete data and permission isolation per tenant
+              </p>
             </div>
-          </CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                <span className="font-medium">Role Assignment</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Flexible role-based access control at resource level
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                <span className="font-medium">Permission Testing</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Real-time permission validation and testing
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Links */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link href="/resource-rbac/users">
+          <Card className="transition-colors hover:bg-accent">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Manage Users</span>
+                <ArrowRight className="h-5 w-5" />
+              </CardTitle>
+              <CardDescription>
+                Assign resource-specific roles to users
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/resource-rbac/products">
+          <Card className="transition-colors hover:bg-accent">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Manage Products</span>
+                <ArrowRight className="h-5 w-5" />
+              </CardTitle>
+              <CardDescription>
+                Control product access and permissions
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/resource-rbac/categories">
+          <Card className="transition-colors hover:bg-accent">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Manage Categories</span>
+                <ArrowRight className="h-5 w-5" />
+              </CardTitle>
+              <CardDescription>
+                Manage category-level permissions
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-muted-foreground">
+              <span>Permission Matrix</span>
+              <Badge variant="outline">Coming Soon</Badge>
+            </CardTitle>
+            <CardDescription>
+              Visualize all permissions across resources
+            </CardDescription>
+          </CardHeader>
         </Card>
-      )}
-
-      {/* Resource Management Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="users">
-            <Users className="mr-2 h-4 w-4" />
-            Users ({totalUsers})
-          </TabsTrigger>
-          <TabsTrigger value="products">
-            <Package className="mr-2 h-4 w-4" />
-            Products ({totalProducts})
-          </TabsTrigger>
-          <TabsTrigger value="categories">
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Categories ({totalCategories})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users">
-          {/* @ts-expect-error - User type doesn't extend BaseResource but works at runtime */}
-          <ResourceTable<UserWithRoles>
-            data={users}
-            columns={commonColumns.user}
-            title="User Resources"
-            description="Manage users and their resource-specific permissions"
-            isLoading={usersLoading}
-            error={usersError?.message}
-            showRoles={true}
-            showPermissions={true}
-            onRefresh={refreshUsers}
-            rowActions={[
-              {
-                ...commonActions.edit,
-                onClick: (user) => console.log('Edit user:', user),
-              },
-              {
-                ...commonActions.delete,
-                onClick: (user) => handleDelete(user as unknown as User, 'user'),
-              },
-              {
-                key: 'manage-roles',
-                label: 'Manage Roles',
-                icon: Users,
-                onClick: (user) => handleManageRoles(user as unknown as User, 'user'),
-              },
-              {
-                key: 'test-permissions',
-                label: 'Test Permissions',
-                icon: Package,
-                onClick: (user) => handleTestPermissions(user as unknown as User, 'user'),
-              },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="products">
-          {/* @ts-expect-error - Product type doesn't extend BaseResource but works at runtime */}
-          <ResourceTable<Product>
-            data={products}
-            columns={commonColumns.product}
-            title="Product Resources"
-            description="Manage products and their associated permissions"
-            isLoading={productsLoading}
-            error={productsError?.message}
-            showRoles={true}
-            showPermissions={true}
-            onRefresh={refreshProducts}
-            rowActions={[
-              {
-                ...commonActions.edit,
-                onClick: (product) => console.log('Edit product:', product),
-              },
-              {
-                ...commonActions.delete,
-                onClick: (product) => handleDelete(product as unknown as Product, 'product'),
-              },
-              {
-                key: 'manage-roles',
-                label: 'Manage Roles',
-                icon: Users,
-                onClick: (product) => handleManageRoles(product as unknown as Product, 'product'),
-              },
-              {
-                key: 'test-permissions',
-                label: 'Test Permissions',
-                icon: Package,
-                onClick: (product) => handleTestPermissions(product as unknown as Product, 'product'),
-              },
-            ]}
-          />
-        </TabsContent>
-
-        <TabsContent value="categories">
-          {/* @ts-expect-error - Category type doesn't extend BaseResource but works at runtime */}
-          <ResourceTable<Category>
-            data={categories}
-            columns={commonColumns.category}
-            title="Category Resources"
-            description="Manage categories and their permission structures"
-            isLoading={categoriesLoading}
-            error={categoriesError?.message}
-            showRoles={true}
-            showPermissions={true}
-            onRefresh={refreshCategories}
-            rowActions={[
-              {
-                ...commonActions.edit,
-                onClick: (category) => console.log('Edit category:', category),
-              },
-              {
-                ...commonActions.delete,
-                onClick: (category) => handleDelete(category as unknown as Category, 'category'),
-              },
-              {
-                key: 'manage-roles',
-                label: 'Manage Roles',
-                icon: Users,
-                onClick: (category) => handleManageRoles(category as unknown as Category, 'category'),
-              },
-              {
-                key: 'test-permissions',
-                label: 'Test Permissions',
-                icon: Package,
-                onClick: (category) => handleTestPermissions(category as unknown as Category, 'category'),
-              },
-            ]}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialogs */}
-      <ResourceRoleAssignment
-        open={roleAssignmentOpen}
-        onClose={() => setRoleAssignmentOpen(false)}
-        resource={selectedResource || undefined}
-        onRoleAssigned={() => {
-          // Refresh data based on resource type
-          if (selectedResource?.type === 'user') refreshUsers();
-          else if (selectedResource?.type === 'product') refreshProducts();
-          else refreshCategories();
-        }}
-      />
-
-      <ResourcePermissionTester
-        open={permissionTesterOpen}
-        onClose={() => setPermissionTesterOpen(false)}
-        resourceType={testableResource?.type}
-        resourceId={testableResource?.id}
-        resourceName={testableResource?.name}
-      />
+      </div>
     </div>
   );
 }
