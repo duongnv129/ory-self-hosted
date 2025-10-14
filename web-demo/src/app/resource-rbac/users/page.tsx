@@ -12,7 +12,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useResourceUsers } from '@/lib/hooks/useResourceUsers';
+import { useUsers } from '@/lib/hooks';
 import { useRoles } from '@/lib/hooks/useRoles';
 import { useTenant } from '@/lib/context/TenantContext';
 import {
@@ -70,7 +70,7 @@ const getRoleConfig = (roleName: string) => {
 
 export default function ResourceUsersPage() {
   const { currentTenant } = useTenant();
-  const { users, isLoading, isError, error, refresh, createUser, updateUser, deleteUser } = useResourceUsers();
+  const { users, isLoading, isError, error, refresh, createUser, updateUser, deleteUser } = useUsers();
   const { roles, isLoading: isLoadingRoles, isError: rolesError } = useRoles();
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);

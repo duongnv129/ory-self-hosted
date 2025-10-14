@@ -12,8 +12,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useResourceCategories } from '@/lib/hooks/useResourceCategories';
-import { useResourceProducts } from '@/lib/hooks/useResourceProducts';
+import { useCategories } from '@/lib/hooks';
+import { useProducts } from '@/lib/hooks';
 import { useTenant } from '@/lib/context/TenantContext';
 import {
   ResourceRoleAssignment,
@@ -54,8 +54,8 @@ type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export default function ResourceCategoriesPage() {
   const { currentTenant } = useTenant();
-  const { categories, isLoading: categoriesLoading, isError, error, refresh, createCategory, updateCategory, deleteCategory } = useResourceCategories();
-  const { products, isLoading: productsLoading } = useResourceProducts();
+  const { categories, isLoading: categoriesLoading, isError, error, refresh, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { products, isLoading: productsLoading } = useProducts();
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);

@@ -41,7 +41,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { usersApi } from '@/lib/api';
-import { useResourceUsers, useResourceRoles } from '@/lib/hooks';
+import { useUsers, useRoles } from '@/lib/hooks';
 
 /**
  * Resource type for role assignment
@@ -104,8 +104,8 @@ export function ResourceRoleAssignment({
   const [successMessage, setSuccessMessage] = useState<string>('');
 
   // Fetch available users and roles
-  const { users, isLoading: usersLoading, error: usersError } = useResourceUsers();
-  const { roles, isLoading: rolesLoading, error: rolesError } = useResourceRoles();
+  const { users, isLoading: usersLoading, error: usersError } = useUsers();
+  const { roles, isLoading: rolesLoading, error: rolesError } = useRoles();
 
   // Reset form when resource changes or dialog opens
   useEffect(() => {

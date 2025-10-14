@@ -42,7 +42,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import { useResourceUsers } from '@/lib/hooks';
+import { useUsers } from '@/lib/hooks';
 import { useTenant } from '@/lib/context/TenantContext';
 
 /**
@@ -155,7 +155,7 @@ export function ResourcePermissionTester({
   const [error, setError] = useState<string>('');
 
   const { currentTenant } = useTenant();
-  const { users, isLoading: usersLoading, error: usersError } = useResourceUsers();
+  const { users, isLoading: usersLoading, error: usersError } = useUsers();
 
   // Reset form when dialog opens
   useEffect(() => {

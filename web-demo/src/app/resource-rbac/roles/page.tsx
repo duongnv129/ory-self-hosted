@@ -1,5 +1,5 @@
 /**
- * Resource-Scoped Roles Management Page
+ * Resource-Scoped Roleimport { useRoles } from "@/lib/hooks/useRoles"; Management Page
  * Full CRUD interface for managing tenant + resource-scoped roles
  *
  * Next.js Pro Patterns Applied:
@@ -25,7 +25,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useResourceRoles } from '@/lib/hooks/useResourceRoles';
+import { useRoles } from '@/lib/hooks/useRoles';
 import { useTenant } from '@/lib/context/TenantContext';
 import { useResourceTypes, useAvailableActions } from '@/lib/hooks/useMetadata';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -122,7 +122,7 @@ function ResourceRolesPageContent() {
     updateRole,
     deleteRole,
     getRoleWithPermissions,
-  } = useResourceRoles();
+  } = useRoles();
 
   // Fetch resource types and actions from API
   const { resourceTypes, isLoading: resourceTypesLoading, isError: resourceTypesError } = useResourceTypes();

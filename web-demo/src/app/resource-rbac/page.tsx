@@ -10,18 +10,18 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, Alert, AlertDescription } from '@/components/ui';
-import { useResourceUsers } from '@/lib/hooks/useResourceUsers';
-import { useResourceProducts } from '@/lib/hooks/useResourceProducts';
-import { useResourceCategories } from '@/lib/hooks/useResourceCategories';
+import { useUsers } from '@/lib/hooks';
+import { useProducts } from '@/lib/hooks';
+import { useCategories } from '@/lib/hooks';
 import { useTenant } from '@/lib/context/TenantContext';
 import { Shield, Package, FolderOpen, Users, ArrowRight, AlertCircle, Building, Globe } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/loading';
 
 export default function ResourceRBACOverviewPage() {
   const { currentTenant } = useTenant();
-  const { users, isLoading: usersLoading } = useResourceUsers();
-  const { products, isLoading: productsLoading } = useResourceProducts();
-  const { categories, isLoading: categoriesLoading } = useResourceCategories();
+  const { users, isLoading: usersLoading } = useUsers();
+  const { products, isLoading: productsLoading } = useProducts();
+  const { categories, isLoading: categoriesLoading } = useCategories();
 
   const isLoading = usersLoading || productsLoading || categoriesLoading;
 
