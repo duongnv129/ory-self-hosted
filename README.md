@@ -20,9 +20,10 @@ A complete, production-ready implementation of the Ory Stack showcasing identity
 - **Mailslurper** - Email testing server for development
 
 ### Demo Applications
-- **Web Demo** - Next.js 14 application showcasing three RBAC models with modern UI (TypeScript + Tailwind CSS)
+- **Web Demo** - Next.js 14 application showcasing four authorization models with modern UI (TypeScript + Tailwind CSS)
 - **Multi-Tenancy Demo** - Express.js 5 + TypeScript application demonstrating tenant isolation with CRUD APIs
-- **RBAC Test Suites** - Comprehensive Postman collections for all three authorization models
+- **AuthZ Orchestrator** - Go-based hybrid authorization service combining structural (Keto) + contextual (OPA) policies
+- **RBAC Test Suites** - Comprehensive Postman collections for all authorization models
 
 ## 🚀 Quick Start
 
@@ -86,9 +87,9 @@ Expected output:
 
 ## 📚 Architecture
 
-### Three RBAC Authorization Models
+### Four Authorization Models
 
-This project demonstrates three distinct authorization approaches:
+This project demonstrates four distinct authorization approaches:
 
 1. **Simple RBAC** (`/api/simple-rbac/*` → namespace: `simple-rbac`)
    - Global role hierarchy: Admin > Moderator > Customer
@@ -105,12 +106,18 @@ This project demonstrates three distinct authorization approaches:
    - Tenant + resource-level authorization
    - Best for: Complex applications requiring granular access control
 
+4. **AuthZ Orchestrator** (`/api/authz-orchestrator/*` → hybrid authorization)
+   - Combines structural permissions (Keto) with contextual policies (OPA)
+   - Dynamic authentication assurance levels (AAL 1-3)
+   - Working hours enforcement, risk-based escalation, classification-based access
+   - Best for: Enterprise applications requiring both RBAC and contextual policies
+
 ### System Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ Web Demo (Next.js 14) - Port 3000                               │
-│ Three RBAC model demonstrations with modern UI                   │
+│ Four authorization model demonstrations with modern UI            │
 └──────────────────┬───────────────────────────────────────────────┘
                    │ HTTP
                    ▼
@@ -118,24 +125,24 @@ This project demonstrates three distinct authorization approaches:
 │ Oathkeeper (API Gateway) - Proxy: 4455 | API: 4456              │
 │ • Route-based namespace selection (/api/{model}/* → namespace)   │
 │ • Session extraction (cookie/bearer)                             │
-│ • Keto authorization checks                                      │
+│ • Keto authorization checks + AuthZ Orchestrator routing        │
 │ • Header injection (X-User-Id, X-Tenant-Id, X-Keto-Namespace)   │
-└──────┬──────────────────┬───────────────────┬────────────────────┘
-       │                  │                   │
-       ▼                  ▼                   ▼
-┌─────────────────┐  ┌──────────────────┐  ┌─────────────────────┐
-│ Kratos          │  │ Keto             │  │ Multi-Tenancy Demo  │
-│ Public: 4433    │  │ Read: 4466       │  │ Express.js: 9000    │
-│ Admin: 4434     │  │ Write: 4467      │  │ (TypeScript)        │
-│ UI: 4455        │  │                  │  │ In-memory storage   │
-└────────┬────────┘  └────────┬─────────┘  └─────────────────────┘
-         │                    │
-         └──────────┬─────────┘
-                    ▼
-┌──────────────────────────────────────────────────────────────────┐
-│ PostgreSQL: 5432                                                 │
-│ Databases: kratos (identities), keto (relation-tuples)           │
-└──────────────────────────────────────────────────────────────────┘
+└──┬─────────────────┬───────────────────┬───────────────┬─────────┘
+   │                 │                   │               │
+   ▼                 ▼                   ▼               ▼
+┌─────────────────┐ ┌──────────────────┐ ┌─────────────────────┐ ┌──────────────────┐
+│ Kratos          │ │ Keto             │ │ Multi-Tenancy Demo  │ │ AuthZ Orchestrator│
+│ Public: 4433    │ │ Read: 4466       │ │ Express.js: 9000    │ │ Go Service: 8080  │
+│ Admin: 4434     │ │ Write: 4467      │ │ (TypeScript)        │ │ Keto + OPA Hybrid│
+│ UI: 4455        │ │                  │ │ In-memory storage   │ │                  │
+└────────┬────────┘ └────────┬─────────┘ └─────────────────────┘ └────────┬─────────┘
+         │                   │                                           │
+         └──────────┬────────┴─────────────┬─────────────────────────────┘
+                    ▼                      ▼
+┌──────────────────────────────────────────┐ ┌─────────────────────────────┐
+│ PostgreSQL: 5432                         │ │ OPA (Open Policy Agent)     │
+│ Databases: kratos, keto                  │ │ Contextual Policy Engine    │
+└──────────────────────────────────────────┘ └─────────────────────────────┘
 ```
 
 ### Request Flow
@@ -154,7 +161,9 @@ Web Demo/Client → Oathkeeper (Gateway)
 
 | Service | Endpoint | Purpose |
 |---------|----------|---------|
-| **Web Demo** | http://localhost:3000 | Next.js UI showcasing three RBAC models |
+| **Web Demo** | http://localhost:3000 | Next.js UI showcasing four authorization models |
+| **AuthZ Orchestrator** | http://localhost:8080 | Hybrid authorization service (Keto + OPA) |
+| **OPA Policy Engine** | http://localhost:8181 | Open Policy Agent for contextual policies |
 | Kratos Public API | http://127.0.0.1:4433 | Authentication flows |
 | Kratos Admin API | http://127.0.0.1:4434 | Identity management |
 | Keto Read API | http://localhost:4466 | Query permissions |
@@ -225,7 +234,7 @@ make reset              # Full reset and restart
 
 ### Web Demo (Interactive Testing)
 
-The Web Demo provides an interactive UI to test all three RBAC models:
+The Web Demo provides an interactive UI to test all four authorization models:
 
 ```bash
 # Start all services
@@ -238,6 +247,7 @@ cd web-demo && pnpm install && pnpm dev
 # - Simple RBAC: /simple-rbac
 # - Tenant-Centric RBAC: /tenant-rbac
 # - Resource-Scoped RBAC: /resource-rbac
+# - AuthZ Orchestrator: /authz-orchestrator (hybrid authorization with real-time policy testing)
 ```
 
 ### RBAC Authorization Testing (Postman)
@@ -297,6 +307,8 @@ curl -H "x-tenant-id: tenant-a" http://localhost:9000/roles/list
 ### Component Documentation
 - [CLAUDE.md](./CLAUDE.md) - Complete developer guide for Claude Code
 - [Web Demo Guide](./web-demo/README.md) - Next.js application documentation
+- [AuthZ Orchestrator Guide](./authz-orchestrator/README.md) - Hybrid authorization service documentation
+- [Policy Development Guide](./authz-orchestrator/POLICY_DEVELOPMENT_GUIDE.md) - Adding custom contextual policies
 - [Oathkeeper Guide](./oathkeeper/README.md) - Detailed API gateway configuration guide
 - [Simple RBAC Test Suite](./keto-zanziban-simple-rbac/README.md) - Global RBAC testing
 - [Tenant-Centric RBAC](./keto-zanzibar-multi-tenancy-rbac/README.md) - Multi-tenant RBAC testing

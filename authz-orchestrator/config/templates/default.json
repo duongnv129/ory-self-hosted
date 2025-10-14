@@ -1,0 +1,114 @@
+{
+  "templates": [
+    {
+      "name": "working_hours",
+      "description": "Restrict actions outside allowed hours",
+      "parameters": [
+        {
+          "name": "blocks",
+          "type": "array",
+          "description": "Time blocks defining allowed hours",
+          "required": true,
+          "default": [
+            {
+              "days": ["MON", "TUE", "WED", "THU", "FRI"],
+              "start_hour": 8,
+              "end_hour": 18
+            }
+          ]
+        },
+        {
+          "name": "override_subjects",
+          "type": "array",
+          "description": "Users who can bypass working hours restrictions",
+          "required": false,
+          "default": []
+        }
+      ]
+    },
+    {
+      "name": "action_time_windows",
+      "description": "Restrict specific actions to time windows",
+      "parameters": [
+        {
+          "name": "actions",
+          "type": "object",
+          "description": "Action-specific time windows",
+          "required": true,
+          "default": {}
+        },
+        {
+          "name": "freezes",
+          "type": "array", 
+          "description": "Maintenance freeze periods",
+          "required": false,
+          "default": []
+        },
+        {
+          "name": "emergency_override",
+          "type": "boolean",
+          "description": "Allow emergency override of all restrictions",
+          "required": false,
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "assurance",
+      "description": "Risk-based authentication assurance",
+      "parameters": [
+        {
+          "name": "base_action_aal",
+          "type": "object",
+          "description": "Base AAL requirements per action",
+          "required": true,
+          "default": {
+            "file.read": 1,
+            "file.edit": 2,
+            "file.approve": 2,
+            "file.export": 2
+          }
+        },
+        {
+          "name": "risk_escalation_rules",
+          "type": "array",
+          "description": "Rules for escalating AAL based on risk",
+          "required": false,
+          "default": [
+            {
+              "match": {"risk": "HIGH"},
+              "required_aal": 3
+            }
+          ]
+        },
+        {
+          "name": "accepted_factors",
+          "type": "object",
+          "description": "Accepted authentication factors per AAL",
+          "required": true,
+          "default": {
+            "2": ["totp", "passkey"],
+            "3": ["fido2_key"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "clearance",
+      "description": "Enforce clearance levels for classified data",
+      "parameters": [
+        {
+          "name": "clearance_offsets",
+          "type": "object",
+          "description": "Required clearance levels per classification",
+          "required": true,
+          "default": {
+            "confidential": 3,
+            "internal": 2,
+            "public": 0
+          }
+        }
+      ]
+    }
+  ]
+}

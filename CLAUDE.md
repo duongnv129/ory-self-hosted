@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A production-ready Ory Stack self-hosted implementation demonstrating three distinct authorization models. This is a **TypeScript/Node.js project** (Express.js backend, Next.js frontend) with Docker-based Ory services (Kratos, Keto, Oathkeeper).
+A production-ready Ory Stack self-hosted implementation demonstrating four distinct authorization models. This includes **TypeScript/Node.js projects** (Express.js backend, Next.js frontend), **Go-based AuthZ Orchestrator**, and Docker-based Ory services (Kratos, Keto, Oathkeeper).
 
 ### Core Components
 
@@ -12,15 +12,17 @@ A production-ready Ory Stack self-hosted implementation demonstrating three dist
 - **Ory Keto**: Zanzibar-style fine-grained authorization
 - **Ory Oathkeeper**: API gateway with authentication/authorization pipeline
 - **PostgreSQL 18**: Shared database for Ory services
+- **AuthZ Orchestrator**: Go-based hybrid authorization service (port 8080) combining Keto + OPA
+- **Open Policy Agent (OPA)**: Contextual policy engine for advanced authorization logic
 - **Multi-tenancy Demo**: Express.js + TypeScript backend API (port 9000) with in-memory/file-based storage
-- **Web Demo**: Next.js 14 application demonstrating three RBAC models
-- **Test Suites**: Comprehensive Postman collections for each RBAC model
+- **Web Demo**: Next.js 14 application demonstrating four authorization models
+- **Test Suites**: Comprehensive Postman collections for each authorization model
 
 ## Architecture
 
-### Three Authorization Models
+### Four Authorization Models
 
-This project demonstrates three distinct Keto namespace configurations via Oathkeeper routing:
+This project demonstrates four distinct authorization approaches:
 
 1. **Simple RBAC** (`/api/simple-rbac/*` → namespace: `simple-rbac`)
    - Global role hierarchy: Admin > Moderator > Customer
@@ -37,6 +39,12 @@ This project demonstrates three distinct Keto namespace configurations via Oathk
    - Tenant + resource-level authorization
    - Test suite: `keto-zanziban-multi-tenancy-rbac-per-resource/`
 
+4. **AuthZ Orchestrator** (`/api/authz-orchestrator/*` → hybrid authorization)
+   - Combines structural permissions (Keto) with contextual policies (OPA)
+   - Authentication Assurance Levels (AAL 1-3) with step-up flows
+   - Working hours enforcement, risk-based escalation, classification-based access
+   - Real-time policy evaluation with Go service + OPA engine
+
 ### Service Stack
 
 All services communicate via Docker network (`ory-network`):
@@ -44,7 +52,7 @@ All services communicate via Docker network (`ory-network`):
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Next.js Web Demo (3000)                                      │
-│ - Three RBAC model demos                                     │
+│ - Four authorization model demos                             │
 │ - Kratos session integration                                 │
 └──────────────────────────────────────────────────────────────┘
                            ↓
@@ -139,26 +147,26 @@ make reset              # Full reset and restart
 
 ### Direct Docker Compose Commands
 
-Each service has its own docker-compose.yaml in its subdirectory:
+Each service has its own docker compose.yaml in its subdirectory:
 
 ```bash
 # Start complete stack (from root)
-cd postgres && docker-compose up -d
-cd kratos && docker-compose up -d
-cd keto && docker-compose up -d
-cd oathkeeper && docker-compose up -d
+cd postgres && docker compose up -d
+cd kratos && docker compose up -d
+cd keto && docker compose up -d
+cd oathkeeper && docker compose up -d
 
 # Or start individual services
-cd kratos && docker-compose up -d
-cd keto && docker-compose up -d
+cd kratos && docker compose up -d
+cd keto && docker compose up -d
 
 # View logs
-docker-compose -f kratos/docker-compose.yaml logs -f kratos
-docker-compose -f keto/docker-compose.yaml logs -f keto
+docker compose -f kratos/docker compose.yaml logs -f kratos
+docker compose -f keto/docker compose.yaml logs -f keto
 
 # Rebuild after config changes
-cd kratos && docker-compose up -d --force-recreate kratos
-cd keto && docker-compose up -d --force-recreate keto
+cd kratos && docker compose up -d --force-recreate kratos
+cd keto && docker compose up -d --force-recreate keto
 ```
 
 ### Multi-Tenancy Demo (TypeScript)
@@ -264,20 +272,20 @@ make web-demo-type-check   # Type check
 
 1. Edit `kratos/config/kratos.yml` for service settings
 2. Edit `kratos/config/identity.schema.json` for user schema
-3. Restart: `cd kratos && docker-compose up -d --force-recreate kratos`
+3. Restart: `cd kratos && docker compose up -d --force-recreate kratos`
 4. Database migrations run automatically via `kratos-migrate` service
 
 ### Keto
 
 1. Edit `keto/config/keto.yml` for namespaces and settings
-2. Restart: `cd keto && docker-compose up -d --force-recreate keto`
+2. Restart: `cd keto && docker compose up -d --force-recreate keto`
 3. Database migrations run automatically via `keto-migrate` service
 
 ### Oathkeeper
 
 1. Edit `oathkeeper/config/oathkeeper.yml` for authenticators/authorizers
 2. Edit `oathkeeper/config/access-rules.yml` for routing rules
-3. Restart: `cd oathkeeper && docker-compose up -d --force-recreate oathkeeper`
+3. Restart: `cd oathkeeper && docker compose up -d --force-recreate oathkeeper`
 
 ## Testing Authorization (Keto)
 
@@ -492,14 +500,14 @@ make logs-postgres
 ### Port conflicts
 
 - Kratos UI (4455) conflicts with Oathkeeper proxy (4455)
-- To use Oathkeeper, stop Kratos UI or change ports in docker-compose.yaml
+- To use Oathkeeper, stop Kratos UI or change ports in docker compose.yaml
 
 ### Config changes not applied
 
 ```bash
 # Force recreate the service
-cd kratos && docker-compose up -d --force-recreate kratos
-cd keto && docker-compose up -d --force-recreate keto
+cd kratos && docker compose up -d --force-recreate kratos
+cd keto && docker compose up -d --force-recreate keto
 
 # Or use make command
 make reload-kratos
@@ -640,7 +648,7 @@ make logs-oathkeeper
 cd multi-tenancy-demo
 # Edit files in src/
 npm run build                             # Compile TypeScript
-docker-compose restart multi-tenancy-demo # Restart container
+docker compose restart multi-tenancy-demo # Restart container
 
 # Web demo
 cd web-demo

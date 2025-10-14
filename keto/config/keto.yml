@@ -20,6 +20,10 @@ namespaces:
   - id: 3
     name: resource-rbac
 
+  # Use Case 4: AuthZ Orchestrator - Structural + Contextual authorization
+  - id: 4
+    name: authz-orchestrator
+
 serve:
   read:
     host: 0.0.0.0

@@ -6,13 +6,13 @@
 
 **Error:**
 ```
-docker-compose: command not found
+docker compose: command not found
 Error: Process completed with exit code 127
 ```
 
 **Cause:** GitHub Actions runners use Docker Compose V2 (`docker compose`) by default.
 
-**Solution:** ✅ Already fixed in workflows. All commands now use `docker compose` instead of `docker-compose`.
+**Solution:** ✅ Already fixed in workflows. All commands now use `docker compose` instead of `docker compose`.
 
 **Local Testing:**
 ```bash
@@ -20,7 +20,7 @@ Error: Process completed with exit code 127
 docker compose up -d
 
 # Or install V2 if you have V1
-brew install docker-compose
+brew install docker compose
 ```
 
 ---
@@ -385,9 +385,9 @@ act -j test
 4. **Test locally:**
    ```bash
    # Replicate CI environment
-   docker compose -f postgres/docker-compose.yaml up -d
-   docker compose -f kratos/docker-compose.yaml up -d
-   docker compose -f keto/docker-compose.yaml up -d
+   docker compose -f postgres/docker compose.yaml up -d
+   docker compose -f kratos/docker compose.yaml up -d
+   docker compose -f keto/docker compose.yaml up -d
    ```
 
 5. **Open an issue:**
