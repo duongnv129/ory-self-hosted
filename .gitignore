@@ -2,3 +2,4 @@
 authz-orchestrator/bin
 authz-orchestrator/vendor
 .idea
+/.claude/settings.local.json

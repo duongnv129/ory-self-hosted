@@ -247,12 +247,22 @@ export default function AuthZOrchestratorPage() {
                     value={request.action}
                     onChange={(e) => setRequest(prev => ({ ...prev, action: e.target.value }))}
                   >
-                    <option value="user.list">user.list</option>
-                    <option value="user.create">user.create</option>
-                    <option value="user.delete">user.delete</option>
-                    <option value="product.list">product.list</option>
-                    <option value="product.create">product.create</option>
-                    <option value="product.delete">product.delete</option>
+                    <optgroup label="User Actions">
+                      <option value="user.list">user.list</option>
+                      <option value="user.create">user.create</option>
+                      <option value="user.delete">user.delete</option>
+                    </optgroup>
+                    <optgroup label="Product Actions">
+                      <option value="product.list">product.list</option>
+                      <option value="product.create">product.create</option>
+                      <option value="product.delete">product.delete</option>
+                    </optgroup>
+                    <optgroup label="Category Actions">
+                      <option value="category.list">category.list</option>
+                      <option value="category.create">category.create</option>
+                      <option value="category.edit">category.edit</option>
+                      <option value="category.delete">category.delete</option>
+                    </optgroup>
                   </select>
                 </div>
 
