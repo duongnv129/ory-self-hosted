@@ -1,3 +1,4 @@
 ./claude
 authz-orchestrator/bin
+authz-orchestrator/vendor
 .idea
