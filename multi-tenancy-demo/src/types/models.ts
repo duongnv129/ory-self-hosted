@@ -100,6 +100,7 @@ export interface CreateUserRequest {
   name: UserName | string;
   tenant_ids?: string[];
   roles?: string[]; // Array of role names to assign to user
+  password?: string; // Optional password for the user
 }
 
 /**

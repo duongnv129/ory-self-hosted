@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
+import { getDefaultTenant, isValidTenant } from '@/lib/config/tenants';
 
 interface TenantContextType {
   currentTenant: string | null;
@@ -29,10 +30,21 @@ export function TenantProvider({ children }: TenantProviderProps) {
   // Load tenant from localStorage on mount
   useEffect(() => {
     const storedTenant = localStorage.getItem(TENANT_STORAGE_KEY);
-    if (storedTenant) {
+
+    if (storedTenant && isValidTenant(storedTenant)) {
+      // Use stored tenant if valid
       setCurrentTenant(storedTenant);
       apiClient.setTenantContext(storedTenant);
+    } else {
+      // Set default tenant if no valid stored tenant
+      const defaultTenant = getDefaultTenant();
+      if (defaultTenant) {
+        setCurrentTenant(defaultTenant.id);
+        localStorage.setItem(TENANT_STORAGE_KEY, defaultTenant.id);
+        apiClient.setTenantContext(defaultTenant.id);
+      }
     }
+
     setIsHydrated(true);
   }, []);
 

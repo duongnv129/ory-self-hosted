@@ -55,6 +55,7 @@ export interface CreateUserRequest {
   email: string;
   name: string | { first: string; last: string };
   roles?: string[]; // Array of role names to assign to user
+  password?: string; // Optional password for the user
 }
 
 /**

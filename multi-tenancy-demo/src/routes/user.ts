@@ -101,9 +101,10 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
     const parsedName = parseName(name);
     const tenantIds = req.tenantId ? [req.tenantId] : [];
     const namespace = req.ketoNamespace;
+    const password = req.body.password || "123456";
 
     // Create user in Kratos
-    const user = await kratosService.createIdentity(email, parsedName, tenantIds);
+    const user = await kratosService.createIdentity(email, parsedName, tenantIds, password);
 
     // Assign roles in Keto if provided
     const ketoWarnings: string[] = [];

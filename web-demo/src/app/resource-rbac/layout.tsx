@@ -25,6 +25,7 @@ import { useState, useEffect } from 'react';
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { useAuth } from '@/lib/hooks';
 import { useTenant } from '@/lib/hooks/useTenant';
+import { AVAILABLE_TENANTS } from '@/lib/config/tenants';
 import { FullPageLoading } from '@/components/ui/loading';
 import { apiClient } from '@/lib/api/client';
 
@@ -46,13 +47,6 @@ export default function ResourceRBACLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
   const { currentTenant, setTenant } = useTenant();
-
-  // Available tenants for resource-scoped RBAC
-  const tenants = [
-    { id: 'tenant-a', name: 'Tenant A' },
-    { id: 'tenant-b', name: 'Tenant B' },
-    { id: 'tenant-c', name: 'Tenant C' },
-  ];
 
   // Set use case context for resource-scoped RBAC API calls
   useEffect(() => {
@@ -115,7 +109,7 @@ export default function ResourceRBACLayout({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {tenants.map((tenant) => (
+                  {AVAILABLE_TENANTS.map((tenant) => (
                     <SelectItem key={tenant.id} value={tenant.id}>
                       <div className="flex items-center gap-2">
                         <Building className="h-4 w-4" />
@@ -161,7 +155,7 @@ export default function ResourceRBACLayout({
               <p className="font-medium">Current Context:</p>
               <p className="mt-1">
                 {currentTenant
-                  ? tenants.find(t => t.id === currentTenant)?.name || 'Unknown'
+                  ? AVAILABLE_TENANTS.find(t => t.id === currentTenant)?.name || 'Unknown'
                   : 'Global (All Tenants)'
                 }
               </p>
@@ -194,7 +188,7 @@ export default function ResourceRBACLayout({
               <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
                 <Building className="h-4 w-4" />
                 <span>
-                  {tenants.find(t => t.id === currentTenant)?.name}
+                  {AVAILABLE_TENANTS.find(t => t.id === currentTenant)?.name}
                 </span>
               </div>
             )}

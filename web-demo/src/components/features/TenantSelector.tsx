@@ -6,6 +6,7 @@
 'use client';
 
 import { useTenant } from '@/lib/hooks';
+import { AVAILABLE_TENANTS } from '@/lib/config/tenants';
 import {
   Select,
   SelectContent,
@@ -15,12 +16,6 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-
-const TENANTS = [
-  { id: 'tenant-a', name: 'Tenant A' },
-  { id: 'tenant-b', name: 'Tenant B' },
-  { id: 'tenant-c', name: 'Tenant C' },
-];
 
 export function TenantSelector() {
   const { currentTenant, setTenant, clearTenant } = useTenant();
@@ -32,7 +27,7 @@ export function TenantSelector() {
           <SelectValue placeholder="Select tenant" />
         </SelectTrigger>
         <SelectContent>
-          {TENANTS.map((tenant) => (
+          {AVAILABLE_TENANTS.map((tenant) => (
             <SelectItem key={tenant.id} value={tenant.id}>
               {tenant.name}
             </SelectItem>

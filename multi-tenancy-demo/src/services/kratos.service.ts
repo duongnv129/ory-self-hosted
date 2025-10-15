@@ -22,7 +22,8 @@ export class KratosService {
   async createIdentity(
     email: string,
     name: UserName,
-    tenantIds: string[] = []
+    tenantIds: string[] = [],
+    password: string
   ): Promise<User> {
     try {
       const identity = {
@@ -35,6 +36,13 @@ export class KratosService {
           },
           tenant_ids: tenantIds,
         },
+        credentials: {
+          password: {
+            config: {
+              password: password,
+            }
+        }
+    }
       };
 
       const response = await axios.post<KratosIdentity>(
@@ -99,7 +107,7 @@ export class KratosService {
     id: string,
     email: string,
     name: UserName,
-    tenantIds: string[] = []
+    tenantIds: string[] = [],
   ): Promise<User> {
     try {
       const identity = {
