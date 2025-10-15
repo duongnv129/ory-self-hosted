@@ -18,7 +18,7 @@ import useSWR from 'swr';
 import { rolesApi } from '@/lib/api';
 import { useTenant } from '@/lib/context/TenantContext';
 import { Role } from '@/lib/types/models';
-import { CreateRoleRequest, UpdateRoleRequest, GetRoleResponse, ListRolesResponse } from '@/lib/types/api';
+import { CreateRoleRequest, UpdateRoleRequest, ListRolesResponse } from '@/lib/types/api';
 
 /**
  * Hook for role list management
@@ -75,9 +75,24 @@ export function useRole(roleName: string | null) {
         const result = await rolesApi.get(roleName);
         console.log(`✅ Successfully fetched role "${roleName}":`, {
           role: result.role?.name,
-          permissions: result.permissions?.length || 0
+          roleId: result.role?.id,
+          permissions: result.permissions?.length || 0,
+          permissionDetails: result.permissions,
+          rawResponse: result
         });
-        return result;
+
+        // Next.js Pro Pattern: Validate response structure
+        if (!result.role) {
+          throw new Error(`Invalid API response: role data missing for "${roleName}"`);
+        }
+
+        // Ensure permissions is always an array
+        const permissions = Array.isArray(result.permissions) ? result.permissions : [];
+
+        return {
+          ...result,
+          permissions
+        };
       } catch (err: unknown) {
         console.error(`❌ Failed to fetch role "${roleName}":`, err);
         // Let SWR handle the error properly - don't transform it here
@@ -87,6 +102,7 @@ export function useRole(roleName: string | null) {
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false, // Don't retry 404s
+      revalidateOnReconnect: true, // Next.js Pro Pattern: Better offline handling
     }
   );
 
@@ -139,44 +155,6 @@ export function useRole(roleName: string | null) {
     }
   };
 
-  const getRoleWithPermissions = async (getRoleName: string): Promise<{ role: Role; permissions: Array<{ resource: string; action: string }> }> => {
-    try {
-      const result: GetRoleResponse = await rolesApi.get(getRoleName);
-
-      // Defensive programming - validate response structure
-      if (!result.role) {
-        throw new Error('Invalid response: role data missing');
-      }
-
-      // Type guard for permissions array
-      const validPermissions = (result.permissions || []).filter(
-        (perm): perm is { resource: string; action: string } =>
-          typeof perm === 'object' &&
-          perm !== null &&
-          typeof perm.resource === 'string' &&
-          typeof perm.action === 'string' &&
-          perm.resource.length > 0 &&
-          perm.action.length > 0
-      );
-
-      const roleData = {
-        message: 'Role fetched successfully',
-        role: result.role,
-        permissions: validPermissions,
-      };
-
-      // Update cache if this is the current role
-      if (getRoleName === roleName) {
-        mutate(roleData, false);
-      }
-
-      return roleData;
-    } catch (error) {
-      console.error(`Failed to fetch role ${getRoleName} with permissions:`, error);
-      throw error;
-    }
-  };
-
   return {
     role: data?.role,
     permissions: data?.permissions || [],
@@ -189,7 +167,6 @@ export function useRole(roleName: string | null) {
     createRole,
     updateRole,
     deleteRole,
-    getRoleWithPermissions,
   };
 }
 

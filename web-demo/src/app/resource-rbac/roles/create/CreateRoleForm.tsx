@@ -32,24 +32,23 @@ import {
   Label,
   Alert,
   AlertDescription,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Badge,
   Checkbox,
 } from '@/components/ui';
 import {
   ArrowLeft,
   Plus,
-  XCircle,
   Shield,
   Info,
   Save,
   Building,
+  Check,
+  Eye,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // Type definitions
 interface FormData {
@@ -118,10 +117,6 @@ export function CreateRoleForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Permission builder state
-  const [selectedResource, setSelectedResource] = useState<string>('');
-  const [selectedActions, setSelectedActions] = useState<string[]>([]);
-
   // Memoized valid roles with defensive programming
   const roles = useMemo(() => filterValidRoles(rawRoles), [rawRoles]);
 
@@ -174,47 +169,12 @@ export function CreateRoleForm() {
     }
   }, [formErrors]);
 
-  const handleInheritanceToggle = useCallback((roleName: string) => {
+  const handleInheritanceToggle = useCallback((roleNameToToggle: string) => {
     setFormData(prev => ({
       ...prev,
-      inheritsFrom: prev.inheritsFrom.includes(roleName)
-        ? prev.inheritsFrom.filter(name => name !== roleName)
-        : [...prev.inheritsFrom, roleName],
-    }));
-  }, []);
-
-  const handleAddPermissions = useCallback(() => {
-    if (!selectedResource || selectedActions.length === 0) {
-      toast.error('Please select a resource and at least one action');
-      return;
-    }
-
-    const newPermissions: PermissionItem[] = selectedActions.map(action => ({
-      resource: selectedResource,
-      action,
-    }));
-
-    setFormData(prev => {
-      // Remove duplicates and add new permissions
-      const existingPermissions = prev.permissions.filter(
-        perm => !(perm.resource === selectedResource && selectedActions.includes(perm.action))
-      );
-      return {
-        ...prev,
-        permissions: [...existingPermissions, ...newPermissions],
-      };
-    });
-
-    // Reset permission builder
-    setSelectedResource('');
-    setSelectedActions([]);
-    toast.success(`Added ${newPermissions.length} permission(s)`);
-  }, [selectedResource, selectedActions]);
-
-  const handleRemovePermission = useCallback((index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: prev.permissions.filter((_, i) => i !== index),
+      inheritsFrom: prev.inheritsFrom.includes(roleNameToToggle)
+        ? prev.inheritsFrom.filter(name => name !== roleNameToToggle)
+        : [...prev.inheritsFrom, roleNameToToggle],
     }));
   }, []);
 
@@ -439,98 +399,248 @@ export function CreateRoleForm() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  <h3 className="text-lg font-medium">Permissions</h3>
+                  <h3 className="text-lg font-medium">Select Permissions</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Add specific permissions for this role. Permissions are inherited from parent roles automatically.
+                  Choose specific permissions for this role
                 </p>
 
-                {/* Permission Builder Form */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
-                  {/* Resource Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="permission-resource">Resource</Label>
-                    <Select value={selectedResource} onValueChange={setSelectedResource}>
-                      <SelectTrigger id="permission-resource">
-                        <SelectValue placeholder="Select resource" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {resourceTypes?.map((resource) => (
-                          <SelectItem key={resource.key} value={resource.key}>
-                            {resource.label}
-                          </SelectItem>
-                        )) || []}
-                      </SelectContent>
-                    </Select>
+                {/* Permission Selection - Advanced UI */}
+                <div className="space-y-4">
+                  {/* Summary Header */}
+                  <div className="flex gap-2 text-sm">
+                    {formData.permissions.length === 0 ? (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        No permissions selected
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                        {formData.permissions.length} permission{formData.permissions.length !== 1 ? 's' : ''} selected
+                      </Badge>
+                    )}
                   </div>
 
-                  {/* Action Selection */}
-                  <div className="space-y-2">
-                    <Label>Actions</Label>
-                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                      {availableActions?.map((action) => (
-                        <div key={action} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`action-${action}`}
-                            checked={selectedActions.includes(action)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedActions(prev => [...prev, action]);
-                              } else {
-                                setSelectedActions(prev => prev.filter(a => a !== action));
-                              }
-                            }}
-                          />
-                          <Label
-                            htmlFor={`action-${action}`}
-                            className="text-sm cursor-pointer"
+                  {/* Resource Sections */}
+                  {resourceTypes && resourceTypes.length > 0 ? (
+                    <div className="space-y-4">
+                      {resourceTypes.map((resourceType) => {
+                        const resource = resourceType.key;
+                        const selectedActionsForResource = availableActions?.filter((action) =>
+                          formData.permissions.some(p => p.resource === resource && p.action === action)
+                        ) || [];
+                        const allActionsForResource = availableActions || [];
+                        const allSelected = selectedActionsForResource.length === allActionsForResource.length && allActionsForResource.length > 0;
+                        const someSelected = selectedActionsForResource.length > 0 && !allSelected;
+
+                        return (
+                          <div
+                            key={resource}
+                            className={cn(
+                              "rounded-lg border transition-colors",
+                              allSelected && "border-green-300 bg-green-50",
+                              someSelected && "border-yellow-300 bg-yellow-50",
+                              !someSelected && !allSelected && "border-gray-200"
+                            )}
                           >
-                            {action}
-                          </Label>
-                        </div>
-                      )) || []}
-                    </div>
-                  </div>
+                            {/* Resource Header */}
+                            <div className="flex items-center justify-between p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "h-6 w-6 p-0 transition-colors rounded border-2 flex items-center justify-center",
+                                      allSelected && "bg-green-600 border-green-600",
+                                      someSelected && "border-yellow-400 bg-yellow-100",
+                                      !someSelected && !allSelected && "border-gray-300 hover:border-gray-400"
+                                    )}
+                                    onClick={() => {
+                                      if (allSelected) {
+                                        // Remove all permissions for this resource
+                                        const updated = formData.permissions.filter(p => p.resource !== resource);
+                                        setFormData(prev => ({ ...prev, permissions: updated }));
+                                      } else {
+                                        // Add all permissions for this resource
+                                        const updated = formData.permissions.filter(p => p.resource !== resource);
+                                        const newPermissions = (availableActions || []).map(action => ({
+                                          resource,
+                                          action,
+                                        }));
+                                        setFormData(prev => ({ ...prev, permissions: [...updated, ...newPermissions] }));
+                                      }
+                                    }}
+                                    title={allSelected ? "Deselect all" : someSelected ? "Select remaining" : "Select all"}
+                                  >
+                                    {allSelected ? (
+                                      <Check className="h-3 w-3 text-white" />
+                                    ) : someSelected ? (
+                                      <Plus className="h-3 w-3 text-yellow-700" />
+                                    ) : (
+                                      <Plus className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                  <Label className="cursor-pointer font-medium capitalize">{resourceType.label}</Label>
+                                </div>
+                                <div className="flex gap-1">
+                                  {selectedActionsForResource.length > 0 && (
+                                    <Badge
+                                      variant={allSelected ? "default" : "outline"}
+                                      className={cn(
+                                        "text-xs",
+                                        allSelected && "bg-green-100 text-green-800 border-green-300",
+                                        someSelected && "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                      )}
+                                    >
+                                      {allSelected ? "All permissions" : `${selectedActionsForResource.length}/${allActionsForResource.length} permissions`}
+                                    </Badge>
+                                  )}
+                                  {selectedActionsForResource.length === 0 && (
+                                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                                      No permissions
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
 
-                  {/* Add Button */}
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={handleAddPermissions}
-                      disabled={!selectedResource || selectedActions.length === 0}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Permissions
-                    </Button>
-                  </div>
+                            {/* Actions Grid */}
+                            <div className="px-4 pb-4">
+                              <div className="grid grid-cols-2 gap-2">
+                                {availableActions?.map((action) => {
+                                  const isSelected = formData.permissions.some(p => p.resource === resource && p.action === action);
+                                  const getActionIcon = (action: string) => {
+                                    switch (action) {
+                                      case 'view': return Eye;
+                                      case 'create': return Plus;
+                                      case 'update': return Edit;
+                                      case 'delete': return Trash2;
+                                      default: return Shield;
+                                    }
+                                  };
+                                  const getActionColor = (action: string) => {
+                                    switch (action) {
+                                      case 'view': return 'text-blue-600';
+                                      case 'create': return 'text-green-600';
+                                      case 'update': return 'text-yellow-600';
+                                      case 'delete': return 'text-red-600';
+                                      default: return 'text-gray-600';
+                                    }
+                                  };
+                                  const ActionIcon = getActionIcon(action);
+                                  const actionColor = getActionColor(action);
+
+                                  return (
+                                    <div
+                                      key={action}
+                                      className={cn(
+                                        'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all duration-200',
+                                        isSelected && 'border-green-300 bg-green-50 shadow-sm',
+                                        !isSelected && 'border-gray-200 hover:border-gray-300 hover:bg-gray-50',
+                                        'hover:shadow-sm'
+                                      )}
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          // Remove permission
+                                          const updated = formData.permissions.filter(
+                                            p => !(p.resource === resource && p.action === action)
+                                          );
+                                          setFormData(prev => ({ ...prev, permissions: updated }));
+                                        } else {
+                                          // Add permission
+                                          const newPermission = { resource, action };
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            permissions: [...prev.permissions, newPermission]
+                                          }));
+                                        }
+                                      }}
+                                      role="button"
+                                      tabIndex={0}
+                                      aria-label={`${isSelected ? 'Remove' : 'Add'} ${action} permission for ${resource}`}
+                                    >
+                                      <div className={cn(
+                                        "flex items-center justify-center w-6 h-6 rounded border-2 transition-colors",
+                                        isSelected && "bg-green-600 border-green-600",
+                                        !isSelected && "border-gray-300 hover:border-gray-400"
+                                      )}>
+                                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                                      </div>
+                                      <ActionIcon className={cn('h-4 w-4 flex-shrink-0', actionColor)} />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                          <Label className="cursor-pointer text-sm font-medium capitalize truncate">
+                                            {action}
+                                          </Label>
+                                          {isSelected && (
+                                            <Badge variant="outline" className="ml-2 text-xs text-green-700 border-green-300">
+                                              Selected
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }) || []}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Shield className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-lg mb-2">No Resources Available</h3>
+                      <p className="text-sm text-muted-foreground">
+                        No system resources are configured at this time.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Quick Actions */}
+                  {resourceTypes && resourceTypes.length > 0 && (
+                    <div className="flex gap-2 border-t pt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          const allPermissions = resourceTypes.flatMap((resourceType) =>
+                            (availableActions || []).map((action) => ({
+                              resource: resourceType.key,
+                              action
+                            }))
+                          );
+                          setFormData(prev => ({ ...prev, permissions: allPermissions }));
+                        }}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, permissions: [] }))}
+                      >
+                        Clear All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          const viewPermissions = resourceTypes.map((resourceType) => ({
+                            resource: resourceType.key,
+                            action: 'view',
+                          }));
+                          setFormData(prev => ({ ...prev, permissions: viewPermissions }));
+                        }}
+                      >
+                        View Only
+                      </Button>
+                    </div>
+                  )}
                 </div>
-
-                {/* Current Permissions List */}
-                {formData.permissions.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Current Permissions</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.permissions.map((permission, index) => (
-                        <Badge
-                          key={`${permission.resource}-${permission.action}-${index}`}
-                          variant="secondary"
-                          className="flex items-center gap-2"
-                        >
-                          {permission.resource}:{permission.action}
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePermission(index)}
-                            className="ml-1 hover:text-red-600 transition-colors"
-                            aria-label={`Remove ${permission.resource}:${permission.action} permission`}
-                          >
-                            <XCircle className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="border-t border-border my-6" />

@@ -112,8 +112,9 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     permissions: currentPermissions,
     updateRole,
     isLoading: roleLoading,
-    isError: roleError
-  } = useRole(roleName); // Get permissions separately from the hook
+    isError: roleError,
+    mutate: refreshRole // Next.js Pro Pattern: Expose refresh capability
+  } = useRole(roleName);
   const { resourceTypes, isLoading: resourceTypesLoading, isError: resourceTypesError } = useResourceTypes();
   const { availableActions, isLoading: actionsLoading, isError: actionsError } = useAvailableActions();
 
@@ -143,31 +144,57 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     });
   }, [roles, roleName]);
 
-  // Initialize form data when role is loaded
+  // Initialize form data when role is loaded - Next.js Pro Pattern: Single Effect with Proper Dependencies
   useEffect(() => {
-    if (currentRole && currentPermissions !== undefined && !isInitialized) {
-      console.log('Initializing form with role:', currentRole, 'and permissions:', currentPermissions); // Debug log
+    // Only initialize if we have both role and permissions data, and haven't initialized yet
+    if (currentRole && currentPermissions !== undefined && !isInitialized && !roleLoading) {
+      console.log('🔄 Initializing form with role data:', {
+        roleName: currentRole.name,
+        permissionsCount: currentPermissions.length,
+        permissions: currentPermissions
+      });
+
       setFormData({
         name: currentRole.name,
         description: currentRole.description || '',
         inheritsFrom: currentRole.inheritsFrom || [],
-        permissions: currentPermissions || [], // Use permissions from the hook
+        permissions: Array.isArray(currentPermissions) ? currentPermissions : [], // Defensive programming
       });
       setIsInitialized(true);
     }
-  }, [currentRole, currentPermissions, isInitialized]);
+  }, [currentRole, currentPermissions, isInitialized, roleLoading]);
 
-  // Debug effect to track role loading state
+  // Reset initialization flag when role name changes - Next.js Pro Pattern: Proper Cleanup
   useEffect(() => {
-    console.log('EditRoleForm Debug:', {
+    setIsInitialized(false);
+    setFormData({
+      name: '',
+      description: '',
+      inheritsFrom: [],
+      permissions: [],
+    });
+  }, [roleName]);
+
+  // Debug effect to track role loading state - Next.js Pro Pattern: Comprehensive Logging
+  useEffect(() => {
+    console.log('🔍 EditRoleForm Debug State:', {
       roleName,
       roleLoading,
-      currentRole: currentRole ? { name: currentRole.name, id: currentRole.id } : null,
-      currentPermissions: currentPermissions ? currentPermissions.length : 0,
       roleError: roleError ? String(roleError) : null,
-      isInitialized
+      currentRole: currentRole ? {
+        name: currentRole.name,
+        id: currentRole.id,
+        description: currentRole.description,
+        inheritsFrom: currentRole.inheritsFrom
+      } : null,
+      currentPermissions: currentPermissions ? {
+        count: currentPermissions.length,
+        details: currentPermissions
+      } : 'undefined',
+      isInitialized,
+      formDataPermissions: formData.permissions.length
     });
-  }, [roleName, roleLoading, currentRole, currentPermissions, roleError, isInitialized]);
+  }, [roleName, roleLoading, currentRole, currentPermissions, roleError, isInitialized, formData.permissions.length]);
 
   // Form validation
   const validateForm = useCallback((): boolean => {
@@ -270,6 +297,10 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
   const isLoadingData = rolesLoading || resourceTypesLoading || actionsLoading || roleLoading;
   const hasErrors = resourceTypesError || actionsError || roleError;
 
+  // Next.js Pro Pattern: Comprehensive Loading States
+  const isDataReady = !isLoadingData && currentRole && currentPermissions !== undefined;
+  const shouldShowForm = isDataReady && isInitialized;
+
   // Early return if no tenant selected
   if (!currentTenant) {
     return (
@@ -281,24 +312,25 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     );
   }
 
-  // Error state
+  // Error state - Next.js Pro Pattern: Early Returns for Clean Code
   if (hasErrors) {
     return (
       <Alert variant="destructive">
         <AlertDescription>
           Failed to load required data. Please refresh the page and try again.
+          {roleError && <div className="mt-2 text-sm">Error: {String(roleError)}</div>}
         </AlertDescription>
       </Alert>
     );
   }
 
-  // Loading state - show loading while any data is being fetched
-  if (isLoadingData) {
+  // Loading state - Next.js Pro Pattern: Comprehensive Loading States
+  if (isLoadingData || !isDataReady) {
     return <FormLoadingSkeleton />;
   }
 
-  // Role not found - check after loading is complete
-  if (!roleLoading && !currentRole) {
+  // Role not found - Next.js Pro Pattern: Better Error Handling
+  if (!roleLoading && !currentRole && isDataReady) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -355,8 +387,8 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     );
   }
 
-  // Don't render form until role is loaded and initialized
-  if (!currentRole || !isInitialized) {
+  // Next.js Pro Pattern: Show form only when data is ready and form is initialized
+  if (!shouldShowForm) {
     return <FormLoadingSkeleton />;
   }
 
@@ -375,7 +407,18 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">Edit Role: {roleName}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">Edit Role: {roleName}</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshRole()}
+              disabled={roleLoading}
+              className="ml-auto"
+            >
+              {roleLoading ? 'Refreshing...' : 'Refresh Data'}
+            </Button>
+          </div>
           <p className="text-muted-foreground">
             Modify permissions and inheritance settings for this role.
           </p>
@@ -387,9 +430,21 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
               Role Details
+              {/* Debug Info - Next.js Pro Pattern: Development Aids */}
+              {process.env.NODE_ENV === 'development' && (
+                <Badge variant="outline" className="ml-auto text-xs">
+                  Permissions: {formData.permissions.length}
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
               Update the basic information and configuration for this role.
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Debug: Role loaded with {currentPermissions?.length || 0} permissions,
+                  form initialized: {isInitialized ? 'Yes' : 'No'}
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
