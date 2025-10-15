@@ -3,7 +3,15 @@
  * Full CRUD interface for managing tenant + resource-scoped roles
  * Refactored to use dedicated pages instead of dialogs for better UX and SEO
  *
- * Next.js Pro Patterns Applied:
+ * Next.js                  <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Role Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Inherits From</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>rns Applied:
  * - Client Component with proper state management
  * - Page-based navigation instead of modal dialogs
  * - TypeScript interfaces for all props and data
@@ -49,7 +57,6 @@ import {
   Shield,
   Edit,
   Trash2,
-  Eye,
   Globe,
   Building,
 } from 'lucide-react';
@@ -98,8 +105,8 @@ export default function RolesPage() {
 
   // Navigation handlers - removed unused handleCreateRole since we use Link instead
 
-  const handleViewRole = useCallback((role: Role) => {
-    // For now, just navigate to edit - can implement view page later if needed
+  const handleEditRole = useCallback((role: Role) => {
+    // Navigate to edit page
     router.push(`/resource-rbac/roles/${encodeURIComponent(role.name)}/edit`);
   }, [router]);
 
@@ -218,7 +225,6 @@ export default function RolesPage() {
                     <TableRow>
                       <TableHead>Role Name</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Permissions</TableHead>
                       <TableHead>Inherits From</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -229,11 +235,6 @@ export default function RolesPage() {
                         <TableCell className="font-medium">{role.name}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {role.description || 'No description'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {role.permissions?.length || 0} permissions
-                          </Badge>
                         </TableCell>
                         <TableCell>
                           {role.inheritsFrom && role.inheritsFrom.length > 0 ? (
@@ -253,19 +254,10 @@ export default function RolesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleViewRole(role)}
-                              title="View details"
+                              onClick={() => handleEditRole(role)}
+                              title="Edit role"
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                            >
-                              <Link href={`/resource-rbac/roles/${encodeURIComponent(role.name)}/edit`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
