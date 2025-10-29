@@ -17,29 +17,35 @@ import {
 } from 'lucide-react';
 
 export interface ResourceType {
-  key: string;
+  key: string; // e.g., "product:items", "category:items"
   label: string;
   icon: LucideIcon;
+  description?: string;
+  defaultRoles?: string[]; // Default role hierarchy for this resource type
 }
 
 // Icon mapping for different resource types
 const RESOURCE_ICONS: Record<string, LucideIcon> = {
+  'product:items': Package,
+  'category:items': FolderOpen,
+  // Legacy support
   products: Package,
   categories: FolderOpen,
-  users: Users,
-  orders: FileText,
-  settings: Settings,
-  databases: Database,
 };
 
 // Resource label mapping
 const RESOURCE_LABELS: Record<string, string> = {
+  'product:items': 'Products',
+  'category:items': 'Categories',
+  // Legacy support
   products: 'Products',
   categories: 'Categories',
-  users: 'Users',
-  orders: 'Orders',
-  settings: 'Settings',
-  databases: 'Databases',
+};
+
+// Default role hierarchies per resource type following Alice's model
+const DEFAULT_ROLE_HIERARCHIES: Record<string, string[]> = {
+  'product:items': ['admin', 'moderator', 'customer'], // admin -> moderator -> customer
+  'category:items': ['admin', 'moderator', 'customer'], // admin -> moderator -> customer
 };
 
 /**
@@ -72,14 +78,41 @@ export function useResourceTypes() {
   const { metadata, isLoading, isError, error } = useMetadata();
 
   const resourceTypes = useMemo<ResourceType[]>(() => {
-    if (!metadata?.resources) return [];
+    if (!metadata?.resources) {
+      // Fallback to default resource types following Alice's model
+      // Use simple names (product, category) - :items suffix added only in Keto layer
+      return [
+        {
+          key: 'product',
+          label: 'Products',
+          icon: Package,
+          description: 'Product catalog and inventory management',
+          defaultRoles: ['admin', 'moderator', 'customer'],
+        },
+        {
+          key: 'category',
+          label: 'Categories',
+          icon: FolderOpen,
+          description: 'Product categorization and organization',
+          defaultRoles: ['admin', 'moderator', 'customer'],
+        },
+      ];
+    }
 
-    return metadata.resources.map(resource => ({
-      key: resource.resource,
-      label: RESOURCE_LABELS[resource.resource] ||
-             resource.resource.charAt(0).toUpperCase() + resource.resource.slice(1),
-      icon: RESOURCE_ICONS[resource.resource] || Database,
-    }));
+    return metadata.resources.map(resource => {
+      // Use simple resource name as-is (metadata API already returns "product", "category")
+      const resourceKey = resource.resource;
+
+      return {
+        key: resourceKey,
+        label: RESOURCE_LABELS[`${resourceKey}:items`] ||
+               RESOURCE_LABELS[resourceKey] ||
+               resourceKey.charAt(0).toUpperCase() + resourceKey.slice(1) + 's',
+        icon: RESOURCE_ICONS[`${resourceKey}:items`] || RESOURCE_ICONS[resourceKey] || Database,
+        description: `Manage ${(RESOURCE_LABELS[`${resourceKey}:items`] || resourceKey).toLowerCase()}`,
+        defaultRoles: DEFAULT_ROLE_HIERARCHIES[`${resourceKey}:items`] || ['admin', 'moderator', 'customer'],
+      };
+    });
   }, [metadata]);
 
   return {

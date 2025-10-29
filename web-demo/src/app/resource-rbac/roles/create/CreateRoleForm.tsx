@@ -21,6 +21,9 @@ import { useTenant } from '@/lib/context/TenantContext';
 import { useResourceTypes, useAvailableActions } from '@/lib/hooks/useMetadata';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FormLoadingSkeleton } from '@/components/loading';
+import { AliceHierarchyPresets } from '@/components/roles/AliceHierarchyPresets';
+import { Permission, ResourceUtils } from '@/lib/types/models'; // Import centralized types
+import { CreateRoleRequest } from '@/lib/types/api'; // Import API types
 import {
   Card,
   CardContent,
@@ -34,6 +37,11 @@ import {
   AlertDescription,
   Badge,
   Checkbox,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui';
 import {
   ArrowLeft,
@@ -46,6 +54,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -54,28 +63,18 @@ import { cn } from '@/lib/utils';
 interface FormData {
   name: string;
   description: string;
+  resource: string; // Resource this role applies to (e.g., "product", "category")
   inheritsFrom: string[];
-  permissions: PermissionItem[];
-}
-
-interface PermissionItem {
-  resource: string;
-  action: string;
-}
-
-interface CreateRoleRequest {
-  name: string;
-  description?: string;
-  inheritsFrom?: string[];
-  permissions?: PermissionItem[];
+  permissions: Permission[]; // Use centralized Permission type
 }
 
 interface Role {
   id: string;
   name: string;
   description?: string;
+  resource?: string; // Resource this role applies to
   inheritsFrom?: string[];
-  permissions?: PermissionItem[];
+  permissions?: Permission[]; // Use centralized Permission type
   tenantId?: string;
 }
 
@@ -101,15 +100,25 @@ const filterValidRoles = (roles: unknown[]): Role[] => {
 export function CreateRoleForm() {
   const router = useRouter();
   const { currentTenant } = useTenant();
-  const { roles: rawRoles, isLoading: rolesLoading, mutate: mutateRolesList } = useRoles();
+  const { roles: rawRoles, isLoading: rolesLoading, mutate: mutateRolesList, isError: rolesError } = useRoles();
   const { createRole } = useRole(null); // Use useRole for role operations
   const { resourceTypes, isLoading: resourceTypesLoading, isError: resourceTypesError } = useResourceTypes();
   const { availableActions, isLoading: actionsLoading, isError: actionsError } = useAvailableActions();
+
+  // Debug: Log tenant context and roles data
+  console.log('🔍 CreateRoleForm state:', {
+    currentTenant,
+    rawRoles,
+    rawRolesLength: rawRoles?.length || 0,
+    rolesLoading,
+    rolesError: rolesError ? String(rolesError) : null,
+  });
 
   // Form state management
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
+    resource: 'product', // Default to product (simple name)
     inheritsFrom: [],
     permissions: [],
   });
@@ -120,16 +129,51 @@ export function CreateRoleForm() {
   // Memoized valid roles with defensive programming
   const roles = useMemo(() => filterValidRoles(rawRoles), [rawRoles]);
 
-  // Available roles for inheritance (excluding current role name)
+  // Available roles for inheritance (excluding current role name and filtering by resource type)
   const availableRoles = useMemo(() => {
-    return roles.filter((role) => {
+    console.log('🔍 Computing availableRoles for resource-scoped inheritance:', {
+      rawRoles,
+      roles,
+      rolesCount: roles.length,
+      formDataName: formData.name,
+      formDataResource: formData.resource,
+      rolesLoading,
+      currentTenant,
+    });
+
+    const filtered = roles.filter((role) => {
       if (!isValidRole(role)) {
         console.warn('Invalid role in availableRoles filter:', role);
         return false;
       }
-      return role.name !== formData.name;
+
+      // Exclude current role name
+      if (role.name === formData.name) {
+        return false;
+      }
+
+      // NEW: Only include roles from the same resource type for inheritance
+      // Following Alice's model: admin on products can only inherit from moderator/customer on products
+      if (role.resource && role.resource !== formData.resource) {
+        console.log(`🚫 Excluding role "${role.name}" - different resource: ${role.resource} vs ${formData.resource}`);
+        return false;
+      }
+
+      return true;
     });
-  }, [roles, formData.name]);
+
+    console.log('✅ Filtered availableRoles for resource-scoped inheritance:', {
+      count: filtered.length,
+      resource: formData.resource,
+      roles: filtered.map(r => ({
+        name: r.name,
+        id: r.id,
+        resource: r.resource
+      })),
+    });
+
+    return filtered;
+  }, [roles, formData.name, formData.resource, rawRoles, rolesLoading, currentTenant]);
 
   // Form validation
   const validateForm = useCallback((): boolean => {
@@ -170,13 +214,29 @@ export function CreateRoleForm() {
   }, [formErrors]);
 
   const handleInheritanceToggle = useCallback((roleNameToToggle: string) => {
-    setFormData(prev => ({
-      ...prev,
-      inheritsFrom: prev.inheritsFrom.includes(roleNameToToggle)
+    console.log('🔄 Role inheritance toggle:', {
+      roleNameToToggle,
+      currentInheritance: formData.inheritsFrom,
+      isCurrentlySelected: formData.inheritsFrom.includes(roleNameToToggle),
+    });
+
+    setFormData(prev => {
+      const newInheritsFrom = prev.inheritsFrom.includes(roleNameToToggle)
         ? prev.inheritsFrom.filter(name => name !== roleNameToToggle)
-        : [...prev.inheritsFrom, roleNameToToggle],
-    }));
-  }, []);
+        : [...prev.inheritsFrom, roleNameToToggle];
+
+      console.log('✅ Updated inheritance:', {
+        before: prev.inheritsFrom,
+        after: newInheritsFrom,
+        action: prev.inheritsFrom.includes(roleNameToToggle) ? 'removed' : 'added',
+      });
+
+      return {
+        ...prev,
+        inheritsFrom: newInheritsFrom,
+      };
+    });
+  }, [formData.inheritsFrom]);
 
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
@@ -194,9 +254,18 @@ export function CreateRoleForm() {
       const roleData: CreateRoleRequest = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
+        resource: formData.resource, // NEW: Resource-scoped role creation
         inheritsFrom: formData.inheritsFrom.length > 0 ? formData.inheritsFrom : undefined,
         permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
       };
+
+      console.log('🚀 Creating resource-scoped role with data:', {
+        roleData,
+        resource: formData.resource,
+        scopedName: `${currentTenant}#${formData.resource}#${formData.name.trim()}`,
+        formDataInheritsFrom: formData.inheritsFrom,
+        inheritanceLength: formData.inheritsFrom.length,
+      });
 
       await createRole(roleData);
 
@@ -337,6 +406,51 @@ export function CreateRoleForm() {
                     </p>
                   )}
                 </div>
+
+                {/* Resource Type Selection - NEW for Resource-Scoped RBAC */}
+                <div className="space-y-2">
+                  <Label htmlFor="resource-type" className="required">
+                    Resource Type
+                  </Label>
+                  <Select
+                    value={formData.resource}
+                    onValueChange={(value) => handleInputChange('resource', value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select the resource type this role applies to" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resourceTypes.map((resourceType) => (
+                        <SelectItem key={resourceType.key} value={resourceType.key}>
+                          <div className="flex items-center gap-2">
+                            <resourceType.icon className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">{resourceType.label}</div>
+                              {resourceType.description && (
+                                <div className="text-xs text-muted-foreground">
+                                  {resourceType.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    This role will apply only to {resourceTypes.find(rt => rt.key === formData.resource)?.label.toLowerCase() || 'the selected resource'} in the current tenant.
+                    Following Alice&apos;s hierarchy model: users can have different roles for different resource types.
+                  </p>
+                  {formErrors.resource && (
+                    <p
+                      id="resource-type-error"
+                      className="text-sm text-red-600"
+                      role="alert"
+                    >
+                      {formErrors.resource}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="border-t border-border my-6" />
@@ -348,10 +462,37 @@ export function CreateRoleForm() {
                   <h3 className="text-lg font-medium">Role Inheritance</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Select parent roles that this role should inherit permissions from.
+                  Select parent roles that this role should inherit permissions from within the same resource type.
+                  Following Alice&apos;s hierarchy: inheritance is resource-scoped (e.g., admin on products inherits from moderator on products, not categories).
                 </p>
 
-                {availableRoles.length > 0 ? (
+                {/* Debug Information (Development Only) */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs bg-gray-100 p-2 rounded border">
+                    <strong>Debug Info:</strong><br />
+                    Current Tenant: {currentTenant || 'None'}<br />
+                    Raw Roles Count: {rawRoles?.length || 0}<br />
+                    Available Roles Count: {availableRoles.length}<br />
+                    Roles Loading: {rolesLoading ? 'Yes' : 'No'}<br />
+                    Roles Error: {rolesError ? 'Yes' : 'No'}
+                  </div>
+                )}
+
+                {rolesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm text-muted-foreground">Loading existing roles...</p>
+                    </div>
+                  </div>
+                ) : rolesError ? (
+                  <Alert variant="destructive">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Failed to load existing roles. Please refresh the page and try again.
+                    </AlertDescription>
+                  </Alert>
+                ) : availableRoles.length > 0 ? (
                   <div className="grid gap-3">
                     {availableRoles.map((role) => (
                       <div
@@ -386,8 +527,41 @@ export function CreateRoleForm() {
                 ) : (
                   <Alert>
                     <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      No existing roles available for inheritance. Create some base roles first.
+                    <AlertDescription className="space-y-3">
+                      <p>No existing roles available for inheritance.</p>
+                      <div className="text-sm space-y-2">
+                        {!currentTenant ? (
+                          <p>Please select a tenant from the sidebar to view tenant-specific roles.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            <p>This appears to be your first role in the <strong>{currentTenant}</strong> tenant.</p>
+                            <p>Role inheritance allows you to:</p>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Build hierarchical permission structures</li>
+                              <li>Reuse common permissions across roles</li>
+                              <li>Maintain consistent access control</li>
+                            </ul>
+                            <p>After creating this role, you can:</p>
+                            <ol className="list-decimal list-inside space-y-1 ml-2">
+                              <li>Create additional roles with different permission sets</li>
+                              <li>Return to edit any role to set up inheritance relationships</li>
+                              <li>Build a complete role hierarchy for your organization</li>
+                            </ol>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        {currentTenant && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => mutateRolesList()}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Refresh Roles
+                          </Button>
+                        )}
+                      </div>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -462,10 +636,12 @@ export function CreateRoleForm() {
                                       } else {
                                         // Add all permissions for this resource
                                         const updated = formData.permissions.filter(p => p.resource !== resource);
-                                        const newPermissions = (availableActions || []).map(action => ({
-                                          resource,
-                                          action,
-                                        }));
+                                        const newPermissions = ResourceUtils.createPermissions(
+                                          (availableActions || []).map(action => ({
+                                            resource,
+                                            action,
+                                          }))
+                                        );
                                         setFormData(prev => ({ ...prev, permissions: [...updated, ...newPermissions] }));
                                       }
                                     }}
@@ -547,7 +723,7 @@ export function CreateRoleForm() {
                                           setFormData(prev => ({ ...prev, permissions: updated }));
                                         } else {
                                           // Add permission
-                                          const newPermission = { resource, action };
+                                          const newPermission = ResourceUtils.createPermission(resource, action);
                                           setFormData(prev => ({
                                             ...prev,
                                             permissions: [...prev.permissions, newPermission]
@@ -605,11 +781,13 @@ export function CreateRoleForm() {
                         size="sm"
                         type="button"
                         onClick={() => {
-                          const allPermissions = resourceTypes.flatMap((resourceType) =>
-                            (availableActions || []).map((action) => ({
-                              resource: resourceType.key,
-                              action
-                            }))
+                          const allPermissions = ResourceUtils.createPermissions(
+                            resourceTypes.flatMap((resourceType) =>
+                              (availableActions || []).map((action) => ({
+                                resource: resourceType.key,
+                                action
+                              }))
+                            )
                           );
                           setFormData(prev => ({ ...prev, permissions: allPermissions }));
                         }}
@@ -629,10 +807,12 @@ export function CreateRoleForm() {
                         size="sm"
                         type="button"
                         onClick={() => {
-                          const viewPermissions = resourceTypes.map((resourceType) => ({
-                            resource: resourceType.key,
-                            action: 'view',
-                          }));
+                          const viewPermissions = ResourceUtils.createPermissions(
+                            resourceTypes.map((resourceType) => ({
+                              resource: resourceType.key,
+                              action: 'view',
+                            }))
+                          );
                           setFormData(prev => ({ ...prev, permissions: viewPermissions }));
                         }}
                       >
@@ -676,6 +856,23 @@ export function CreateRoleForm() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Alice's Hierarchy Presets */}
+        <AliceHierarchyPresets
+          currentTenant={currentTenant}
+          onApplyPreset={(preset) => {
+            setFormData(prev => ({
+              ...prev,
+              name: preset.name,
+              description: preset.description,
+              resource: preset.resource,
+              inheritsFrom: preset.inheritsFrom || [],
+              permissions: ResourceUtils.createPermissions(preset.permissions),
+            }));
+            toast.success(`Applied preset: ${preset.name} for ${preset.resource}`);
+          }}
+          className="mt-6"
+        />
       </div>
     </ErrorBoundary>
   );

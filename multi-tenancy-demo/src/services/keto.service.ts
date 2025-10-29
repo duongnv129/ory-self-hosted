@@ -69,40 +69,60 @@ export class KetoService {
 
   /**
    * Get all permissions for a specific role by querying Keto relation tuples
+   * Enhanced for resource-scoped RBAC following Alice's hierarchy model
    *
    * This method queries Keto for all relation tuples where the subject is
-   * the specified role (subject_set with relation "member"). It returns
-   * an array of permissions in the format {resource, action} and filters
-   * out role inheritance relationships (where object starts with "role:").
+   * the specified role. For resource-scoped RBAC, roles follow the format:
+   * tenant#{resource_type}#{role_name} (e.g., "tenant:a#product:items#admin")
    *
    * @param namespace - The Keto namespace to query (e.g., "default")
-   * @param roleName - The name of the role (e.g., "admin", "moderator")
+   * @param roleName - The role name (can be simple "admin" or scoped "tenant:a#product:items#admin")
+   * @param tenantId - Optional tenant ID for resource-scoped queries
+   * @param resourceType - Optional resource type for resource-scoped queries
    * @returns Object containing permissions array and inherited roles array
    *
    * @example
+   * // Simple RBAC
    * const result = await ketoService.getPermissionsForRole("default", "admin");
-   * // Returns: {
-   * //   permissions: [
-   * //     { resource: "product", action: "view" },
-   * //     { resource: "product", action: "create" }
-   * //   ],
-   * //   inheritedRoles: ["moderator", "customer"]
-   * // }
+   *
+   * // Resource-scoped RBAC (Alice's hierarchy)
+   * const result = await ketoService.getPermissionsForRole(
+   *   "default",
+   *   "admin",
+   *   "tenant-a",
+   *   "product:items"
+   * );
    */
   async getPermissionsForRole(
     namespace: string,
-    roleName: string
+    roleName: string,
+    tenantId?: string,
+    resourceType?: string
   ): Promise<{ permissions: Permission[]; inheritedRoles: string[] }> {
     try {
+      // Build role object based on scoping
+      let roleObject: string;
+
+      if (tenantId && resourceType) {
+        // Resource-scoped RBAC: tenant#{resource_type}#{role_name}
+        roleObject = `tenant:${tenantId}#${resourceType}#${roleName}`;
+      } else if (roleName.includes('#')) {
+        // Already scoped role name provided
+        roleObject = roleName;
+      } else {
+        // Simple RBAC: role:admin
+        roleObject = `role:${roleName}`;
+      }
+
       // Query Keto for relation tuples where the subject is this role
-      // Format: subject_set.object = "role:admin" AND subject_set.relation = "member"
+      // Format: subject_set.object = roleObject AND subject_set.relation = "member"
       const response = await axios.get<KetoRelationTuplesResponse>(
         `${this.readUrl}/relation-tuples`,
         {
           params: {
             namespace,
             'subject_set.namespace': namespace,
-            'subject_set.object': `role:${roleName}`,
+            'subject_set.object': roleObject,
             'subject_set.relation': 'member',
           },
         }
@@ -113,15 +133,34 @@ export class KetoService {
       const permissions: Permission[] = [];
 
       response.data.relation_tuples.forEach((tuple) => {
-        if (tuple.object.startsWith('role:')) {
+        if (tuple.object.startsWith('role:') || tuple.object.includes('#')) {
           // This is a role inheritance relationship
-          const inheritedRole = tuple.object.replace('role:', '');
+          // Extract role name from both simple and scoped formats
+          let inheritedRole: string;
+          if (tuple.object.includes('#')) {
+            // Scoped role: tenant:a#product:items#admin -> admin
+            const parts = tuple.object.split('#');
+            inheritedRole = parts[parts.length - 1] || tuple.object;
+          } else {
+            // Simple role: role:admin -> admin
+            inheritedRole = tuple.object.replace('role:', '');
+          }
           inheritedRoles.push(inheritedRole);
         } else {
           // This is a resource permission
-          // Strip ":items" suffix from resource names per TypeScript Pro guidelines
+          // Handle both simple and scoped resource objects
+          let resource: string;
+          if (tuple.object.includes('#')) {
+            // Scoped resource: tenant:a#product:items -> product
+            const parts = tuple.object.split('#');
+            resource = parts[1]?.replace(':items', '') || tuple.object;
+          } else {
+            // Simple resource: product:items -> product
+            resource = tuple.object.replace(':items', '');
+          }
+
           permissions.push({
-            resource: tuple.object.replace(':items', ''),
+            resource,
             action: tuple.relation,
           });
         }
@@ -142,10 +181,17 @@ export class KetoService {
    *
    * @param namespace - The Keto namespace to query
    * @param roleName - The name of the role
+   * @param tenantId - Optional tenant ID for resource-scoped queries
+   * @param resourceType - Optional resource type for resource-scoped queries
    * @returns Array of permissions only
    */
-  async getRolePermissions(namespace: string, roleName: string): Promise<Permission[]> {
-    const result = await this.getPermissionsForRole(namespace, roleName);
+  async getRolePermissions(
+    namespace: string,
+    roleName: string,
+    tenantId?: string,
+    resourceType?: string
+  ): Promise<Permission[]> {
+    const result = await this.getPermissionsForRole(namespace, roleName, tenantId, resourceType);
     return result.permissions;
   }
 
@@ -157,10 +203,17 @@ export class KetoService {
    *
    * @param namespace - The Keto namespace to query
    * @param roleName - The name of the role
+   * @param tenantId - Optional tenant ID for resource-scoped queries
+   * @param resourceType - Optional resource type for resource-scoped queries
    * @returns Array of inherited role names
    */
-  async getRoleInheritance(namespace: string, roleName: string): Promise<string[]> {
-    const result = await this.getPermissionsForRole(namespace, roleName);
+  async getRoleInheritance(
+    namespace: string,
+    roleName: string,
+    tenantId?: string,
+    resourceType?: string
+  ): Promise<string[]> {
+    const result = await this.getPermissionsForRole(namespace, roleName, tenantId, resourceType);
     return result.inheritedRoles;
   }
 
@@ -224,36 +277,74 @@ export class KetoService {
 
   /**
    * Create a relation tuple for role hierarchy (role inheritance)
+   * Enhanced for resource-scoped RBAC following Alice's hierarchy model
    *
    * This establishes that a child role inherits permissions from a parent role
    * using subject sets. For example, "moderator inherits from customer" means
    * moderator members automatically have all customer permissions.
    *
-   * In Zanzibar/Keto model, this creates: role:parentRole member role:childRole
-   * This means "parentRole permissions include childRole members"
+   * For resource-scoped RBAC, inheritance is scoped to the same resource type:
+   * tenant:a#product:items#moderator inherits from tenant:a#product:items#customer
    *
    * @param childRole - The role that inherits (e.g., "moderator")
    * @param parentRole - The role being inherited from (e.g., "customer")
-   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   * @param namespace - The Keto namespace (defaults to "default")
+   * @param tenantId - Optional tenant ID for resource-scoped inheritance
+   * @param resourceType - Optional resource type for resource-scoped inheritance
    *
    * @example
-   * // Moderator inherits Customer permissions
-   * await ketoService.createRoleInheritance("moderator", "customer", "simple-rbac");
-   * // Creates: role:customer member role:moderator (customer perms include moderator members)
+   * // Simple RBAC: Moderator inherits Customer permissions
+   * await ketoService.createRoleInheritance("moderator", "customer", "default");
+   *
+   * // Resource-scoped RBAC: Alice's hierarchy within product scope
+   * await ketoService.createRoleInheritance(
+   *   "moderator", "customer", "default", "tenant-a", "product:items"
+   * );
    */
   async createRoleInheritance(
     childRole: string,
     parentRole: string,
-    namespace: string = 'simple-rbac'
+    namespace: string = 'default',
+    tenantId?: string,
+    resource?: string
   ): Promise<void> {
     try {
+      // Build role objects based on scoping
+      let childRoleObject: string;
+      let parentRoleObject: string;
+
+      if (tenantId && resource) {
+        // Resource-scoped RBAC: Append :items to resource when building tuple
+        const resourceWithSuffix = resource.includes(':') ? resource : `${resource}:items`;
+        childRoleObject = `tenant:${tenantId}#${resourceWithSuffix}#${childRole}`;
+        parentRoleObject = `tenant:${tenantId}#${resourceWithSuffix}#${parentRole}`;
+
+        console.log(`✅ Creating resource-scoped inheritance tuple:`, {
+          child: childRoleObject,
+          parent: parentRoleObject,
+          namespace,
+          tenantId,
+          resource,
+        });
+      } else {
+        // Simple RBAC
+        childRoleObject = `role:${childRole}`;
+        parentRoleObject = `role:${parentRole}`;
+
+        console.log(`✅ Creating simple RBAC inheritance tuple:`, {
+          child: childRoleObject,
+          parent: parentRoleObject,
+          namespace,
+        });
+      }
+
       await axios.put(`${this.writeUrl}/admin/relation-tuples`, {
         namespace,
-        object: `role:${parentRole}`,
+        object: parentRoleObject,
         relation: 'member',
         subject_set: {
           namespace,
-          object: `role:${childRole}`,
+          object: childRoleObject,
           relation: 'member',
         },
       });
@@ -267,33 +358,78 @@ export class KetoService {
 
   /**
    * Create a relation tuple for resource permission
+   * Enhanced for resource-scoped RBAC following Alice's hierarchy model
    *
    * This grants a role permission to perform an action on a resource.
    * Uses subject sets so all role members automatically inherit the permission.
    *
+   * For resource-scoped RBAC, both the resource object and role subject are scoped:
+   * - Resource: tenant:a#product:items
+   * - Role: tenant:a#product:items#admin
+   *
    * @param resource - The resource object (e.g., "product:items", "category:items")
    * @param action - The action/relation (e.g., "view", "create", "update", "delete")
    * @param roleName - The role name (e.g., "admin", "moderator")
-   * @param namespace - The Keto namespace (defaults to "simple-rbac")
+   * @param namespace - The Keto namespace (defaults to "default")
+   * @param tenantId - Optional tenant ID for resource-scoped permissions
+   * @param resourceType - Optional resource type for resource-scoped permissions
    *
    * @example
-   * // Grant moderator role permission to create products
-   * await ketoService.createResourcePermission("product:items", "create", "moderator", "simple-rbac");
+   * // Simple RBAC: Grant moderator role permission to create products
+   * await ketoService.createResourcePermission("product:items", "create", "moderator");
+   *
+   * // Resource-scoped RBAC: Alice's admin role on products in tenant-a
+   * await ketoService.createResourcePermission(
+   *   "product:items", "create", "admin", "default", "tenant-a", "product:items"
+   * );
    */
   async createResourcePermission(
     resource: string,
     action: string,
     roleName: string,
-    namespace: string = 'simple-rbac'
+    namespace: string = 'default',
+    tenantId?: string,
+    resourceScope?: string
   ): Promise<void> {
     try {
+      // Build resource object and role subject based on scoping
+      let resourceObject: string;
+      let roleObject: string;
+
+      if (tenantId && resourceScope) {
+        // Resource-scoped RBAC: Append :items to resourceScope when building tuple
+        const resourceWithSuffix = resourceScope.includes(':') ? resourceScope : `${resourceScope}:items`;
+        resourceObject = `tenant:${tenantId}#${resource}`;
+        roleObject = `tenant:${tenantId}#${resourceWithSuffix}#${roleName}`;
+
+        console.log(`✅ Creating resource-scoped permission tuple:`, {
+          resource: resourceObject,
+          role: roleObject,
+          action,
+          namespace,
+          tenantId,
+          resourceScope,
+        });
+      } else {
+        // Simple RBAC
+        resourceObject = resource;
+        roleObject = `role:${roleName}`;
+
+        console.log(`✅ Creating simple RBAC permission tuple:`, {
+          resource: resourceObject,
+          role: roleObject,
+          action,
+          namespace,
+        });
+      }
+
       await axios.put(`${this.writeUrl}/admin/relation-tuples`, {
         namespace,
-        object: resource,
+        object: resourceObject,
         relation: action,
         subject_set: {
           namespace,
-          object: `role:${roleName}`,
+          object: roleObject,
           relation: 'member',
         },
       });

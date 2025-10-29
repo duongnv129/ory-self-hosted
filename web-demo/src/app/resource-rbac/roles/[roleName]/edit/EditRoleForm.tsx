@@ -22,6 +22,8 @@ import { useTenant } from '@/lib/context/TenantContext';
 import { useResourceTypes, useAvailableActions } from '@/lib/hooks/useMetadata';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FormLoadingSkeleton } from '@/components/loading';
+import { Permission, ResourceUtils } from '@/lib/types/models'; // Import centralized Permission type and ResourceUtils
+import { UpdateRoleRequest as ApiUpdateRoleRequest } from '@/lib/types/api'; // Import API types
 import {
   Card,
   CardContent,
@@ -47,6 +49,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -55,28 +58,21 @@ import { cn } from '@/lib/utils';
 interface FormData {
   name: string;
   description: string;
+  resource: string; // Resource this role applies to (e.g., "product", "category")
   inheritsFrom: string[];
-  permissions: PermissionItem[];
+  permissions: Permission[]; // Use centralized Permission type
 }
 
-interface PermissionItem {
-  resource: string;
-  action: string;
-}
-
-interface UpdateRoleRequest {
-  name: string;
-  description?: string;
-  inheritsFrom?: string[];
-  permissions?: PermissionItem[];
-}
+// Use ApiUpdateRoleRequest directly instead of local definition
+type UpdateRoleRequest = ApiUpdateRoleRequest;
 
 interface Role {
   id: string;
   name: string;
   description?: string;
+  resource?: string; // Resource this role applies to (e.g., "product", "category")
   inheritsFrom?: string[];
-  permissions?: PermissionItem[];
+  permissions?: Permission[]; // Use centralized Permission type
   tenantId?: string;
 }
 
@@ -122,6 +118,7 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
+    resource: 'product', // Default to product (simple name)
     inheritsFrom: [],
     permissions: [],
   });
@@ -157,6 +154,7 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
       setFormData({
         name: currentRole.name,
         description: currentRole.description || '',
+        resource: currentRole.resource || 'product', // Initialize resource from role data
         inheritsFrom: currentRole.inheritsFrom || [],
         permissions: Array.isArray(currentPermissions) ? currentPermissions : [], // Defensive programming
       });
@@ -170,6 +168,7 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     setFormData({
       name: '',
       description: '',
+      resource: 'product', // Default resource on reset
       inheritsFrom: [],
       permissions: [],
     });
@@ -235,13 +234,29 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
   }, [formErrors]);
 
   const handleInheritanceToggle = useCallback((roleNameToToggle: string) => {
-    setFormData(prev => ({
-      ...prev,
-      inheritsFrom: prev.inheritsFrom.includes(roleNameToToggle)
+    console.log('🔄 Role inheritance toggle (edit):', {
+      roleNameToToggle,
+      currentInheritance: formData.inheritsFrom,
+      isCurrentlySelected: formData.inheritsFrom.includes(roleNameToToggle),
+    });
+
+    setFormData(prev => {
+      const newInheritsFrom = prev.inheritsFrom.includes(roleNameToToggle)
         ? prev.inheritsFrom.filter(name => name !== roleNameToToggle)
-        : [...prev.inheritsFrom, roleNameToToggle],
-    }));
-  }, []);
+        : [...prev.inheritsFrom, roleNameToToggle];
+
+      console.log('✅ Updated inheritance (edit):', {
+        before: prev.inheritsFrom,
+        after: newInheritsFrom,
+        action: prev.inheritsFrom.includes(roleNameToToggle) ? 'removed' : 'added',
+      });
+
+      return {
+        ...prev,
+        inheritsFrom: newInheritsFrom,
+      };
+    });
+  }, [formData.inheritsFrom]);
 
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
@@ -262,11 +277,18 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
     setIsSubmitting(true);
     try {
       const roleData: UpdateRoleRequest = {
-        name: formData.name.trim(),
         description: formData.description.trim() || undefined,
+        resource: formData.resource, // Include resource in update request
         inheritsFrom: formData.inheritsFrom.length > 0 ? formData.inheritsFrom : undefined,
         permissions: formData.permissions.length > 0 ? formData.permissions : undefined,
       };
+
+      console.log('🚀 Updating role with data:', {
+        roleName,
+        roleData,
+        formDataInheritsFrom: formData.inheritsFrom,
+        inheritanceLength: formData.inheritsFrom.length,
+      });
 
       await updateRole(roleName, roleData);
 
@@ -498,6 +520,35 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                     </p>
                   )}
                 </div>
+
+                {/* Resource Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="role-resource">
+                    Resource <span className="text-red-500">*</span>
+                  </Label>
+                  <select
+                    id="role-resource"
+                    value={formData.resource}
+                    onChange={(e) => handleInputChange('resource', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    {resourceTypesLoading ? (
+                      <option value="">Loading resources...</option>
+                    ) : resourceTypesError ? (
+                      <option value="">Error loading resources</option>
+                    ) : (
+                      resourceTypes.map((rt) => (
+                        <option key={rt.key} value={rt.key}>
+                          {rt.label}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <p className="text-sm text-muted-foreground">
+                    Select the resource this role applies to. Roles are scoped per resource.
+                  </p>
+                </div>
               </div>
 
               <div className="border-t border-border my-6" />
@@ -512,7 +563,33 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                   Select parent roles that this role should inherit permissions from.
                 </p>
 
-                {availableRoles.length > 0 ? (
+                {/* Debug Information (Development Only) */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs bg-gray-100 p-2 rounded border">
+                    <strong>Debug Info:</strong><br />
+                    Current Tenant: {currentTenant || 'None'}<br />
+                    Available Roles Count: {availableRoles.length}<br />
+                    Roles Loading: {rolesLoading ? 'Yes' : 'No'}<br />
+                    Roles Error: {roleError ? 'Yes' : 'No'}<br />
+                    Current Role: {roleName}
+                  </div>
+                )}
+
+                {rolesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm text-muted-foreground">Loading existing roles...</p>
+                    </div>
+                  </div>
+                ) : roleError ? (
+                  <Alert variant="destructive">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Failed to load existing roles. Please refresh the page and try again.
+                    </AlertDescription>
+                  </Alert>
+                ) : availableRoles.length > 0 ? (
                   <div className="grid gap-3">
                     {availableRoles.map((role) => (
                       <div
@@ -547,8 +624,47 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                 ) : (
                   <Alert>
                     <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      No other roles available for inheritance.
+                    <AlertDescription className="space-y-3">
+                      <p>No other roles available for inheritance.</p>
+                      <div className="text-sm space-y-2">
+                        {!currentTenant ? (
+                          <p>Please select a tenant from the sidebar to view tenant-specific roles.</p>
+                        ) : availableRoles.length === 0 && roles.length <= 1 ? (
+                          <div className="space-y-2">
+                            <p>This appears to be your first role in the <strong>{currentTenant}</strong> tenant.</p>
+                            <p>To set up role inheritance relationships:</p>
+                            <ol className="list-decimal list-inside space-y-1 ml-2">
+                              <li>Create additional base roles (e.g., &quot;viewer&quot;, &quot;editor&quot;)</li>
+                              <li>Return to edit this role to inherit from those base roles</li>
+                              <li>Or create specialized roles that inherit from this one</li>
+                            </ol>
+                          </div>
+                        ) : (
+                          <p>All available roles are either the current role or already related.</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        {currentTenant && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => mutateRolesList()}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Refresh Roles
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push('/resource-rbac/roles/create')}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Create New Role
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -623,10 +739,12 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                                       } else {
                                         // Add all permissions for this resource
                                         const updated = formData.permissions.filter(p => p.resource !== resource);
-                                        const newPermissions = (availableActions || []).map(action => ({
-                                          resource,
-                                          action,
-                                        }));
+                                        const newPermissions = ResourceUtils.createPermissions(
+                                          (availableActions || []).map(action => ({
+                                            resource,
+                                            action,
+                                          }))
+                                        );
                                         setFormData(prev => ({ ...prev, permissions: [...updated, ...newPermissions] }));
                                       }
                                     }}
@@ -708,7 +826,7 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                                           setFormData(prev => ({ ...prev, permissions: updated }));
                                         } else {
                                           // Add permission
-                                          const newPermission = { resource, action };
+                                          const newPermission = ResourceUtils.createPermission(resource, action);
                                           setFormData(prev => ({
                                             ...prev,
                                             permissions: [...prev.permissions, newPermission]
@@ -766,11 +884,13 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                         size="sm"
                         type="button"
                         onClick={() => {
-                          const allPermissions = resourceTypes.flatMap((resourceType) =>
-                            (availableActions || []).map((action) => ({
-                              resource: resourceType.key,
-                              action
-                            }))
+                          const allPermissions = ResourceUtils.createPermissions(
+                            resourceTypes.flatMap((resourceType) =>
+                              (availableActions || []).map((action) => ({
+                                resource: resourceType.key,
+                                action
+                              }))
+                            )
                           );
                           setFormData(prev => ({ ...prev, permissions: allPermissions }));
                         }}
@@ -790,10 +910,12 @@ export function EditRoleForm({ roleName }: EditRoleFormProps) {
                         size="sm"
                         type="button"
                         onClick={() => {
-                          const viewPermissions = resourceTypes.map((resourceType) => ({
-                            resource: resourceType.key,
-                            action: 'view',
-                          }));
+                          const viewPermissions = ResourceUtils.createPermissions(
+                            resourceTypes.map((resourceType) => ({
+                              resource: resourceType.key,
+                              action: 'view',
+                            }))
+                          );
                           setFormData(prev => ({ ...prev, permissions: viewPermissions }));
                         }}
                       >

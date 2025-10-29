@@ -35,7 +35,7 @@ import {
   AlertCircle,
   Shield,
 } from 'lucide-react';
-import { Permission } from '@/lib/types/models';
+import { Permission, ResourceUtils } from '@/lib/types/models';
 import { toast } from 'sonner';
 import { PermissionSelector } from '@/components/roles/PermissionSelector';
 import { PermissionMatrix } from '@/components/roles/PermissionMatrix';
@@ -133,7 +133,7 @@ export default function CreateRolePage() {
       if (!exists) {
         const newPermissions = [
           ...currentPermissions,
-          { resource, action }
+          ResourceUtils.createPermission(resource, action)
         ];
         handleFieldChange('permissions', newPermissions);
       }

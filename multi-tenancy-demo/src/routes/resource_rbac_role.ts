@@ -105,7 +105,7 @@ router.get('/get/:roleName', async (req: Request, res: Response, next: NextFunct
  */
 router.post('/create', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, inheritsFrom, permissions } = req.body as CreateRoleRequest;
+    const { name, description, resource, inheritsFrom, permissions } = req.body as CreateRoleRequest;
 
     if (!name) {
       throw new ValidationError('Role name is required');
@@ -113,14 +113,30 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
 
     const namespace = req.ketoNamespace;
 
-    // Check if role already exists
+    // Check if role already exists (considering resource scope)
     const existingRole = storageService.getRoleByName(namespace, name);
-    if (existingRole) {
-      throw new ConflictError('Role already exists', `Role ${name} in namespace ${namespace}`);
+    if (existingRole && existingRole.resource === resource) {
+      throw new ConflictError('Role already exists', `Role ${name} for resource ${resource} in namespace ${namespace}`);
     }
 
-    // Create role in memory
-    const role = await storageService.createRole(namespace, name, description || '', req.tenantId, inheritsFrom);
+    // Create resource-scoped role in memory
+    const role = await storageService.createRole(
+      namespace,
+      name,
+      description || '',
+      req.tenantId,
+      inheritsFrom,
+      resource // Pass resource for scoped roles
+    );
+
+    console.log(`🚀 Creating resource-scoped role:`, {
+      name,
+      resource,
+      scopedName: role.scopedName,
+      tenantId: req.tenantId,
+      namespace,
+      inheritsFrom,
+    });
 
     // Sync to Keto - create relation tuples
     const ketoWarnings: string[] = [];
@@ -130,7 +146,14 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
       if (inheritsFrom && inheritsFrom.length > 0) {
         for (const parentRole of inheritsFrom) {
           try {
-            await ketoService.createRoleInheritance(name, parentRole, namespace);
+            // Pass tenant and resource context for resource-scoped RBAC
+            await ketoService.createRoleInheritance(
+              name,
+              parentRole,
+              namespace,
+              req.tenantId,
+              resource
+            );
           } catch (error) {
             const errorMsg = `Failed to create inheritance ${name} -> ${parentRole}`;
             console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
@@ -148,7 +171,15 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
               ? permission.resource
               : `${permission.resource}:items`;
 
-            await ketoService.createResourcePermission(resource, permission.action, name, namespace);
+            // Pass tenant and resource context for resource-scoped RBAC
+            await ketoService.createResourcePermission(
+              resource,
+              permission.action,
+              name,
+              namespace,
+              req.tenantId,
+              resource
+            );
           } catch (error) {
             const errorMsg = `Failed to create permission ${name} -> ${permission.action} on ${permission.resource}`;
             console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
@@ -190,7 +221,7 @@ router.post('/create', async (req: Request, res: Response, next: NextFunction) =
 router.put('/update/:roleName', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const name = req.params.roleName!;
-    const {  description, inheritsFrom, permissions } = req.body as UpdateRoleRequest;
+    const { description, resource, inheritsFrom, permissions } = req.body as UpdateRoleRequest;
     const namespace = req.ketoNamespace!;
 
     const existingRole = storageService.getRoleByName(namespace, name);
@@ -201,8 +232,22 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
 
     checkRoleTenantAccess(existingRole.tenantId, req.tenantId);
 
-    // Update role in memory
-    const role = await storageService.updateRole(namespace!, name!, { name, description, inheritsFrom });
+    // Update resource-scoped role in memory
+    const role = await storageService.updateRole(namespace!, name!, {
+      name,
+      description,
+      resource, // Allow updating resource
+      inheritsFrom
+    });
+
+    console.log(`🔄 Updating resource-scoped role:`, {
+      name,
+      oldResource: existingRole.resource,
+      newResource: resource,
+      oldScopedName: existingRole.scopedName,
+      newScopedName: role?.scopedName,
+      inheritsFrom,
+    });
 
     if (!role) {
       throw new NotFoundError('Role', name);
@@ -234,7 +279,14 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
         if (inheritsFrom && inheritsFrom.length > 0) {
           for (const parentRole of inheritsFrom) {
             try {
-              await ketoService.createRoleInheritance(name, parentRole, namespace);
+              // Pass tenant and resource context for resource-scoped RBAC
+              await ketoService.createRoleInheritance(
+                name,
+                parentRole,
+                namespace,
+                req.tenantId,
+                resource || existingRole.resource
+              );
             } catch (error) {
               const errorMsg = `Failed to create inheritance ${name} -> ${parentRole}`;
               console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');
@@ -263,7 +315,15 @@ router.put('/update/:roleName', async (req: Request, res: Response, next: NextFu
                 ? permission.resource
                 : `${permission.resource}:items`;
 
-              await ketoService.createResourcePermission(resource, permission.action, name, namespace);
+              // Pass tenant and resource context for resource-scoped RBAC
+              await ketoService.createResourcePermission(
+                resource,
+                permission.action,
+                name,
+                namespace,
+                req.tenantId,
+                resource || existingRole.resource
+              );
             } catch (error) {
               const errorMsg = `Failed to create permission ${name} -> ${permission.action} on ${permission.resource}`;
               console.warn(`⚠️  ${errorMsg}:`, error instanceof Error ? error.message : 'Unknown error');

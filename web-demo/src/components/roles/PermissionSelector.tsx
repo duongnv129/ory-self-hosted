@@ -22,12 +22,12 @@ import {
   Label,
 } from '@/components/ui';
 import { Eye, Plus, Edit, Trash2, Shield, Check, X, Loader2 } from 'lucide-react';
-import { Permission } from '@/lib/types/models';
+import { Permission, Resource as ResourceType, BaseResource } from '@/lib/types/models';
 import { useMetadata } from '@/lib/context/MetadataContext';
 import { cn } from '@/lib/utils';
 
-// Resources and actions are now dynamically loaded from metadata
-type Resource = string;
+// Use local type aliases for clarity within the component
+type Resource = ResourceType | BaseResource | string; // Support all resource formats
 type Action = string;
 
 /**
@@ -149,7 +149,7 @@ export function PermissionSelector({
       } else {
         // Add permission
         const newPermission: Permission = {
-          resource,
+          resource: resource as ResourceType | BaseResource,
           action,
         };
         onPermissionChange([...selectedPermissions, newPermission]);
@@ -181,8 +181,8 @@ export function PermissionSelector({
       } else {
         // Not all actions are selected, add all
         const updated = selectedPermissions.filter((p) => p.resource !== resource);
-        const newPermissions = ACTIONS.map((action) => ({
-          resource,
+        const newPermissions: Permission[] = ACTIONS.map((action) => ({
+          resource: resource as ResourceType | BaseResource,
           action,
         }));
         onPermissionChange([...updated, ...newPermissions]);
@@ -470,8 +470,11 @@ export function PermissionSelector({
               variant="outline"
               size="sm"
               onClick={() => {
-                const allPermissions = RESOURCES.flatMap((resource) =>
-                  ACTIONS.map((action) => ({ resource, action }))
+                const allPermissions: Permission[] = RESOURCES.flatMap((resource) =>
+                  ACTIONS.map((action) => ({
+                    resource: resource as ResourceType | BaseResource,
+                    action
+                  }))
                 );
                 onPermissionChange(allPermissions);
               }}
@@ -491,8 +494,8 @@ export function PermissionSelector({
               variant="outline"
               size="sm"
               onClick={() => {
-                const viewPermissions = RESOURCES.map((resource) => ({
-                  resource,
+                const viewPermissions: Permission[] = RESOURCES.map((resource) => ({
+                  resource: resource as ResourceType | BaseResource,
                   action: 'view' as Action,
                 }));
                 onPermissionChange(viewPermissions);

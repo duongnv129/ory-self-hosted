@@ -79,7 +79,7 @@ export interface Category {
 }
 
 /**
- * Role model with hierarchy support
+ * Role model with hierarchy support - Enhanced for resource-scoped RBAC
  */
 export interface Role {
   id: number;
@@ -87,9 +87,15 @@ export interface Role {
   description: string;
   namespace: string;
   tenantId?: string;
-  inheritsFrom?: string[]; // Array of role names that this role inherits from
+  resource?: string; // Resource this role applies to (e.g., "product", "category")
+  inheritsFrom?: string[]; // Array of role names that this role inherits from (within same resource scope)
   createdAt: string;
   updatedAt?: string;
+
+  // Computed properties for display
+  readonly scopedName?: string; // e.g., "tenant:a#product:items#admin"
+  readonly displayName?: string; // e.g., "Admin (Products)"
+  readonly scope?: string; // e.g., "tenant:a#product:items"
 }
 
 /**
@@ -172,20 +178,22 @@ export interface RolePermission {
 }
 
 /**
- * Create role request body
+ * Create role request body - Enhanced for resource-scoped RBAC
  */
 export interface CreateRoleRequest {
   name: string;
   description?: string;
-  inheritsFrom?: string[]; // Array of parent role names
+  resource?: string; // Resource this role applies to (e.g., "product", "category")
+  inheritsFrom?: string[]; // Array of parent role names (within same resource scope)
   permissions?: RolePermission[]; // Array of resource permissions
 }
 
 /**
- * Update role request body
+ * Update role request body - Enhanced for resource-scoped RBAC
  */
 export interface UpdateRoleRequest {
   description?: string;
-  inheritsFrom?: string[]; // Array of parent role names
+  resource?: string; // Allow changing resource scope
+  inheritsFrom?: string[]; // Array of parent role names (within same resource scope)
   permissions?: RolePermission[]; // Array of resource permissions
 }

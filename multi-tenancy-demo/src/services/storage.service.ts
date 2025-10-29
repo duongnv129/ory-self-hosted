@@ -431,18 +431,32 @@ export class StorageService {
   }
 
   /**
-   * Create new role
+   * Create new role - Enhanced for resource-scoped RBAC
    */
   async createRole(
     namespace: string,
     name: string,
     description: string,
     tenantId?: string,
-    inheritsFrom?: string[]
+    inheritsFrom?: string[],
+    resource?: string // Resource for scoped roles (e.g., "product", "category")
   ): Promise<Role> {
     if (!this.rolesByNamespace[namespace]) {
       this.rolesByNamespace[namespace] = [];
     }
+
+    // Normalize resource: Remove :items suffix if present (accept both "product" and "product:items")
+    const normalizedResource = resource?.replace(':items', '');
+
+    // Generate scoped identifiers following Alice's hierarchy model
+    // Format: tenant:a#product:items#admin (with :items appended when syncing to Keto)
+    const scopedName = normalizedResource && tenantId
+      ? `tenant:${tenantId}#${normalizedResource}:items#${name}`
+      : name;
+
+    const displayName = normalizedResource
+      ? `${name.charAt(0).toUpperCase() + name.slice(1)} (${normalizedResource.charAt(0).toUpperCase() + normalizedResource.slice(1)}s)`
+      : name;
 
     const newRole: Role = {
       id: this.getNextRoleId(),
@@ -450,22 +464,42 @@ export class StorageService {
       description,
       namespace,
       tenantId,
+      resource: normalizedResource, // Store normalized resource (without :items)
       inheritsFrom: inheritsFrom || [],
       createdAt: new Date().toISOString(),
+      // Computed properties
+      scopedName,
+      displayName,
+      scope: normalizedResource && tenantId ? `tenant:${tenantId}#${normalizedResource}:items` : undefined,
     };
 
     this.rolesByNamespace[namespace].push(newRole);
     await this.persistIfEnabled();
+
+    console.log(`✅ Created resource-scoped role:`, {
+      name,
+      resourceType,
+      scopedName,
+      displayName,
+      tenantId,
+      namespace,
+    });
+
     return newRole;
   }
 
   /**
-   * Update role
+   * Update role - Enhanced for resource-scoped RBAC
    */
   async updateRole(
     namespace: string,
     roleName: string,
-    updates: { name?: string; description?: string; inheritsFrom?: string[] }
+    updates: {
+      name?: string;
+      description?: string;
+      inheritsFrom?: string[];
+      resource?: string; // Allow updating resource
+    }
   ): Promise<Role | undefined> {
     const roles = this.rolesByNamespace[namespace];
     if (!roles) {
@@ -482,18 +516,49 @@ export class StorageService {
       return undefined;
     }
 
+    const updatedResource = updates.resource !== undefined ? updates.resource : existing.resource;
+    const updatedName = updates.name !== undefined ? updates.name : existing.name;
+
+    // Normalize resource: Remove :items suffix if present
+    const normalizedResource = updatedResource?.replace(':items', '');
+
+    // Regenerate scoped identifiers if resource or name changed
+    // Format: tenant:a#product:items#admin (with :items appended for Keto compatibility)
+    const scopedName = normalizedResource && existing.tenantId
+      ? `tenant:${existing.tenantId}#${normalizedResource}:items#${updatedName}`
+      : updatedName;
+
+    const displayName = normalizedResource
+      ? `${updatedName.charAt(0).toUpperCase() + updatedName.slice(1)} (${normalizedResource.charAt(0).toUpperCase() + normalizedResource.slice(1)}s)`
+      : updatedName;
+
     const updated: Role = {
       ...existing,
-      name: updates.name !== undefined ? updates.name : existing.name,
+      name: updatedName,
       description:
         updates.description !== undefined ? updates.description : existing.description,
+      resource: normalizedResource, // Store normalized resource (without :items)
       inheritsFrom:
         updates.inheritsFrom !== undefined ? updates.inheritsFrom : existing.inheritsFrom,
       updatedAt: new Date().toISOString(),
+      // Update computed properties
+      scopedName,
+      displayName,
+      scope: normalizedResource && existing.tenantId ? `tenant:${existing.tenantId}#${normalizedResource}:items` : existing.scope,
     };
 
     this.rolesByNamespace[namespace]![index] = updated;
     await this.persistIfEnabled();
+
+    console.log(`✅ Updated resource-scoped role:`, {
+      oldName: existing.name,
+      newName: updatedName,
+      oldResourceType: existing.resourceType,
+      newResourceType: updatedResourceType,
+      scopedName,
+      displayName,
+    });
+
     return updated;
   }
 

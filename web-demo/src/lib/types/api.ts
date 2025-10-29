@@ -297,13 +297,14 @@ export interface DeleteCategoryResponse extends ApiResponse {
 
 // Roles API
 /**
- * Request body for creating a new role
+ * Request body for creating a new resource-scoped role
  */
 export interface CreateRoleRequest {
-  name: string;
+  name: string; // Role name (e.g., "admin", "moderator", "customer")
   description?: string;
-  inheritsFrom?: string[]; // Array of parent role names to inherit from
-  permissions?: Array<{ resource: string; action: string }>; // Permissions to assign
+  resource?: string; // Resource this role applies to (e.g., "product", "category")
+  inheritsFrom?: string[]; // Array of parent role names to inherit from (within same resource scope)
+  permissions?: Permission[]; // Permissions to assign - unified type
 }
 
 /**
@@ -312,6 +313,7 @@ export interface CreateRoleRequest {
 export interface CreateRoleResponse extends ApiResponse {
   role: Role;
   namespace?: string;
+  resourceScope?: string; // e.g., "tenant:a#product:items" - NEW
   ketoSync?: 'success' | 'partial';
   ketoWarnings?: string[];
 }
@@ -323,6 +325,8 @@ export interface ListRolesResponse extends ApiResponse {
   roles: Role[];
   count: number;
   namespace?: string;
+  resourceTypes?: string[]; // Available resource types in this tenant - NEW
+  groupedByResource?: Record<string, Role[]>; // Roles grouped by resource type - NEW
 }
 
 /**
@@ -332,15 +336,18 @@ export interface GetRoleResponse extends ApiResponse {
   role: Role;
   permissions?: Permission[];
   namespace?: string;
+  resourceScope?: string; // e.g., "tenant:a#product:items" - NEW
+  inheritanceHierarchy?: string[]; // Full inheritance chain for this resource - NEW
 }
 
 /**
- * Request body for updating an existing role
+ * Request body for updating an existing resource-scoped role
  */
 export interface UpdateRoleRequest {
   description?: string;
-  inheritsFrom?: string[]; // Array of parent role names to inherit from
-  permissions?: Array<{ resource: string; action: string }>; // Permissions to assign
+  resource?: string; // Allow changing resource scope
+  inheritsFrom?: string[]; // Array of parent role names to inherit from (within same resource scope)
+  permissions?: Permission[]; // Permissions to assign - unified type
 }
 
 /**
@@ -386,12 +393,7 @@ export interface GetRoleResponse extends ApiResponse {
   namespace?: string;
 }
 
-export interface UpdateRoleRequest {
-  name?: string;
-  description?: string;
-  inheritsFrom?: string[]; // Array of parent role names
-  permissions?: Permission[]; // Array of resource permissions
-}
+// Duplicate removed - using the one above at line 346
 
 export interface UpdateRoleResponse extends ApiResponse {
   data: Role;
