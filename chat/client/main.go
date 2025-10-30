@@ -94,9 +94,8 @@ func (c *Client) setupWebRTC() error {
 	})
 
 	// Handle data channel from remote peer
-	c.pc.OnDataChannel(func(d *webrtc.DataChannel) {
-		log.Printf("New DataChannel %s %d", d.Label(), d.ID())
-		c.setupDataChannel(d)
+	c.pc.OnDataChannel(func(dc *webrtc.DataChannel) {
+		c.setupDataChannel(dc)
 	})
 
 	// Handle connection state changes
@@ -131,16 +130,18 @@ func (c *Client) setupWebRTC() error {
 func (c *Client) setupDataChannel(dc *webrtc.DataChannel) {
 	c.dataChannel = dc
 
-	dc.OnOpen(func() {
-		log.Printf("Data channel '%s' opened", dc.Label())
+	log.Printf("Setup DataChannel %s %d", c.dataChannel.Label(), c.dataChannel.ID())
+
+	c.dataChannel.OnOpen(func() {
+		log.Printf("Data channel %s %d opened", c.dataChannel.Label(), c.dataChannel.ID())
 	})
 
-	dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+	c.dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
 		fmt.Printf(">> %s\n", string(msg.Data))
 	})
 
-	dc.OnClose(func() {
-		log.Println("Data channel closed")
+	c.dataChannel.OnClose(func() {
+		log.Printf("Data channel %s %d closed", c.dataChannel.Label(), c.dataChannel.ID())
 	})
 }
 
@@ -171,7 +172,8 @@ func (c *Client) resetWebRTCConnection() {
 
 func (c *Client) createOffer() error {
 	// Create data channel
-	dc, err := c.pc.CreateDataChannel("chat", nil)
+	id := uint16(time.Now().UnixNano())
+	dc, err := c.pc.CreateDataChannel("chat", &webrtc.DataChannelInit{ID: &id})
 	if err != nil {
 		return err
 	}
