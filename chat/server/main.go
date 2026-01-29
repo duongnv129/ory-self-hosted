@@ -220,7 +220,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
                 }
             };
 
-            // Create data channel if we're the initiator
+            // Create data channel if we're the initiator (optimized timing)
             setTimeout(() => {
                 if (!dataChannel) {
                     isInitiator = true;
@@ -228,7 +228,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
                     setupDataChannel(dataChannel);
                     createOffer();
                 }
-            }, 1000);
+            }, 200); // Reduced from 1000ms to 200ms for faster connection
         }
 
         function setupDataChannel(channel) {

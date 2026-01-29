@@ -56,22 +56,23 @@ func (c *Client) setupWebRTC() error {
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
+				// Use only one fast STUN server for quicker lookup
 				URLs: []string{
 					"stun:stun.l.google.com:19302",
-					"stun:stun1.l.google.com:19302",
-					"stun:stun2.l.google.com:19302",
 				},
 			},
 		},
 		ICETransportPolicy: webrtc.ICETransportPolicyAll,
 	}
 
-	// Create a settings engine to include localhost candidates alongside STUN
+	// Create a settings engine with optimizations for faster connection
 	settingEngine := webrtc.SettingEngine{}
 	// Enable localhost candidates for local testing
 	settingEngine.SetIncludeLoopbackCandidate(true)
 	// Set NAT 1:1 mapping to include localhost
 	settingEngine.SetNAT1To1IPs([]string{"127.0.0.1"}, webrtc.ICECandidateTypeHost)
+	// Optimize ICE gathering timing
+	settingEngine.SetICETimeouts(1*time.Second, 3*time.Second, 200*time.Millisecond)
 
 	// Create API with custom settings
 	api := webrtc.NewAPI(webrtc.WithSettingEngine(settingEngine))
@@ -82,12 +83,20 @@ func (c *Client) setupWebRTC() error {
 	}
 	c.pc = pc
 
-	// Handle ICE candidates - don't send them individually since we wait for gathering completion
+	// Handle ICE candidates - send them individually for faster connection (ICE trickling)
 	c.pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate != nil {
 			log.Printf("STUN Generated ICE candidate: Type=%s, Address=%s:%d, Protocol=%s, Foundation=%s",
 				candidate.Typ.String(), candidate.Address, candidate.Port, candidate.Protocol.String(), candidate.Foundation)
-			// Don't send individual candidates - they're included in the complete SDP
+
+			// Send candidate immediately for faster connection establishment
+			msg := Message{
+				Type: "ice-candidate",
+				Data: *candidate,
+			}
+			if err := c.ws.WriteJSON(msg); err != nil {
+				log.Printf("Error sending ICE candidate: %v", err)
+			}
 		} else {
 			log.Printf("STUN ICE candidate gathering completed")
 		}
@@ -185,17 +194,14 @@ func (c *Client) createOffer() error {
 		return err
 	}
 
-	// Create a channel to wait for ICE gathering to complete
-	gatherComplete := webrtc.GatheringCompletePromise(c.pc)
-
 	err = c.pc.SetLocalDescription(offer)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Waiting for ICE gathering to complete...")
-	<-gatherComplete
-	log.Printf("ICE gathering completed, sending offer...")
+	// Send offer immediately without waiting for ICE gathering
+	// ICE candidates will be sent separately via trickling
+	log.Printf("Sending offer immediately...")
 	log.Printf("Offer SDP:\n%s", c.pc.LocalDescription().SDP)
 
 	msg := Message{
@@ -218,18 +224,15 @@ func (c *Client) handleOffer(offer webrtc.SessionDescription) error {
 		return fmt.Errorf("failed to create answer: %v", err)
 	}
 
-	// Create a channel to wait for ICE gathering to complete
-	gatherComplete := webrtc.GatheringCompletePromise(c.pc)
-
 	log.Printf("Setting local description with answer...")
 	err = c.pc.SetLocalDescription(answer)
 	if err != nil {
 		return fmt.Errorf("failed to set local description: %v", err)
 	}
 
-	log.Printf("Waiting for ICE gathering to complete...")
-	<-gatherComplete
-	log.Printf("ICE gathering completed, sending answer...")
+	// Send answer immediately without waiting for ICE gathering
+	// ICE candidates will be sent separately via trickling
+	log.Printf("Sending answer immediately...")
 	log.Printf("Answer SDP:\n%s", c.pc.LocalDescription().SDP)
 
 	msg := Message{
@@ -288,8 +291,18 @@ func (c *Client) handleSignaling() {
 				log.Printf("Error handling answer: %v", err)
 			}
 		case "ice-candidate":
-			// ICE candidates are now included in the complete SDP, so we ignore individual ones
-			log.Printf("Ignoring individual ICE candidate (using complete SDP)")
+			data, _ := json.Marshal(msg.Data)
+			var candidate webrtc.ICECandidate
+			err := json.Unmarshal(data, &candidate)
+			if err != nil {
+				log.Printf("Error unmarshaling ICE candidate: %v", err)
+				continue
+			}
+			log.Printf("Adding ICE candidate...")
+			err = c.pc.AddICECandidate(candidate.ToJSON())
+			if err != nil {
+				log.Printf("Error adding ICE candidate: %v", err)
+			}
 		}
 	}
 }
@@ -336,9 +349,9 @@ func main() {
 
 	// If this client should initiate the connection
 	if isInitiator {
-		// Wait a bit longer for the responder to connect
+		// Wait briefly for the responder to connect (optimized for faster connection)
 		log.Println("Waiting for responder to connect...")
-		time.Sleep(3 * time.Second)
+		time.Sleep(500 * time.Millisecond) // Reduced from 3s to 500ms
 		log.Println("Creating offer...")
 		err = client.createOffer()
 		if err != nil {
