@@ -49,7 +49,7 @@ check_service_health() {
         return 0
     else
         echo -e "${RED}❌ $service_name is not healthy${NC}"
-        echo "💡 Please ensure Keto is running: cd ../keto && docker-compose up -d"
+        echo "💡 Please ensure Keto is running: cd ../keto && docker compose up -d"
         return 1
     fi
 }

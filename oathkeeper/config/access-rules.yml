@@ -517,3 +517,188 @@
           X-User-Email: "{{ .Extra.identity.traits.email }}"
           X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
           X-Keto-Namespace: "resource-rbac"
+
+# =============================================================================
+# Use Case 4: AuthZ Orchestrator (Structural + Contextual Authorization)
+# Path: /api/authz-orchestrator/* -> strips prefix to /*
+# Combines Keto (structural) with OPA (contextual) authorization
+# =============================================================================
+
+# AuthZ Orchestrator - Policy Management API (no authorization needed)
+- id: "authz-orchestrator-policy-rule"
+  upstream:
+    url: "http://authz-orchestrator:8080"
+    strip_path: "/api/authz-orchestrator"
+  match:
+    url: "<http|https>://<.*>/api/authz-orchestrator/policy/<.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# AuthZ Orchestrator - Direct Decision API (for testing)
+- id: "authz-orchestrator-decision-rule"
+  upstream:
+    url: "http://authz-orchestrator:8080"
+    strip_path: "/api/authz-orchestrator"
+  match:
+    url: "<http|https>://<.*>/api/authz-orchestrator/decision"
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+# AuthZ Orchestrator - Users API
+- id: "authz-orchestrator-users-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/authz-orchestrator"
+  match:
+    url: "<http|https>://<.*>/api/authz-orchestrator/users/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://authz-orchestrator:8080/decision"
+      payload: |
+        {
+          "subject": "user:{{ print .Extra.identity.traits.email }}",
+          "action": "user.{{ index .MatchContext.RegexpCaptureGroups 2 }}",
+          "resource": "user:collection",
+          "tenant": "{{ .MatchContext.Header.Get \"x-tenant-id\" }}",
+          "context": {
+            "hour_utc": {{ div (now.Unix) 3600 | mod 24 }},
+            "classification": "{{ .MatchContext.Header.Get \"x-classification\" | default "public" }}",
+            "session": {
+              "aal": {{ .Extra.session.authenticator_assurance_level | default 1 }},
+              "issued_at": "{{ .Extra.session.issued_at }}"
+            },
+            "request": {
+              "ip": "{{ .MatchContext.RemoteAddr }}",
+              "user_agent": "{{ .MatchContext.Header.Get \"User-Agent\" }}"
+            }
+          }
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "authz-orchestrator"
+
+# AuthZ Orchestrator - Products API
+- id: "authz-orchestrator-products-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/authz-orchestrator"
+  match:
+    url: "<http|https>://<.*>/api/authz-orchestrator/products/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://authz-orchestrator:8080/decision"
+      payload: |
+        {
+          "subject": "user:{{ print .Extra.identity.traits.email }}",
+          "action": "product.{{ index .MatchContext.RegexpCaptureGroups 2 }}",
+          "resource": "product:collection",
+          "tenant": "{{ .MatchContext.Header.Get \"x-tenant-id\" }}",
+          "context": {
+            "hour_utc": {{ div (now.Unix) 3600 | mod 24 }},
+            "classification": "{{ .MatchContext.Header.Get \"x-classification\" | default "public" }}",
+            "session": {
+              "aal": {{ .Extra.session.authenticator_assurance_level | default 1 }},
+              "issued_at": "{{ .Extra.session.issued_at }}"
+            },
+            "request": {
+              "ip": "{{ .MatchContext.RemoteAddr }}",
+              "user_agent": "{{ .MatchContext.Header.Get \"User-Agent\" }}"
+            }
+          }
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "authz-orchestrator"
+
+# AuthZ Orchestrator - Categories API
+- id: "authz-orchestrator-categories-rule"
+  upstream:
+    url: "http://multi-tenancy-demo:9000"
+    strip_path: "/api/authz-orchestrator"
+  match:
+    url: "<http|https>://<.*>/api/authz-orchestrator/categories/<[^/]+><.*>"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+  authenticators:
+    - handler: cookie_session
+    - handler: bearer_token
+  authorizer:
+    handler: remote_json
+    config:
+      remote: "http://authz-orchestrator:8080/decision"
+      payload: |
+        {
+          "subject": "user:{{ print .Extra.identity.traits.email }}",
+          "action": "category.{{ index .MatchContext.RegexpCaptureGroups 2 }}",
+          "resource": "category:collection",
+          "tenant": "{{ .MatchContext.Header.Get \"x-tenant-id\" }}",
+          "context": {
+            "hour_utc": {{ div (now.Unix) 3600 | mod 24 }},
+            "classification": "{{ .MatchContext.Header.Get \"x-classification\" | default "public" }}",
+            "session": {
+              "aal": {{ .Extra.session.authenticator_assurance_level | default 1 }},
+              "issued_at": "{{ .Extra.session.issued_at }}"
+            },
+            "request": {
+              "ip": "{{ .MatchContext.RemoteAddr }}",
+              "user_agent": "{{ .MatchContext.Header.Get \"User-Agent\" }}"
+            }
+          }
+        }
+  mutators:
+    - handler: header
+      config:
+        headers:
+          X-User-Id: "{{ .Subject }}"
+          X-User-Email: "{{ .Extra.identity.traits.email }}"
+          X-Tenant-Id: "{{ .MatchContext.Header.Get \"x-tenant-id\" }}"
+          X-Keto-Namespace: "authz-orchestrator"

@@ -7,8 +7,9 @@ KETO_PATH = keto
 OATHKEEPER_PATH = oathkeeper
 DEMO_PATH = multi-tenancy-demo
 WEB_DEMO_PATH = web-demo
+AUTHZ_PATH = authz-orchestrator
 
-.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo web-demo migrate shell network
+.PHONY: help up down restart logs status clean postgres kratos keto oathkeeper demo web-demo authz migrate shell network
 
 # Default target
 help: ## Show this help message
@@ -26,128 +27,152 @@ network: ## Create Docker network (ory-network)
 # Service Management
 up-core: network ## Start core services only (postgres + kratos + keto)
 	@echo "Starting PostgreSQL..."
-	@cd $(POSTGRES_PATH) && docker-compose up -d
+	@cd $(POSTGRES_PATH) && docker compose up -d
 	@echo "Starting Kratos stack..."
-	@cd $(KRATOS_PATH) && docker-compose up -d
+	@cd $(KRATOS_PATH) && docker compose up -d
 	@echo "Starting Keto stack..."
-	@cd $(KETO_PATH) && docker-compose up -d
+	@cd $(KETO_PATH) && docker compose up -d
 	@echo "✓ Core services started"
 
-up: network ## Start all services including Oathkeeper, demo, and web-demo
+up: network ## Start all services including Oathkeeper, demo, authz, and web-demo
 	@echo "Starting PostgreSQL..."
-	@cd $(POSTGRES_PATH) && docker-compose up -d
+	@cd $(POSTGRES_PATH) && docker compose up -d
 	@echo "Starting Kratos stack..."
-	@cd $(KRATOS_PATH) && docker-compose up -d
+	@cd $(KRATOS_PATH) && docker compose up -d
 	@echo "Starting Keto stack..."
-	@cd $(KETO_PATH) && docker-compose up -d
+	@cd $(KETO_PATH) && docker compose up -d
+	@echo "Starting AuthZ Orchestrator..."
+	@cd $(AUTHZ_PATH) && docker compose up -d --build
 	@echo "Starting Oathkeeper..."
-	@cd $(OATHKEEPER_PATH) && docker-compose up -d
+	@cd $(OATHKEEPER_PATH) && docker compose up -d
 	@echo "Starting Multi-Tenancy Demo..."
-	@cd $(DEMO_PATH) && docker-compose up -d --build
+	@cd $(DEMO_PATH) && docker compose up -d --build
 	@echo "Starting Web Demo..."
-	@cd $(WEB_DEMO_PATH) && docker-compose up -d --build
+	@cd $(WEB_DEMO_PATH) && docker compose up -d --build
 	@echo "✓ All services started"
 
 down: ## Stop all services
 	@echo "Stopping Web Demo..."
-	@cd $(WEB_DEMO_PATH) && docker-compose down 2>/dev/null || true
+	@cd $(WEB_DEMO_PATH) && docker compose down 2>/dev/null || true
 	@echo "Stopping Multi-Tenancy Demo..."
-	@cd $(DEMO_PATH) && docker-compose down 2>/dev/null || true
+	@cd $(DEMO_PATH) && docker compose down 2>/dev/null || true
 	@echo "Stopping Oathkeeper..."
-	@cd $(OATHKEEPER_PATH) && docker-compose down 2>/dev/null || true
+	@cd $(OATHKEEPER_PATH) && docker compose down 2>/dev/null || true
+	@echo "Stopping AuthZ Orchestrator..."
+	@cd $(AUTHZ_PATH) && docker compose down 2>/dev/null || true
 	@echo "Stopping Keto stack..."
-	@cd $(KETO_PATH) && docker-compose down 2>/dev/null || true
+	@cd $(KETO_PATH) && docker compose down 2>/dev/null || true
 	@echo "Stopping Kratos stack..."
-	@cd $(KRATOS_PATH) && docker-compose down
+	@cd $(KRATOS_PATH) && docker compose down
 	@echo "Stopping PostgreSQL..."
-	@cd $(POSTGRES_PATH) && docker-compose down
+	@cd $(POSTGRES_PATH) && docker compose down
 	@echo "✓ All services stopped"
 
 restart: down up ## Restart all services
 
 # Individual Services
 postgres: network ## Start only PostgreSQL
-	@cd $(POSTGRES_PATH) && docker-compose up -d
+	@cd $(POSTGRES_PATH) && docker compose up -d
 	@echo "✓ PostgreSQL started on port 5432"
 
 kratos: network postgres ## Start only Kratos services (requires postgres)
-	@cd $(KRATOS_PATH) && docker-compose up -d
+	@cd $(KRATOS_PATH) && docker compose up -d
 	@echo "✓ Kratos services started"
 
 keto: network postgres ## Start only Keto services (requires postgres)
-	@cd $(KETO_PATH) && docker-compose up -d
+	@cd $(KETO_PATH) && docker compose up -d
 	@echo "✓ Keto services started"
 
 oathkeeper: network kratos keto ## Start Oathkeeper (requires kratos + keto)
-	@cd $(OATHKEEPER_PATH) && docker-compose up -d
+	@cd $(OATHKEEPER_PATH) && docker compose up -d
 	@echo "✓ Oathkeeper started"
 
 demo: network ## Start multi-tenancy demo as Docker container
 	@echo "Starting multi-tenancy demo on port 9000..."
-	@cd $(DEMO_PATH) && docker-compose up -d --build
+	@cd $(DEMO_PATH) && docker compose up -d --build
 	@echo "✓ Demo started at http://localhost:9000"
 
 demo-logs: ## Show demo logs
-	@cd $(DEMO_PATH) && docker-compose logs -f
+	@cd $(DEMO_PATH) && docker compose logs -f
 
 demo-shell: ## Get shell access to demo container
-	@cd $(DEMO_PATH) && docker-compose exec multi-tenancy-demo sh
+	@cd $(DEMO_PATH) && docker compose exec multi-tenancy-demo sh
 
 demo-restart: ## Restart demo container
-	@cd $(DEMO_PATH) && docker-compose restart multi-tenancy-demo
+	@cd $(DEMO_PATH) && docker compose restart multi-tenancy-demo
 
 web-demo: network ## Start web-demo as Docker container (Next.js on port 3000)
 	@echo "Starting web-demo on port 3000..."
-	@cd $(WEB_DEMO_PATH) && docker-compose up -d --build
+	@cd $(WEB_DEMO_PATH) && docker compose up -d --build
 	@echo "✓ Web demo started at http://localhost:3000"
 
 web-demo-logs: ## Show web-demo logs
-	@cd $(WEB_DEMO_PATH) && docker-compose logs -f
+	@cd $(WEB_DEMO_PATH) && docker compose logs -f
+
+authz: network ## Start AuthZ Orchestrator + OPA
+	@echo "Starting AuthZ Orchestrator with OPA..."
+	@cd $(AUTHZ_PATH) && docker compose up -d --build
+	@echo "✓ AuthZ Orchestrator started at http://localhost:8080"
+
+authz-logs: ## Show AuthZ Orchestrator logs
+	@cd $(AUTHZ_PATH) && docker compose logs -f
+
+authz-down: ## Stop AuthZ Orchestrator
+	@cd $(AUTHZ_PATH) && docker compose down
+
+authz-restart: ## Restart AuthZ Orchestrator
+	@cd $(AUTHZ_PATH) && docker compose restart authz-orchestrator
+
+authz-shell: ## Get shell access to AuthZ Orchestrator container
+	@cd $(AUTHZ_PATH) && docker compose exec authz-orchestrator sh
 
 web-demo-shell: ## Get shell access to web-demo container
-	@cd $(WEB_DEMO_PATH) && docker-compose exec web-demo sh
+	@cd $(WEB_DEMO_PATH) && docker compose exec web-demo sh
 
 web-demo-restart: ## Restart web-demo container
-	@cd $(WEB_DEMO_PATH) && docker-compose restart web-demo
+	@cd $(WEB_DEMO_PATH) && docker compose restart web-demo
 
 web-demo-down: ## Stop web-demo container
-	@cd $(WEB_DEMO_PATH) && docker-compose down
+	@cd $(WEB_DEMO_PATH) && docker compose down
 
 # Logs and Monitoring
 logs: ## Show logs for all Kratos services
-	@cd $(KRATOS_PATH) && docker-compose logs -f
+	@cd $(KRATOS_PATH) && docker compose logs -f
 
 logs-kratos: ## Show logs for Kratos service only
-	@cd $(KRATOS_PATH) && docker-compose logs -f kratos
+	@cd $(KRATOS_PATH) && docker compose logs -f kratos
 
 logs-keto: ## Show logs for Keto service only
-	@cd $(KETO_PATH) && docker-compose logs -f keto
+	@cd $(KETO_PATH) && docker compose logs -f keto
 
 logs-oathkeeper: ## Show logs for Oathkeeper service only
-	@cd $(OATHKEEPER_PATH) && docker-compose logs -f oathkeeper
+	@cd $(OATHKEEPER_PATH) && docker compose logs -f oathkeeper
 
 logs-postgres: ## Show PostgreSQL logs
-	@cd $(POSTGRES_PATH) && docker-compose logs -f postgres
+	@cd $(POSTGRES_PATH) && docker compose logs -f postgres
 
 # Status and Health
 status: ## Show status of all services
 	@echo "=== PostgreSQL Status ==="
-	@cd $(POSTGRES_PATH) && docker-compose ps
+	@cd $(POSTGRES_PATH) && docker compose ps
 	@echo ""
 	@echo "=== Kratos Stack Status ==="
-	@cd $(KRATOS_PATH) && docker-compose ps
+	@cd $(KRATOS_PATH) && docker compose ps
 	@echo ""
 	@echo "=== Keto Stack Status ==="
-	@cd $(KETO_PATH) && docker-compose ps 2>/dev/null || echo "Keto not running"
+	@cd $(KETO_PATH) && docker compose ps 2>/dev/null || echo "Keto not running"
 	@echo ""
 	@echo "=== Oathkeeper Status ==="
-	@cd $(OATHKEEPER_PATH) && docker-compose ps 2>/dev/null || echo "Oathkeeper not running"
+	@cd $(OATHKEEPER_PATH) && docker compose ps 2>/dev/null || echo "Oathkeeper not running"
+	@echo ""
+	@echo "=== AuthZ Orchestrator Status ==="
+	@cd $(AUTHZ_PATH) && docker compose ps 2>/dev/null || echo "AuthZ Orchestrator not running"
 	@echo ""
 	@echo "=== Multi-Tenancy Demo Status ==="
-	@cd $(DEMO_PATH) && docker-compose ps 2>/dev/null || echo "Demo not running"
+	@cd $(DEMO_PATH) && docker compose ps 2>/dev/null || echo "Demo not running"
 	@echo ""
 	@echo "=== Web Demo Status ==="
-	@cd $(WEB_DEMO_PATH) && docker-compose ps 2>/dev/null || echo "Web Demo not running"
+	@cd $(WEB_DEMO_PATH) && docker compose ps 2>/dev/null || echo "Web Demo not running"
 
 health: ## Check service health
 	@echo "Checking service health..."
@@ -157,46 +182,49 @@ health: ## Check service health
 	@curl -s http://localhost:4466/health/ready >/dev/null 2>&1 && echo "✓ Keto Read API: Ready" || echo "✗ Keto Read API: Not ready"
 	@curl -s http://localhost:4467/health/ready >/dev/null 2>&1 && echo "✓ Keto Write API: Ready" || echo "✗ Keto Write API: Not ready"
 	@curl -s http://localhost:4456/health/ready >/dev/null 2>&1 && echo "✓ Oathkeeper API: Ready" || echo "✗ Oathkeeper API: Not ready"
+	@curl -s http://localhost:8080/health >/dev/null 2>&1 && echo "✓ AuthZ Orchestrator: Ready" || echo "✗ AuthZ Orchestrator: Not ready"
+	@curl -s http://localhost:8181/health >/dev/null 2>&1 && echo "✓ OPA: Ready" || echo "✗ OPA: Not ready"
 	@curl -s http://localhost:9000/health >/dev/null 2>&1 && echo "✓ Multi-Tenancy Demo: Ready" || echo "✗ Multi-Tenancy Demo: Not ready"
 	@curl -s http://localhost:3000 >/dev/null 2>&1 && echo "✓ Web Demo: Ready" || echo "✗ Web Demo: Not ready"
 
 # Development
 reload-kratos: ## Reload Kratos after config changes
 	@echo "Reloading Kratos with new configuration..."
-	@cd $(KRATOS_PATH) && docker-compose up -d --force-recreate kratos
+	@cd $(KRATOS_PATH) && docker compose up -d --force-recreate kratos
 
 reload-keto: ## Reload Keto after config changes
 	@echo "Reloading Keto with new configuration..."
-	@cd $(KETO_PATH) && docker-compose up -d --force-recreate keto
+	@cd $(KETO_PATH) && docker compose up -d --force-recreate keto
 
 reload-oathkeeper: ## Reload Oathkeeper after config changes
 	@echo "Reloading Oathkeeper with new configuration..."
-	@cd $(OATHKEEPER_PATH) && docker-compose up -d --force-recreate oathkeeper
+	@cd $(OATHKEEPER_PATH) && docker compose up -d --force-recreate oathkeeper
 
 migrate: ## Run database migrations manually
 	@echo "Running Kratos migrations..."
-	@cd $(KRATOS_PATH) && docker-compose up kratos-migrate
+	@cd $(KRATOS_PATH) && docker compose up kratos-migrate
 	@echo "Running Keto migrations..."
-	@cd $(KETO_PATH) && docker-compose up keto-migrate
+	@cd $(KETO_PATH) && docker compose up keto-migrate
 
 shell-kratos: ## Get shell access to Kratos container
-	@cd $(KRATOS_PATH) && docker-compose exec kratos sh
+	@cd $(KRATOS_PATH) && docker compose exec kratos sh
 
 shell-keto: ## Get shell access to Keto container
-	@cd $(KETO_PATH) && docker-compose exec keto sh
+	@cd $(KETO_PATH) && docker compose exec keto sh
 
 shell-postgres: ## Get shell access to PostgreSQL
-	@cd $(POSTGRES_PATH) && docker-compose exec postgres psql -U postgres -d kratos
+	@cd $(POSTGRES_PATH) && docker compose exec postgres psql -U postgres -d kratos
 
 # Cleanup
 clean: ## Stop and remove all containers, networks, and volumes
 	@echo "Cleaning up all services..."
-	@cd $(WEB_DEMO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
-	@cd $(DEMO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
-	@cd $(OATHKEEPER_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
-	@cd $(KETO_PATH) && docker-compose down -v --remove-orphans 2>/dev/null || true
-	@cd $(KRATOS_PATH) && docker-compose down -v --remove-orphans
-	@cd $(POSTGRES_PATH) && docker-compose down -v --remove-orphans
+	@cd $(WEB_DEMO_PATH) && docker compose down -v --remove-orphans 2>/dev/null || true
+	@cd $(DEMO_PATH) && docker compose down -v --remove-orphans 2>/dev/null || true
+	@cd $(OATHKEEPER_PATH) && docker compose down -v --remove-orphans 2>/dev/null || true
+	@cd $(AUTHZ_PATH) && docker compose down -v --remove-orphans 2>/dev/null || true
+	@cd $(KETO_PATH) && docker compose down -v --remove-orphans 2>/dev/null || true
+	@cd $(KRATOS_PATH) && docker compose down -v --remove-orphans
+	@cd $(POSTGRES_PATH) && docker compose down -v --remove-orphans
 	@echo "✓ Cleanup complete"
 
 clean-identities: ## Clean up test Kratos identities
@@ -281,6 +309,14 @@ urls: ## Show all service URLs
 	@echo "Oathkeeper:"
 	@echo "  Proxy:              http://localhost:4455"
 	@echo "  API:                http://localhost:4456"
+	@echo ""
+	@echo "AuthZ Orchestrator:"
+	@echo "  API:                http://localhost:8080"
+	@echo "  Decision Endpoint:  http://localhost:8080/decision"
+	@echo "  Policy Management:  http://localhost:8080/policy/templates"
+	@echo ""
+	@echo "OPA:"
+	@echo "  API:                http://localhost:8181"
 	@echo ""
 	@echo "Supporting Services:"
 	@echo "  Mailslurper:        http://127.0.0.1:4436"

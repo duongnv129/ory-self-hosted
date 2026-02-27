@@ -14,6 +14,7 @@ const navigationItems = [
   { href: '/simple-rbac', label: 'Simple RBAC' },
   { href: '/tenant-rbac', label: 'Tenant RBAC' },
   { href: '/resource-rbac', label: 'Resource RBAC' },
+  { href: '/authz-orchestrator', label: 'AuthZ Orchestrator' },
 ];
 
 interface NavigationProps {

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Shield, Users, Target, ExternalLink } from 'lucide-react';
+import { ArrowRight, Shield, Users, Target, ExternalLink, Brain } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -18,14 +18,14 @@ export default function HomePage() {
           Ory RBAC Demo
         </h1>
         <p className="mx-auto max-w-3xl text-lg text-muted-foreground sm:text-xl">
-          Demonstrating three authorization models with Ory Stack (Kratos, Keto, Oathkeeper)
+          Demonstrating four authorization models with Ory Stack (Kratos, Keto, Oathkeeper, OPA)
         </p>
       </section>
 
       {/* Use Case Cards */}
       <section>
         <h2 className="mb-8 text-center text-3xl font-bold">Choose Your RBAC Model</h2>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Simple RBAC */}
           <Card className="group transition-all hover:shadow-lg">
             <CardHeader>
@@ -137,6 +137,45 @@ export default function HomePage() {
               <Link href="/resource-rbac" className="block">
                 <Button className="w-full group-hover:shadow-md">
                   Explore Resource RBAC
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* AuthZ Orchestrator */}
+          <Card className="group transition-all hover:shadow-lg">
+            <CardHeader>
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Brain className="h-6 w-6" />
+              </div>
+              <CardTitle>AuthZ Orchestrator</CardTitle>
+              <CardDescription>
+                Hybrid authorization combining structural (Keto) with contextual policies (OPA)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Structural + contextual authorization</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Working hours enforcement</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Step-up authentication</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Risk-based decisions</span>
+                </li>
+              </ul>
+              <Link href="/authz-orchestrator" className="block">
+                <Button className="w-full group-hover:shadow-md">
+                  Explore AuthZ Orchestrator
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

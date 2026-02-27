@@ -306,7 +306,7 @@ curl http://localhost:4455/products/list \
 make logs-oathkeeper
 
 # Or directly
-cd oathkeeper && docker-compose logs -f
+cd oathkeeper && docker compose logs -f
 ```
 
 ## Configuration Reload
@@ -317,7 +317,7 @@ After modifying `oathkeeper.yml` or `access-rules.yml`:
 make reload-oathkeeper
 
 # Or directly
-cd oathkeeper && docker-compose up -d --force-recreate oathkeeper
+cd oathkeeper && docker compose up -d --force-recreate oathkeeper
 ```
 
 ## Error Handling

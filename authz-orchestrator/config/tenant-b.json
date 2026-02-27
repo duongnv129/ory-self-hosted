@@ -1,0 +1,44 @@
+{
+  "tenant_id": "tenant-b",
+  "version": "1.0.0",
+  "last_modified": "2024-01-15T10:00:00Z",
+  "last_published": "2024-01-15T10:00:00Z",
+  "active": {
+    "clearance_offsets": {
+      "public": 0,
+      "internal": 1,
+      "confidential": 2
+    },
+    "assurance": {
+      "base_action_aal": {
+        "user.list": 1,
+        "user.get": 1,
+        "user.create": 1,
+        "user.update": 1,
+        "user.delete": 2,
+        "product.list": 1,
+        "product.get": 1,
+        "product.create": 1,
+        "product.update": 1,
+        "product.delete": 1,
+        "category.list": 1,
+        "category.get": 1,
+        "category.create": 1,
+        "category.update": 1,
+        "category.delete": 1
+      },
+      "risk_escalation_rules": [
+        {
+          "match": {
+            "risk": "high"
+          },
+          "required_aal": 2
+        }
+      ],
+      "accepted_factors": {
+        "1": ["password"],
+        "2": ["password", "totp"]
+      }
+    }
+  }
+}

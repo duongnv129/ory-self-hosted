@@ -26,7 +26,7 @@ Use the root **Makefile** for all operations:
 - `make shell-[service]` - Shell access to containers
 - `make health` - Check all service endpoints
 
-Never use `docker-compose` directly - the Makefile handles service dependencies and networking.
+Never use `docker compose` directly - the Makefile handles service dependencies and networking.
 
 ## Key Patterns
 

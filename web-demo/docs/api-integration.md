@@ -702,7 +702,7 @@ log:
 
 View logs:
 ```bash
-docker-compose -f oathkeeper/docker-compose.yaml logs -f oathkeeper
+docker compose -f oathkeeper/docker-compose.yaml logs -f oathkeeper
 ```
 
 ---

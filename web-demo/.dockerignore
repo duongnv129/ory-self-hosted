@@ -8,6 +8,7 @@ pnpm-debug.log*
 .npm
 .yarn
 .cache
+.idea
 
 # Next.js
 .next
@@ -78,7 +79,7 @@ LICENSE
 
 # Docker
 Dockerfile*
-docker-compose*.yml
+docker compose*.yml
 .dockerignore
 
 # Miscellaneous

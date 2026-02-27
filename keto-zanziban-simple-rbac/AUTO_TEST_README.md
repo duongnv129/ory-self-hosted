@@ -180,7 +180,7 @@ curl http://localhost:4466/health/ready
 curl http://localhost:4467/health/ready
 
 # Start Keto if needed
-cd ../keto && docker-compose up -d
+cd ../keto && docker compose up -d
 ```
 
 #### Authorization Tests Failing Unexpectedly
